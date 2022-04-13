@@ -205,18 +205,17 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
 import VolumeControl from "@/components/VolumeControl.vue";
 import MediaItemThumb from "@/components/MediaItemThumb.vue";
-import { mapGetters } from "vuex";
-import {
+
+import type {
   Artist,
   PlayerState,
   PlayerQueue,
   QueueItem,
   StreamDetails,
-} from "@/plugins/api";
-import { formatDuration } from "@/utils";
+} from "../plugins/api";
+import { formatDuration } from "../utils";
 import mitt from 'mitt'
 const emitter = mitt()
 

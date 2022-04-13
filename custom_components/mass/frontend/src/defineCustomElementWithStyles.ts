@@ -1,18 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   defineCustomElement as VueDefineCustomElement,
   h,
   createApp,
-  getCurrentInstance
+  getCurrentInstance,
+  VueElement,
 } from "vue";
 
-const getNearestElementParent = (el) => {
+import type { Component } from "vue";
+
+const getNearestElementParent = (el: VueElement) => {
   while (el?.nodeType !== 1 /* ELEMENT */) {
-    el = el.parentElement;
+    el = (el as any).parentElement;
   }
   return el;
 };
 
-export const defineCustomElement = (component, { plugins = [] }) =>
+export const defineCustomElement = (component: Component, { plugins = [] }) =>
   VueDefineCustomElement({
     // render: () => h(component),
     setup(props) {
@@ -23,7 +27,7 @@ export const defineCustomElement = (component, { plugins = [] }) =>
 
       app.mixin({
         mounted() {
-          const insertStyles = (styles) => {
+          const insertStyles = (styles: any) => {
             if (styles?.length) {
               this.__style = document.createElement("style");
               this.__style.innerText = styles.join().replace(/\n/g, "");
@@ -50,14 +54,6 @@ export const defineCustomElement = (component, { plugins = [] }) =>
       Object.assign(inst.appContext, app._context);
       Object.assign(inst.provides, app._context.provides);
 
-    //   if (props) {
-    //   props = {
-    //     hass: props.hass || {states: []},
-    //     config: props.config
-    //   };
-    // }
-
-      console.log({ props });
       return () => h(component, props);
     }
   });

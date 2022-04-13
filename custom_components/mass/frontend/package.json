@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "@mdi/font": "5.9.55",
+    "home-assistant-js-websocket": "^7.0.2",
     "mitt": "^3.0.0",
     "pinia": "^2.0.13",
+    "require": "^2.4.20",
     "vue": "^3.2.31",
     "vuetify": "^3.0.0-beta.0",
     "webfontloader": "^1.0.0"
