@@ -1,0 +1,50 @@
+<template>
+  <v-img
+    :key="item.uri"
+    cover
+    :src="imgData"
+    :height="size"
+    :width="size"
+    style="border: 1px solid rgba(0, 0, 0, 0.22)"
+  >
+    <template v-slot:placeholder>
+      <div class="d-flex align-center justify-center fill-height">
+        <v-progress-circular indeterminate color="grey-lighten-4"></v-progress-circular>
+      </div>
+    </template>
+  </v-img>
+</template>
+
+<script setup lang="ts">
+import { watchEffect, ref } from "vue";
+import type { ItemMapping, MediaItemType, MusicAssistantApi } from "../plugins/api";
+import { store } from "../plugins/store";
+import type { Player } from "../plugins/api";
+import { api } from "../plugins/api";
+
+interface Props {
+  item?: MediaItemType | ItemMapping;
+  size: number;
+}
+const props = defineProps<Props>();
+
+const imgData = ref<string>();
+
+const getImageThumb = (url: string, size = 150) => {
+  // get image(thumb) for mediaItem from server
+  return `https://images.weserv.nl/?url=${url}&w=${size}`;
+};
+
+watchEffect(async () => {
+  if (!props.item) return;
+  const url = await api?.getImageUrlForMediaItem(props.item);
+
+  if (typeof url == "string" && (!props.size || props.size > 100)) {
+    // simply use the fullsize url
+    imgData.value = url;
+  } else if (typeof url == "string") {
+    // resized image by url
+    imgData.value = getImageThumb(url, props.size);
+  }
+});
+</script>

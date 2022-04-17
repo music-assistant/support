@@ -9,6 +9,7 @@ import type {
   HassUser
 } from "home-assistant-js-websocket";
 
+import type { App } from "vue";
 import { reactive } from "vue";
 
 export enum MediaType {
@@ -45,7 +46,7 @@ export interface MediaItem {
   provider: string;
   name: string;
   sort_name?: string;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string>;
   provider_ids: MediaItemProviderId[];
   in_library: boolean;
   media_type: MediaType;
@@ -57,6 +58,7 @@ export interface ItemMapping {
   provider: string;
   name: string;
   media_type: MediaType;
+  uri: string;
 }
 
 export interface Artist extends MediaItem {
@@ -100,6 +102,8 @@ export interface Playlist extends MediaItem {
 export interface Radio extends MediaItem {
   duration?: number;
 }
+
+export type MediaItemType = Artist | Album | Track | Playlist | Radio;
 
 export enum StreamType {
   EXECUTABLE = "executable",
@@ -196,7 +200,26 @@ export interface PlayerQueue {
   crossfade_duration: number;
 }
 
+export enum QueueCommand {
+  PLAY = "play",
+  PAUSE = "pause",
+  PLAY_PAUSE = "play_pause",
+  NEXT = "next",
+  PREVIOUS = "previous",
+  STOP = "stop",
+  POWER = "power",
+  POWER_TOGGLE = "power_toggle",
+  VOLUME = "volume",
+  VOLUME_UP = "volume_up",
+  VOLUME_DOWN = "volume_down",
+  SHUFFLE = "shuffle",
+  REPEAT = "repeat",
+  CLEAR = "clear",
+  PLAY_INDEX = "play_index"
+}
+
 export type HassPanel = {
+  url_path: string;
   config: {
     title: string;
   };
@@ -245,31 +268,98 @@ export type HomeAssistant = {
   callWS<T>(msg: MessageBase): Promise<T>;
 };
 
+export enum MassEventType {
+  PLAYER_ADDED = "player added",
+  PLAYER_REMOVED = "player removed",
+  PLAYER_UPDATED = "player updated",
+  STREAM_STARTED = "streaming started",
+  STREAM_ENDED = "streaming ended",
+  CONFIG_CHANGED = "config changed",
+  MUSIC_SYNC_STATUS = "music sync status",
+  QUEUE_ADDED = "queue_added",
+  QUEUE_UPDATED = "queue updated",
+  QUEUE_ITEMS_UPDATED = "queue items updated",
+  SHUTDOWN = "application shutdown",
+  ARTIST_ADDED = "artist added",
+  ALBUM_ADDED = "album added",
+  TRACK_ADDED = "track added",
+  PLAYLIST_ADDED = "playlist added",
+  RADIO_ADDED = "radio added",
+  TASK_UPDATED = "task updated",
+  PROVIDER_REGISTERED = "PROVIDER_REGISTERED"
+}
+
+export enum QueueOption {
+  PLAY = "play",
+  REPLACE = "replace",
+  NEXT = "next",
+  ADD = "add"
+}
+
+export type MassEvent = {
+  event: MassEventType;
+  object_id?: string;
+  data?: Record<string, any>;
+};
+
 export class MusicAssistantApi {
   // eslint-disable-next-line prettier/prettier
   private _hass: HomeAssistant | undefined;
   private _lastId: number;
-  private _players: { [player_id: string]: Player };
+  // private _players: { [player_id: string]: Player };
+  // private _players: { [player_id: string]: Player };
+  public players = reactive<{ [player_id: string]: Player }>({});
+  public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
 
   constructor(hass?: HomeAssistant) {
     this._hass = hass;
     this._lastId = 0;
-    this._players = {};
-    this.setup();
+    // this.setup();
+  }
+
+  public setHass(hass: HomeAssistant) {
+    this._hass = hass;
   }
 
   public get hass() {
     return this._hass;
   }
 
-  public get players() {
-    return reactive(this._players);
+  public async initialize(hass?: HomeAssistant) {
+    console.log("initialize api");
+    if (hass) this.setHass(hass);
+    // load initial data from api
+    for (const player of await api.getPlayers()) {
+      this.players[player.player_id] = player;
+    }
+    for (const queue of await api.getPlayerQueues()) {
+      this.queues[queue.queue_id] = queue;
+    }
+    // subscribe to mass events
+    this.hass?.connection.subscribeMessage(
+      (msg: MassEvent) => {
+        this.handleMassEvent(msg);
+      },
+      {
+        type: "mass/subscribe"
+      }
+    );
   }
 
-  private async setup() {
-    for (const player of await this.getPlayers()) {
-      this._players[player.player_id] = player;
-      console.log(player);
+  private handleMassEvent(msg: MassEvent) {
+    console.log(msg.event);
+    if (msg.event == MassEventType.QUEUE_ADDED) {
+      const queue = msg.data as PlayerQueue;
+      this.queues[queue.queue_id] = queue;
+    } else if (msg.event == MassEventType.QUEUE_UPDATED) {
+      const queue = msg.data as PlayerQueue;
+      Object.assign(this.queues[queue.queue_id], queue);
+    } else if (msg.event == MassEventType.PLAYER_ADDED) {
+      const player = msg.data as Player;
+      this.players[player.player_id] = player;
+    } else if (msg.event == MassEventType.PLAYER_UPDATED) {
+      const player = msg.data as Player;
+      Object.assign(this.players[player.player_id], player);
     }
   }
 
@@ -321,6 +411,106 @@ export class MusicAssistantApi {
     return this.getData("radio", { object_id: uri, lazy });
   }
 
+  public getItem(uri: string, lazy = true): Promise<MediaItemType> {
+    return this.getData("item", { object_id: uri, lazy });
+  }
+
+  public async addToLibrary(item: MediaItemType) {
+    item.in_library = true;
+    // TODO
+  }
+  public async removeFromLibrary(item: MediaItemType) {
+    // TODO
+    item.in_library = false;
+  }
+  public async toggleLibrary(item: MediaItemType) {
+    // TODO
+    if (item.in_library) return await this.removeFromLibrary(item);
+    return await this.addToLibrary(item);
+  }
+
+  public queueCommandPlay(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.PLAY);
+  }
+  public queueCommandPause(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.PAUSE);
+  }
+  public queueCommandPlayPause(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.PLAY_PAUSE);
+  }
+  public queueCommandStop(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.STOP);
+  }
+  public queueCommandPowerToggle(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.POWER_TOGGLE);
+  }
+  public queueCommandNext(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.NEXT);
+  }
+  public queueCommandPrevious(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.PREVIOUS);
+  }
+  public queueCommandVolume(playerId: string, newVolume: number) {
+    this.playerQueueCommand(playerId, QueueCommand.VOLUME, newVolume);
+    this.players[playerId].volume_level = newVolume;
+  }
+  public queueCommandVolumeUp(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.VOLUME_UP);
+  }
+  public queueCommandVolumeDown(playerId: string) {
+    this.playerQueueCommand(playerId, QueueCommand.VOLUME_DOWN);
+  }
+
+  public playerQueueCommand(
+    playerId: string,
+    cmd: QueueCommand,
+    arg?: boolean | number
+  ) {
+    this._lastId++;
+    (this._hass as HomeAssistant).sendWS({
+      id: this._lastId,
+      object_id: playerId,
+      type: "mass/queue_command",
+      command: cmd,
+      command_arg: arg
+    });
+  }
+
+  public getImageUrl(mediaItem?: MediaItemType | ItemMapping, key = "image") {
+    // get imageurl for mediaItem
+    if (!mediaItem || !mediaItem.media_type) return "";
+    if ("metadata" in mediaItem && mediaItem.metadata[key])
+      return mediaItem.metadata[key];
+    if (
+      "album" in mediaItem &&
+      mediaItem.album !== null &&
+      "metadata" in mediaItem.album &&
+      mediaItem.album.metadata &&
+      mediaItem.album.metadata[key]
+    )
+      return mediaItem.album.metadata[key];
+    if (
+      "artist" in mediaItem &&
+      "metadata" in mediaItem.artist &&
+      mediaItem.artist.metadata &&
+      mediaItem.artist.metadata[key]
+    )
+      return mediaItem.artist.metadata[key];
+  }
+
+  public getFanartUrl(mediaItem?: MediaItemType, fallbackToImage = true) {
+    const fanartImage = this.getImageUrl(mediaItem, "fanart");
+    if (fanartImage) return fanartImage;
+    if (fallbackToImage) return this.getImageUrl(mediaItem);
+  }
+
+  public async getImageUrlForMediaItem(item: MediaItemType | ItemMapping) {
+    const url = this.getImageUrl(item);
+    if (url) return url;
+    const fullItem = await this.getItem(item.uri);
+    return this.getImageUrl(fullItem);
+  }
+
   private getData<T>(endpoint: string, args?: Record<string, any>): Promise<T> {
     this._lastId++;
     return (this._hass as HomeAssistant).callWS({
@@ -330,3 +520,5 @@ export class MusicAssistantApi {
     });
   }
 }
+
+export const api = new MusicAssistantApi();

@@ -30,10 +30,24 @@ async def async_register_panel(hass: HomeAssistant):
         webcomponent_name=PANEL_NAME,
         frontend_url_path=DOMAIN,
         module_url=PANEL_URL,
+        trust_external=False,
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
         require_admin=False,
         config={"title": DEFAULT_NAME},
+        embed_iframe=True,
+    )
+    await panel_custom.async_register_panel(
+        hass,
+        webcomponent_name=PANEL_NAME,
+        frontend_url_path=DOMAIN + "_dev",
+        module_url="http://192.168.1.109:3000/src/main.ts",
+        trust_external=True,
+        sidebar_title=PANEL_TITLE + " DEV",
+        sidebar_icon=PANEL_ICON,
+        require_admin=False,
+        config={"title": DEFAULT_NAME},
+        embed_iframe=True,
     )
 
 

@@ -15,12 +15,16 @@
     "home-assistant-js-websocket": "^7.0.2",
     "mitt": "^3.0.0",
     "pinia": "^2.0.13",
-    "require": "^2.4.20",
+    "require": "^0.4.4",
     "vue": "^3.2.31",
+    "vue-i18n": "^9.1.9",
+    "vue-router": "^4.0.14",
+    "vue-virtual-scroller": "^2.0.0-alpha.1",
     "vuetify": "^3.0.0-beta.0",
     "webfontloader": "^1.0.0"
   },
   "devDependencies": {
+    "@intlify/vite-plugin-vue-i18n": "^3.4.0",
     "@mdi/js": "^6.6.96",
     "@rushstack/eslint-patch": "^1.1.0",
     "@types/jsdom": "^16.2.14",

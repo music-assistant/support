@@ -4,10 +4,11 @@ import {
   h,
   createApp,
   getCurrentInstance,
-  VueElement,
+  VueElement
 } from "vue";
 
 import type { Component } from "vue";
+import { loadFonts } from "./plugins/webfontloader";
 
 const getNearestElementParent = (el: VueElement) => {
   while (el?.nodeType !== 1 /* ELEMENT */) {
@@ -21,29 +22,33 @@ export const defineCustomElement = (component: Component, { plugins = [] }) =>
     // render: () => h(component),
     setup(props) {
       const app = createApp();
+      console.log('component', component)
 
       // install plugins
       plugins.forEach(app.use);
 
+      loadFonts();
+
       app.mixin({
         mounted() {
+          console.log('mixin called')
+          this.__style = document.createElement("style");
+          // copy vuetify theme styles from head (hack, otherwise they wont work)
+          const themestyles = document.querySelector(
+            "#vuetify-theme-stylesheet"
+          )?.innerHTML;
+          this.__style.innerText = themestyles;
+
           const insertStyles = (styles: any) => {
             if (styles?.length) {
-              this.__style = document.createElement("style");
-              this.__style.innerText = styles.join().replace(/\n/g, "");
-              getNearestElementParent(this.$el).prepend(this.__style);
+              this.__style.innerText += styles.join().replace(/\n/g, "");
             }
           };
 
           // load own styles
           insertStyles(this.$?.type.styles);
 
-          // load styles of child components
-          if (this.$options.components) {
-            for (const comp of Object.values(this.$options.components)) {
-              insertStyles(comp.styles);
-            }
-          }
+          getNearestElementParent(this.$el).prepend(this.__style);
         },
         unmounted() {
           this.__style?.remove();
@@ -51,6 +56,7 @@ export const defineCustomElement = (component: Component, { plugins = [] }) =>
       });
 
       const inst = getCurrentInstance();
+
       Object.assign(inst.appContext, app._context);
       Object.assign(inst.provides, app._context.provides);
 
