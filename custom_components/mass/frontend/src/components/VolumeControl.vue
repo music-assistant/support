@@ -1,33 +1,32 @@
 <template>
-  <v-card class="mx-auto" min-width="300">
-    <v-list style="overflow: hidden">
-      <v-list-item
-        dense
-        two-line
-        style="padding: 0; margin-left: 9px; margin-bottom: 9px"
-      >
-        <v-list-item-avatar tile>
-          <v-icon
-            size="45"
-            v-if="player.is_group"
-            :icon="mdiSpeakerMultiple"
-            color="primary"
-          />
-          <v-icon size="45" v-else :icon="mdiSpeaker" color="primary" />
-        </v-list-item-avatar>
-        <div>
-          <v-list-item-title class="text-subtitle-1" style="margin-left: 10px"
-            ><b>{{ player.name.substring(0, 25) }}</b></v-list-item-title
-          >
+  <v-card min-width="300">
+    <v-list style="overflow: hidden" lines="2">
+      <v-list-item style="padding: 0; margin-left: 9px; margin-bottom: 9px">
+        <template v-slot:prepend>
+          <v-list-item-avatar tile size="x-small">
+            <v-icon
+              size="45"
+              :icon="player.is_group ? mdiSpeakerMultiple : mdiSpeaker"
+              color="primary"
+            />
+          </v-list-item-avatar>
+        </template>
 
-          <v-list-item-subtitle
+        <template v-slot:title>
+          <div class="text-subtitle-1" style="margin-left: 10px">
+            <b>{{ player.name.substring(0, 25) }}</b>
+          </div>
+        </template>
+
+        <template v-slot:subtitle>
+          <div
             :key="player.state"
             class="text-body-2"
             style="margin-left: 10px; text-align: left; width: 100%"
           >
             {{ $t("state." + player.state) }}
-          </v-list-item-subtitle>
-        </div>
+          </div>
+        </template>
       </v-list-item>
       <v-divider></v-divider>
 
@@ -85,26 +84,3 @@ interface Props {
 }
 const props = defineProps<Props>();
 </script>
-
-<style lang="scss">
-@use "vuetify/styles";
-.volumerow {
-  height: 60px;
-  padding-top: 5px;
-  padding-bottom: 0px;
-}
-
-.volumerow .v-slider .v-slider__container {
-  margin-left: 57px;
-  margin-right: 15px;
-  margin-top: -10px;
-}
-
-.slider .div.v-input__append {
-  padding-top: 0px;
-  margin-top: -10px;
-}
-.playerrow {
-  height: 60px;
-}
-</style>

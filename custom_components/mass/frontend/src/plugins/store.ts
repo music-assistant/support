@@ -6,9 +6,10 @@ interface Store {
   isInStandaloneMode: boolean;
   showPlayersMenu: boolean;
   darkTheme: boolean;
-  isMobile: boolean;
-  topBarTitle: string;
+  topBarTitle?: string;
   topBarTransparent: boolean;
+  topBarDefaultColor: string;
+  defaultTopBarTitle: string;
 }
 
 export const store: Store = reactive({
@@ -16,7 +17,7 @@ export const store: Store = reactive({
   isInStandaloneMode: false,
   showPlayersMenu: false,
   darkTheme: false,
-  isMobile: false,
-  topBarTitle: 'Muaisc Assistant',
-  topBarTransparent: false
+  topBarTransparent: false,
+  topBarDefaultColor: '#03A9F4',
+  defaultTopBarTitle: 'Music Assistant'
 });

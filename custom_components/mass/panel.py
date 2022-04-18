@@ -35,6 +35,7 @@ async def async_register_panel(hass: HomeAssistant):
         sidebar_icon=PANEL_ICON,
         require_admin=False,
         config={"title": DEFAULT_NAME},
+        # unfortunately embed iframe is needed to prevent issues with the layout
         embed_iframe=True,
     )
     await panel_custom.async_register_panel(

@@ -1,15 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type {
-  HassEntities,
-  MessageBase,
-  Connection,
-  HassServices,
-  HassConfig,
-  HassServiceTarget,
-  HassUser
+import {
+  type Connection,
+  createLongLivedTokenAuth,
+  createConnection,
+  ERR_HASS_HOST_REQUIRED
 } from "home-assistant-js-websocket";
 
-import type { App } from "vue";
 import { reactive } from "vue";
 
 export enum MediaType {
@@ -218,55 +214,6 @@ export enum QueueCommand {
   PLAY_INDEX = "play_index"
 }
 
-export type HassPanel = {
-  url_path: string;
-  config: {
-    title: string;
-  };
-};
-export type HassRoute = {
-  prefix: string;
-  path: string;
-};
-
-type Context = {
-  id: string;
-  parent_id?: string;
-  user_id?: string | null;
-};
-
-type ServiceCallResponse = {
-  context: Context;
-};
-
-type ServiceCallRequest = {
-  domain: string;
-  service: string;
-  serviceData?: Record<string, any>;
-  target?: HassServiceTarget;
-};
-
-export type HomeAssistant = {
-  connection: Connection;
-  connected: boolean;
-  states: HassEntities;
-  services: HassServices;
-  config: HassConfig;
-  themes: {
-    darkMode: boolean;
-  };
-  language: string;
-  user?: HassUser;
-  hassUrl(path?: string): string;
-  callService(
-    domain: ServiceCallRequest["domain"],
-    service: ServiceCallRequest["service"],
-    serviceData?: ServiceCallRequest["serviceData"],
-    target?: ServiceCallRequest["target"]
-  ): Promise<ServiceCallResponse>;
-  sendWS(msg: MessageBase): void;
-  callWS<T>(msg: MessageBase): Promise<T>;
-};
 
 export enum MassEventType {
   PLAYER_ADDED = "player added",
@@ -304,39 +251,31 @@ export type MassEvent = {
 
 export class MusicAssistantApi {
   // eslint-disable-next-line prettier/prettier
-  private _hass: HomeAssistant | undefined;
+  private _conn?: Connection;
   private _lastId: number;
-  // private _players: { [player_id: string]: Player };
-  // private _players: { [player_id: string]: Player };
   public players = reactive<{ [player_id: string]: Player }>({});
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
 
-  constructor(hass?: HomeAssistant) {
-    this._hass = hass;
+  constructor(conn?: Connection) {
+    this._conn = conn;
     this._lastId = 0;
-    // this.setup();
   }
 
-  public setHass(hass: HomeAssistant) {
-    this._hass = hass;
-  }
-
-  public get hass() {
-    return this._hass;
-  }
-
-  public async initialize(hass?: HomeAssistant) {
+  public async initialize(conn?: Connection) {
     console.log("initialize api");
-    if (hass) this.setHass(hass);
+    if (conn) this._conn = conn;
+    else if (!this._conn) {
+      this._conn = await this.connectHassDev();
+    }
     // load initial data from api
-    for (const player of await api.getPlayers()) {
+    for (const player of await this.getPlayers()) {
       this.players[player.player_id] = player;
     }
-    for (const queue of await api.getPlayerQueues()) {
+    for (const queue of await this.getPlayerQueues()) {
       this.queues[queue.queue_id] = queue;
     }
     // subscribe to mass events
-    this.hass?.connection.subscribeMessage(
+    this._conn?.subscribeMessage(
       (msg: MassEvent) => {
         this.handleMassEvent(msg);
       },
@@ -344,6 +283,14 @@ export class MusicAssistantApi {
         type: "mass/subscribe"
       }
     );
+  }
+
+  private async connectHassDev() {
+    const auth = createLongLivedTokenAuth(
+      "http://localhost:8123",
+      "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI5YzVmZmViNThjNzM0NDIwOGYwYzEyMDMzZjViZDA0NyIsImlhdCI6MTY1MDI4NTk2NiwiZXhwIjoxOTY1NjQ1OTY2fQ.wC6W3m_chT7HCNrSWImjgmhVhH1IacMpId2vOkScG2A"
+    );
+    return await createConnection({ auth });
   }
 
   private handleMassEvent(msg: MassEvent) {
@@ -467,7 +414,7 @@ export class MusicAssistantApi {
     arg?: boolean | number
   ) {
     this._lastId++;
-    (this._hass as HomeAssistant).sendWS({
+    (this._conn as Connection).sendMessage({
       id: this._lastId,
       object_id: playerId,
       type: "mass/queue_command",
@@ -513,7 +460,7 @@ export class MusicAssistantApi {
 
   private getData<T>(endpoint: string, args?: Record<string, any>): Promise<T> {
     this._lastId++;
-    return (this._hass as HomeAssistant).callWS({
+    return (this._conn as Connection).sendMessagePromise({
       id: this._lastId,
       type: `mass/${endpoint}`,
       ...args

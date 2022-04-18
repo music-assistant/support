@@ -1,11 +1,10 @@
 <template>
   <v-footer
-    app
     bottom
     fixed
     class="d-flex flex-column"
     style="width: 100%; border-top-style: ridge"
-    elevation="10"
+    elevation="5"
   >
     <v-divider />
     <v-img
@@ -23,7 +22,7 @@
     <!-- now playing media -->
     <div class="mediadetails">
       <v-list-item-avatar tile class="mediadetails-thumb">
-        <MediaItemThumb
+        <media-item-thumb
           :key="curMediaItem.item_id"
           :item="curMediaItem"
           :size="60"
@@ -63,7 +62,7 @@
 
       <!-- streaming quality details -->
 
-      <v-menu anchor="bottom end" v-if="streamDetails" style="z-index: 20001">
+      <v-menu anchor="bottom end" v-if="streamDetails">
         <template v-slot:activator="{ props }">
           <v-btn
             icon
@@ -224,7 +223,7 @@
         <span v-else class="text-caption"> </span>
       </v-btn>
       <!-- active player volume -->
-      <div>
+      <div v-if="!$vuetify.display.mobile">
         <v-menu anchor="bottom end">
           <template v-slot:activator="{ props }">
             <v-btn
@@ -342,9 +341,9 @@ const artistClick = function (item: Artist | ItemMapping) {
   });
 };
 const getTrackArtists = function (item: Track) {
-  if (display.mobile.value) return item.artists.slice(0,2)
+  if (display.mobile.value) return item.artists.slice(0, 2);
   return item.artists;
-}
+};
 
 // watchers
 watchEffect(async () => {

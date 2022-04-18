@@ -15,7 +15,11 @@
     <div
       v-if="isHiRes"
       class="hiresicon"
-      :style="$vuetify.theme.current == 'dark' ? 'background-color: black' : 'background-color:white'"
+      :style="
+        $vuetify.theme.current == 'dark'
+          ? 'background-color: black'
+          : 'background-color:white'
+      "
     >
       <v-tooltip bottom>
         <template v-slot:activator="{ props }">

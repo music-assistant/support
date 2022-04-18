@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "@vuetify/vite-plugin";
-import vueI18n from '@intlify/vite-plugin-vue-i18n'
+import vueI18n from "@intlify/vite-plugin-vue-i18n";
 
 const path = require("path");
 
@@ -13,11 +13,11 @@ export default defineConfig({
     // https://github.com/vuetifyjs/vuetify-loader/tree/next/packages/vite-plugin
     vuetify({
       autoImport: true,
-      styles: "expose"
-    }),
-    vueI18n({
-      include: path.resolve(__dirname, '../translations/**')
+      // styles: "expose"
     })
+    // vueI18n({
+    //   include: path.resolve(__dirname, '../translations/**')
+    // })
   ],
   define: { "process.env": {} },
   resolve: {
@@ -33,7 +33,7 @@ export default defineConfig({
       entry: path.resolve(__dirname, "src/main.ts"),
       name: "MusicAssistant",
       fileName: (format) => `mass.${format}.js`,
-      formats: ["iife"]
+      formats: ["iife", "umd"]
     },
     rollupOptions: {
       output: {

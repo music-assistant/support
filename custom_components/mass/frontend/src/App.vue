@@ -1,94 +1,102 @@
 <template>
-  <v-app>
-    <PlayerSelect />
-    <v-app-bar dense app style="height: 55px">
-      <v-app-bar-nav-icon :icon="mdiHome" />
-      <v-toolbar-title>{{ topbarTitle }}</v-toolbar-title>
+  <v-app :theme="theme">
+    <player-select />
+    <v-app-bar dense app style="height: 55px" :color="topBarColor">
+      <v-app-bar-nav-icon
+        :icon="mdiArrowLeft"
+        @click="$router.push('/')"
+        v-if="$router.currentRoute.value.path != '/'"
+      />
+      <v-toolbar-title>{{ store.topBarTitle }}</v-toolbar-title>
     </v-app-bar>
     <v-main>
       <v-container fluid>
         <router-view></router-view>
       </v-container>
     </v-main>
-    <PlayerOSD />
+    <player-o-s-d />
   </v-app>
 </template>
 
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure */
-import { mdiHome } from "@mdi/js";
+import { mdiArrowLeft } from "@mdi/js";
 
-import { ref, computed } from "vue";
-import vuetify from "./plugins/vuetify";
-import { setupRouter } from "./plugins/router";
+import { ref, computed, watchEffect, inject, reactive } from "vue";
 import { api } from "./plugins/api";
-import { i18n } from "./plugins/i18n";
 import { store } from "./plugins/store";
-import { loadFonts } from "./plugins/webfontloader";
-import { createApp, getCurrentInstance, onMounted } from "vue";
-import { adoptStyles } from "./utils";
+import { isColorDark, mergeDeep } from "./utils";
 import PlayerOSD from "./components/PlayerOSD.vue";
 import PlayerSelect from "./components/PlayerSelect.vue";
 import type { HomeAssistant, HassPanel, HassRoute } from "./plugins/api";
+import "vuetify/styles";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
+import { Connection } from "home-assistant-js-websocket";
+import type { HassPropsForwardElem, HassData } from "./main";
+import { useI18n } from "vue-i18n";
 
-interface Props {
-  hass?: HomeAssistant;
-  narrow?: boolean;
-  panel?: HassPanel;
-  route?: HassRoute;
+const { t, locale } = useI18n({ useScope: 'global' })
+
+interface HassDataPropsEvent extends Event {
+  detail: HassPropsForwardElem;
 }
-const props = defineProps<Props>();
 
-/////// workaround: allow plugins to be loaded on customelement wrapped app //////////
+const topBarColor = computed(() => {
+  if (store.topBarTransparent) return "transparent";
+  return store.topBarDefaultColor;
+});
 
-const app = createApp();
-[vuetify, setupRouter(props.panel?.url_path || "/"), i18n].forEach(app.use);
-loadFonts();
-const inst = getCurrentInstance();
-Object.assign(inst.appContext, app._context);
-Object.assign(inst.provides, app._context.provides);
+document.addEventListener("hass-props-forward", function (e) {
+  // we're only interested in a few properties of the hass object
+  const hassElem = (e as HassDataPropsEvent).detail;
+  api.initialize(hassElem.hass?.connection);
+  if (hassElem.panel) store.defaultTopBarTitle = hassElem.panel.config.title;
+  if (hassElem.hass) setTheme(hassElem.hass);
+  if (hassElem.hass) locale.value = hassElem.hass?.selectedLanguage;
+});
 
-// move vuetify theme css from head (oustide shadowroot) into shadowroot css
-onMounted(() => {
-  console.log(`the component is now mounted.`);
-  const themestyles = document.querySelector("#vuetify-theme-stylesheet")?.innerHTML;
-  // document.querySelector("#vuetify-theme-stylesheet")?.remove();
-  console.log("move theme css to shadowroot");
-  const shadowRoot = getCurrentInstance()?.vnode?.el?.getRootNode();
-  if (shadowRoot && themestyles) {
-    adoptStyles(shadowRoot, themestyles, "#vuetify-theme-stylesheet");
+document.addEventListener("hass-updated", function (e) {
+  console.log("hass props updated");
+  const hassElem = (e as HassDataPropsEvent).detail;
+  if (hassElem.hass) setTheme(hassElem.hass);
+});
+
+// set darkmode based on HA darkmode
+// TODO: we can set the entire vuetify theme based on HA theme
+const theme = ref("light");
+let lastTheme = "";
+const setTheme = async function (hassData: HassData) {
+  // determine if dark theme active
+  const curTheme = hassData.themes?.theme || "default";
+  const darkMode = hassData?.themes?.darkMode || false;
+  const checkKey = `${curTheme}.${darkMode}`;
+  if (lastTheme == checkKey) return;
+  lastTheme = checkKey;
+
+  // try to figure out topbar color
+  if (curTheme == "default") {
+    // default theme
+    const defaultPrimaryColor = hassData.selectedTheme?.primaryColor || "#03A9F4";
+    store.topBarDefaultColor = "#101e24";
+    store.darkTheme = darkMode;
+    store.topBarDefaultColor = darkMode ? "#101e24" : defaultPrimaryColor;
+  } else {
+    // custom theme
+    const theme = hassData.themes?.themes[hassData.themes.theme];
+    if (theme && "app-header-background-color" in theme)
+      store.topBarDefaultColor = theme["app-header-background-color"];
+    if (darkMode) store.darkTheme = true;
+    else {
+      const bgColor = theme["primary-background-color"] || store.topBarDefaultColor;
+      console.log("bgcolor", bgColor);
+      store.darkTheme = isColorDark(bgColor);
+    }
   }
-});
-/////// end of workaround ///////////////////////////
-
-const topbarTitle = ref("");
-const topBarTransparent = ref(false);
-
-if (props && props.hass) api?.initialize(props.hass);
-
-console.log("cur theme", props.hass.themes);
-
-const color = computed(() => {
-  if (topBarTransparent.value) {
-    return "transparent";
-  } else if (props.hass?.themes.darkMode) {
-    return "";
-  } else return "";
-});
-
-// set default topbarTitle to panel title
-if (props.panel) {
-  topbarTitle.value = props.panel.config.title;
-}
+  theme.value = store.darkTheme ? "dark" : "light";
+};
 </script>
 
 <style lang="scss">
-@use "vuetify/styles";
-@use "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-.body {
-  overscroll-behavior-x: none;
-}
-
 .vertical-btn {
   display: flex;
   flex-direction: column;
@@ -252,11 +260,12 @@ div.v-expansion-panel__shadow {
 }
 .listitem-thumb {
   padding-left: 0px;
-  padding-right: 10px;
+  margin-right: 10px;
   margin-left: -15px;
+  width: 50px;
+  height: 50px;
 }
 .provider-icons {
-  display: inline-grid;
   width: auto;
   vertical-align: middle;
   align-items: center;
@@ -267,5 +276,4 @@ div.v-expansion-panel__shadow {
   padding-left: 5px;
   display: flex;
 }
-
 </style>

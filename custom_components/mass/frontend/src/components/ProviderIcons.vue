@@ -1,5 +1,5 @@
 <template>
-  <div class="provider-icons" :style="`height: ${height}`">
+  <div class="provider-icons" :style="`height: ${height};`">
     <img
       class="provider-icon"
       v-for="prov of uniqueProviders"

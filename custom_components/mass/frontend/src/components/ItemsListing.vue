@@ -1,5 +1,5 @@
 <template>
-  <section>
+  <div>
     <v-divider />
     <v-app-bar flat dense color="transparent">
       <v-label v-if="!selectedItems.length && items.length">{{
@@ -73,7 +73,7 @@
         </v-col>
       </v-row>
     </v-container>
-    <!-- <v-list v-if="viewMode == 'list'" two-line> -->
+    <div v-if="viewMode == 'list'">
       <RecycleScroller
         v-slot="{ item }"
         class="scroller"
@@ -84,7 +84,7 @@
       >
         <ListviewItem
           :item="item"
-          :show-track-number="mediatype == 'albumtracks'"
+          :show-track-number="itemtype == 'albumtracks'"
           :show-duration="item.media_type != 'radio'"
           :show-providers="item.provider == 'database'"
           :is-selected="isSelected(item)"
@@ -93,14 +93,16 @@
           @clicked="onClick"
         ></ListviewItem>
       </RecycleScroller>
-    <!-- </v-list> -->
+    </div>
+    <!-- white space to reserve space for footer -->
+    <div style="height: 150px"></div>
 
     <!-- <ContextMenu
       v-model="showContextMenu"
       :items="contextMenuItems"
       :parent-item="parentItem"
     /> -->
-  </section>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -114,14 +116,8 @@ import {
   mdiViewList,
 } from "@mdi/js";
 
-import {
-  watchEffect,
-  ref,
-  computed,
-  defineProps,
-  onBeforeUnmount,
-} from "vue";
-import { useDisplay } from 'vuetify'
+import { watchEffect, ref, computed, onBeforeUnmount, onMounted } from "vue";
+import { useDisplay } from "vuetify";
 import type { MediaItemType, MediaType, MusicAssistantApi } from "../plugins/api";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
@@ -131,7 +127,7 @@ import PanelviewItem from "./PanelviewItem.vue";
 // import ContextMenu from "./ContextMenu.vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
-import {api} from "../plugins/api";
+import { api } from "../plugins/api";
 
 // global refs
 const router = useRouter();
@@ -140,7 +136,7 @@ const display = useDisplay();
 
 // properties
 interface Props {
-  mediatype: string;
+  itemtype: string;
   items: MediaItemType[];
   parentItem?: MediaItemType;
 }
@@ -149,9 +145,10 @@ interface SortKey {
   value: string[];
 }
 const props = defineProps<Props>();
+const storKey = "viewMode" + props.itemtype;
 
 // local refs
-const viewMode = ref("list");
+const viewMode = ref("");
 const search = ref("");
 const sortDesc = ref(false);
 const sortBy = ref<string[]>(["name"]);
@@ -172,7 +169,7 @@ const thumbHeight = computed(() => {
 const toggleViewMode = function () {
   if (viewMode.value === "panel") viewMode.value = "list";
   else viewMode.value = "panel";
-  localStorage.setItem("viewMode" + props.mediatype, viewMode.value);
+  localStorage.setItem(storKey, viewMode.value);
 };
 const filteredItems = function (mediaItems: MediaItemType[], search: string) {
   if (!search) return mediaItems;
@@ -238,7 +235,7 @@ watchEffect(async () => {
     text: i18n.t("sort_name").toString(),
     value: ["name"],
   });
-  if (props.mediatype == "playlisttracks") {
+  if (props.itemtype == "playlisttracks") {
     // playlist tracks
     sortKeys.value.push({
       text: i18n.t("sort_position").toString(),
@@ -254,7 +251,7 @@ watchEffect(async () => {
     });
     sortBy.value = ["position"];
     viewMode.value = "list";
-  } else if (props.mediatype === "albumtracks") {
+  } else if (props.itemtype === "albumtracks") {
     // album tracks
     sortKeys.value.push({
       text: i18n.t("sort_track_number").toString(),
@@ -262,7 +259,7 @@ watchEffect(async () => {
     });
     sortBy.value = ["disc_number", "track_number"];
     viewMode.value = "list";
-  } else if (props.mediatype === "tracks") {
+  } else if (props.itemtype === "tracks") {
     // tracks listing
     sortKeys.value.push({
       text: i18n.t("sort_artist").toString(),
@@ -273,7 +270,7 @@ watchEffect(async () => {
       value: ["album.name"],
     });
     viewMode.value = "list";
-  } else if (props.mediatype === "albums") {
+  } else if (props.itemtype === "albums") {
     // albums listing
     sortKeys.value.push({
       text: i18n.t("sort_artist").toString(),
@@ -287,11 +284,6 @@ watchEffect(async () => {
   } else {
     viewMode.value = "list";
   }
-  // get stored viewMode for this mediatype
-  const savedViewMode = localStorage.getItem("viewMode" + props.mediatype);
-  if (savedViewMode !== null) {
-    viewMode.value = savedViewMode;
-  }
 });
 
 // lifecycle hooks
@@ -302,6 +294,20 @@ const keyListener = function (e: KeyboardEvent) {
   }
 };
 document.addEventListener("keydown", keyListener);
+
+onMounted(() => {
+  // get stored/default viewMode for this itemtype
+  const savedViewMode = localStorage.getItem(storKey) || "panel";
+  console.log("storKey", storKey);
+  console.log("savedViewMode", savedViewMode);
+  if (savedViewMode) {
+    viewMode.value = savedViewMode;
+  } else if (props.itemtype == "artists") {
+    viewMode.value = "panel";
+  } else {
+    viewMode.value = "list";
+  }
+});
 
 onBeforeUnmount(() => {
   if (keyListener !== undefined) document.removeEventListener("keydown", keyListener);

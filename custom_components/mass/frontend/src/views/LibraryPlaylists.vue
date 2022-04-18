@@ -1,5 +1,5 @@
 <template>
-  <ItemsListing itemtype="artists" :items="items" />
+  <ItemsListing itemtype="playlists" :items="items" />
 </template>
 
 <script setup lang="ts">
@@ -7,14 +7,14 @@ import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
 import { api } from "../plugins/api";
-import type { Artist } from "../plugins/api";
+import type { Playlist } from "../plugins/api";
 import { store } from "../plugins/store";
 
 const i18n = useI18n();
-const items = ref<Artist[]>([]);
+const items = ref<Playlist[]>([]);
 
-api.getLibraryArtists().then((artists) => {
-  items.value.push(...artists);
+api.getLibraryPlaylists().then((playlists) => {
+  items.value.push(...playlists);
 });
 
 store.topBarTransparent = false;

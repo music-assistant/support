@@ -8,14 +8,12 @@
       style="padding-right: 0px"
     >
       <template v-slot:prepend
-        ><v-list-item-avatar
-          class="listitem-thumb"
-          tile
-          color="grey"
-          @click.stop="onSelect"
-        >
-          <MediaItemThumb :item="item" :size="40" />
-          <div v-if="isSelected" style="position: absolute; background-color: #82b1ff94">
+        ><v-list-item-avatar class="listitem-thumb" @click.stop="onSelect">
+          <MediaItemThumb :item="item" :size="50" />
+          <div
+            v-if="isSelected"
+            style="position: absolute; margin-top: -50px; background-color: #82b1ff94"
+          >
             <v-icon dark size="51" :icon="mdiCheckboxMarkedOutline"></v-icon>
           </div> </v-list-item-avatar
       ></template>
@@ -61,35 +59,35 @@
       <!-- actions -->
       <template v-slot:append>
         <div class="listitem-actions">
-          
           <!-- provider icons -->
           <ProviderIcons
             v-if="item.provider_ids && showProviders && !$vuetify.display.mobile"
             :provider-ids="item.provider_ids"
             :height="20"
+            class="listitem-actions"
           />
 
           <!-- hi res icon -->
-          <div class="listitem-action" v-if="highResDetails">
-            <v-tooltip bottom>
-              <template #activator="{ props }">
-                <img
-                  :src="iconHiRes"
-                  height="20"
-                  :style="$vuetify.theme.current == 'dark' ? 'filter: invert(100%);' : ''"
-                  v-bind="props"
-                />
-              </template>
-              <span>{{ highResDetails }}</span>
-            </v-tooltip>
-          </div>
+          <v-img
+            class="listitem-action"
+            v-if="highResDetails"
+            :src="iconHiRes"
+            width="35"
+            :style="
+              $vuetify.theme.current == 'light'
+                ? 'margin-top:5px;filter: invert(100%);'
+                : 'margin-top:5px;'
+            "
+          >
+            <v-tooltip activator="parent" anchor="bottom">{{ highResDetails }}</v-tooltip>
+          </v-img>
 
           <!-- in library (heart) icon -->
           <div
             class="listitem-action"
             v-if="'in_library' in item && showLibrary && !$vuetify.display.mobile"
           >
-            <v-tooltip anchor="start">
+            <v-tooltip anchor="bottom">
               <template #activator="{ props }">
                 <v-btn
                   variant="plain"
@@ -123,9 +121,8 @@
             @click.stop
             :icon="mdiDotsVertical"
             variant="plain"
-            style="margin-right: -10px;margin-left:-10px"
+            style="margin-right: -10px; margin-left: -10px"
           ></v-btn>
-
         </div>
       </template>
     </v-list-item>
@@ -142,6 +139,7 @@ import {
 } from "@mdi/js";
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
+import { VTooltip } from "vuetify/components";
 
 import MediaItemThumb from "./MediaItemThumb.vue";
 import ProviderIcons from "./ProviderIcons.vue";

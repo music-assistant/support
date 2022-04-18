@@ -1,5 +1,5 @@
 <template>
-  <ItemsListing mediatype="tracks" :items="items" />
+  <ItemsListing itemtype="tracks" :items="items" />
 </template>
 
 <script setup lang="ts">
@@ -14,10 +14,9 @@ const i18n = useI18n();
 const items = ref<Track[]>([]);
 
 api.getLibraryTracks().then((tracks) => {
-  console.log("tracks", tracks);
   items.value.push(...tracks);
 });
 
 store.topBarTransparent = false;
-store.topBarTitle = i18n.t("library") || i18n.t("library");
+store.topBarTitle = `${i18n.t("library")} | ${i18n.t("tracks")}`;
 </script>
