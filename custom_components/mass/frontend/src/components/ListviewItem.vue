@@ -2,13 +2,13 @@
   <div>
     <v-list-item
       ripple
-      @click.stop="itemClick"
-      @contextmenu.prevent="menuClick"
+      @click.stop="emit('click', item)"
+      @click.right.prevent="emit('menu', item)"
       :key="item.uri"
       style="padding-right: 0px"
     >
       <template v-slot:prepend
-        ><v-list-item-avatar class="listitem-thumb" @click.stop="onSelect">
+        ><v-list-item-avatar class="listitem-thumb" @click.stop="emit('select', item, !isSelected)">
           <MediaItemThumb :item="item" :size="50" />
           <div
             v-if="isSelected"
@@ -117,8 +117,7 @@
           <v-btn
             class="listitem-action"
             v-if="showMenu"
-            @click="menuClick"
-            @click.stop
+            @click.stop="emit('menu', item)"
             :icon="mdiDotsVertical"
             variant="plain"
             style="margin-right: -10px; margin-left: -10px"
@@ -201,38 +200,12 @@ const highResDetails = computed(() => {
 // emits
 const emit = defineEmits<{
   (e: "menu", value: MediaItem): void;
-  (e: "clicked", value: MediaItem): void;
+  (e: "click", value: MediaItem): void;
   (e: "select", value: MediaItem, selected: boolean): void;
 }>();
 
 // methods
-const itemClick = function () {
-  // contextmenu button clicked
-  if (actionInProgress.value) return;
-  actionInProgress.value = true;
-  emit("clicked", props.item);
 
-  setTimeout(() => {
-    actionInProgress.value = false;
-  }, 500);
-};
-
-const menuClick = function () {
-  // contextmenu button clicked
-  if (actionInProgress.value) return;
-  emit("menu", props.item);
-};
-
-const onSelect = function (event: Event) {
-  // contextmenu button clicked
-  if (actionInProgress.value) return;
-  actionInProgress.value = true;
-  event.preventDefault();
-  emit("select", props.item, !props.isSelected);
-  setTimeout(() => {
-    actionInProgress.value = false;
-  }, 500);
-};
 const albumClick = function (item: Album | ItemMapping) {
   // album entry clicked
   if (actionInProgress.value) return;
@@ -240,7 +213,7 @@ const albumClick = function (item: Album | ItemMapping) {
   router.push({
     name: "album",
     params: {
-      id: item.item_id,
+      item_id: item.item_id,
       provider: item.provider,
     },
   });
@@ -250,18 +223,13 @@ const albumClick = function (item: Album | ItemMapping) {
 };
 const artistClick = function (item: Artist | ItemMapping) {
   // album entry clicked
-  if (actionInProgress.value) return;
-  actionInProgress.value = true;
   router.push({
     name: "artist",
     params: {
-      id: item.item_id,
+      item_id: item.item_id,
       provider: item.provider,
     },
   });
-  setTimeout(() => {
-    actionInProgress.value = false;
-  }, 500);
 };
 const itemIsAvailable = function (item: MediaItem) {
   if (!props.item.provider_ids) return true;
@@ -271,3 +239,26 @@ const itemIsAvailable = function (item: MediaItem) {
   return false;
 };
 </script>
+
+<style scoped>
+
+.listitem-actions {
+  display: flex;
+  justify-content: end;
+  width: auto;
+  height: 50px;
+  vertical-align: middle;
+  align-items: center;
+  padding: 0px;
+}
+.listitem-action {
+  padding-left: 5px;
+}
+.listitem-thumb {
+  padding-left: 0px;
+  margin-right: 10px;
+  margin-left: -15px;
+  width: 50px;
+  height: 50px;
+}
+</style>

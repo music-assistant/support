@@ -32,7 +32,7 @@ export const truncateString = function (str: string, num: number) {
     return str;
   }
   // Return str truncated with '...' concatenated to the end of str.
-  return str.slice(0, num);
+  return str.slice(0, num) + '...';
 };
 
 export const isColorDark = function (hexColor: string) {

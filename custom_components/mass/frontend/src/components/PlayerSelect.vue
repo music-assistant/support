@@ -7,6 +7,7 @@
     clipped
     temporary
     width="300"
+    style="z-index:99999"
   >
     <v-card-title class="headline">
       <b>{{ $t("players") }}</b>
@@ -14,7 +15,7 @@
     <v-divider></v-divider>
     <v-expansion-panels v-model="panelItem" focusable accordion flat>
       <v-expansion-panel
-        v-for="(queue, index) in availablePlayerQueues"
+        v-for="queue in availablePlayerQueues"
         :id="queue.queue_id"
         :key="queue.queue_id"
         flat
@@ -28,18 +29,20 @@
           "
           :expand-icon="mdiChevronDown"
           :collapse-icon="mdiChevronUp"
-          @click="store.activePlayerQueue = queue;scrollToTop(queue.queue_id)"
-          
+          @click="
+            store.activePlayerQueue = queue;
+            scrollToTop(queue.queue_id);
+          "
         >
           <v-list-item dense two-line style="padding: 0; margin-left: 9px">
             <v-list-item-avatar>
               <v-icon
                 size="45"
-                v-if="api.players[queue.player].is_group"
-                :icon="mdiSpeakerMultiple"
-                color="primary"
+                :icon="
+                  api.players[queue.player].is_group ? mdiSpeakerMultiple : mdiSpeaker
+                "
+                color="accent"
               />
-              <v-icon size="45" v-else :icon="mdiSpeaker" color="primary" />
             </v-list-item-avatar>
             <div>
               <v-list-item-title class="text-subtitle-1" style="margin-left: 10px"
@@ -178,3 +181,24 @@ export const getVolumePlayers = function (playerId: string) {
   return finalItems;
 };
 </script>
+
+<style>
+.playerrow {
+  height: 60px;
+}
+
+div.v-expansion-panel-text__wrapper {
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+div.v-expansion-panel--active:not(:first-child),
+.v-expansion-panel--active + .v-expansion-panel {
+  margin-top: 0px;
+}
+div.v-expansion-panel__shadow {
+  box-shadow: none;
+}
+</style>

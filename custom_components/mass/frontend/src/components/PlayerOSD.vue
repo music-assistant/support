@@ -3,7 +3,7 @@
     bottom
     fixed
     class="d-flex flex-column"
-    style="width: 100%; border-top-style: ridge"
+    style="width: 100%; border-top-style: ridge;"
     elevation="5"
   >
     <v-divider />
@@ -25,7 +25,7 @@
         <media-item-thumb
           :key="curMediaItem.item_id"
           :item="curMediaItem"
-          :size="60"
+          :size="50"
           v-if="curMediaItem"
           style="width: 50px; border: 1px solid rgba(0, 0, 0, 0.54)"
         />
@@ -48,7 +48,7 @@
               v-for="(artist, artistindex) in getTrackArtists(curMediaItem)"
               :key="artistindex"
             >
-              <a @click="artistClick(artist)" @click.stop="">{{ artist.name }}</a>
+              <a @click="artistClick(artist)">{{ artist.name }}</a>
               <label
                 v-if="artistindex + 1 < getTrackArtists(curMediaItem).length"
                 :key="artistindex"
@@ -337,7 +337,7 @@ const curQueueItemTime = computed(() => {
 const artistClick = function (item: Artist | ItemMapping) {
   router.push({
     name: "artist",
-    params: { id: item.item_id, provider: item.provider },
+    params: { item_id: item.item_id, provider: item.provider },
   });
 };
 const getTrackArtists = function (item: Track) {
@@ -376,3 +376,91 @@ watchEffect(async () => {
   }
 });
 </script>
+
+<style scoped>
+.bg-image {
+  /* Add the blur effect */
+  filter: blur(20px);
+  -webkit-filter: blur(20px);
+  /* Center and scale the image nicely */
+  background-position: center;
+  background-size: cover;
+}
+
+.mediadetails {
+  display: inline-block;
+  width: 100%;
+  height: 55px;
+  margin-top: 0px;
+  margin-left: 0px;
+  margin-bottom: 6px;
+  padding-top: 5px;
+}
+
+.mediadetails-thumb {
+  width: auto;
+  float: left;
+  height: 50px;
+}
+.mediadetails-title {
+  width: auto;
+  padding-left: 10px;
+  padding-top: 0px;
+  float: left;
+}
+
+.mediadetails-time {
+  float: right;
+  width: auto;
+  margin-top: 30px;
+
+  position: absolute;
+  right: 15px;
+}
+.mediadetails-streamdetails {
+  float: right;
+  width: 40px;
+  right: 10px;
+  margin-top: -10px;
+  position: absolute;
+}
+
+.mediadetails-streamdetails .icon {
+  opacity: 100;
+}
+
+.mediacontrols {
+  display: inline-block;
+  width: 100%;
+  height: 55px;
+  margin-top: 5px;
+  margin-left: 0px;
+  padding-bottom: 5px;
+}
+.mediacontrols-left {
+  width: auto;
+  margin-left: -15px;
+  padding-top: 0px;
+  float: left;
+}
+.mediacontrols-right {
+  float: right;
+  padding-left: 10px;
+  padding-right: 0px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mediacontrols-right span {
+  width: 80px;
+  font-size: xx-small;
+  padding-top: 5px;
+  text-overflow: ellipsis;
+
+  /* Required for text-overflow to do anything */
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+</style>

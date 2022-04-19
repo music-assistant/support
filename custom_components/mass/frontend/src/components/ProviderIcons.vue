@@ -69,3 +69,18 @@ export const getContentTypeIcon = function (contentType: ContentType) {
   return iconFallback;
 };
 </script>
+
+<style scoped>
+.provider-icons {
+  width: auto;
+  vertical-align: middle;
+  align-items: center;
+  padding: 0px;
+}
+.provider-icon {
+  float: inherit;
+  padding-left: 5px;
+  display: flex;
+  margin: 5px
+}
+</style>

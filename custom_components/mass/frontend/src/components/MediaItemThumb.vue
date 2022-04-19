@@ -3,9 +3,13 @@
     :key="item.uri"
     cover
     :src="imgData"
-    :height="size"
-    :width="size"
-    style="border: 1px solid rgba(0, 0, 0, 0.22)"
+    :height="height"
+    :width="width"
+    :style="border ? 'border: 1px solid rgba(0, 0, 0, 0.22)' : ''"
+    :max-height="maxHeight || size * 1.4"
+    :max-width="maxWidth"
+    :min-height="minHeight || size"
+    :min-width="minWidth || size"
   >
     <template v-slot:placeholder>
       <div class="d-flex align-center justify-center fill-height">
@@ -24,22 +28,33 @@ import { api } from "../plugins/api";
 
 interface Props {
   item?: MediaItemType | ItemMapping;
-  size: number;
+  size?: number;
+  width?: string;
+  height?: string;
+  minWidth?: string;
+  minHeight?: string;
+  maxWidth?: string;
+  maxHeight?: string;
+  border?: boolean;
 }
-const props = defineProps<Props>();
+
+const props = withDefaults(defineProps<Props>(), {
+  border: true,
+});
 
 const imgData = ref<string>();
 
 const getImageThumb = (url: string, size = 150) => {
-  // get image(thumb) for mediaItem from server
-  return `https://images.weserv.nl/?url=${url}&w=${size}`;
+  // get url to resized image(thumb) from weserv service
+  // we request a static size of 200 pixels
+  return `https://images.weserv.nl/?url=${url}&w=200`;
 };
 
 watchEffect(async () => {
   if (!props.item) return;
   const url = await api?.getImageUrlForMediaItem(props.item);
 
-  if (typeof url == "string" && (!props.size || props.size > 100)) {
+  if (typeof url == "string" && (!props.size || props.size > 200)) {
     // simply use the fullsize url
     imgData.value = url;
   } else if (typeof url == "string") {

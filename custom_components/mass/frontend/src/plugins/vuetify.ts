@@ -30,15 +30,15 @@ export default createVuetify(
         light: {
           dark: false,
           colors: {
-            primary: colors.blue.darken4,
-            accent: colors.blue.lighten2
+            primary: colors.blue.base,
+            accent: colors.blue.darken2,
           }
         },
         dark: {
           dark: true,
           colors: {
-            primary: colors.blue.base,
-            accent: colors.blue.darken2
+            primary: colors.blue.darken4,
+            accent: colors.blue.lighten2,
           }
         }
       }

@@ -7,7 +7,7 @@
             <v-icon
               size="45"
               :icon="player.is_group ? mdiSpeakerMultiple : mdiSpeaker"
-              color="primary"
+              color="accent"
             />
           </v-list-item-avatar>
         </template>

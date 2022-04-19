@@ -13,7 +13,7 @@ import { store } from "../plugins/store";
 const i18n = useI18n();
 const items = ref<Radio[]>([]);
 
-api.getLibraryRadio().then((radios) => {
+api.getLibraryRadios().then((radios) => {
   items.value.push(...radios);
 });
 

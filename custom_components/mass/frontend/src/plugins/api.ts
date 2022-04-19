@@ -214,7 +214,6 @@ export enum QueueCommand {
   PLAY_INDEX = "play_index"
 }
 
-
 export enum MassEventType {
   PLAYER_ADDED = "player added",
   PLAYER_REMOVED = "player removed",
@@ -322,58 +321,146 @@ export class MusicAssistantApi {
     return this.getData("tracks");
   }
 
-  public getTrack(uri: string, lazy = true): Promise<Track> {
-    return this.getData("tracks", { object_id: uri, lazy });
+  public getTrack(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Track> {
+    return this.getData("track", { provider, item_id, lazy });
+  }
+
+  public getTrackVersions(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Track[]> {
+    return this.getData("track/versions", { provider, item_id, lazy });
   }
 
   public getLibraryArtists(): Promise<Artist[]> {
     return this.getData("artists");
   }
 
-  public getArtist(uri: string, lazy = true): Promise<Artist> {
-    return this.getData("artists", { object_id: uri, lazy });
+  public getArtist(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Artist> {
+    return this.getData("artist", { provider, item_id, lazy });
+  }
+
+  public getArtistTracks(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Track[]> {
+    return this.getData("artist/tracks", { provider, item_id, lazy });
+  }
+
+  public getArtistAlbums(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Album[]> {
+    return this.getData("artist/albums", { provider, item_id, lazy });
   }
 
   public getLibraryAlbums(): Promise<Album[]> {
     return this.getData("albums");
   }
 
-  public getAlbum(uri: string, lazy = true): Promise<Album> {
-    return this.getData("albums", { object_id: uri, lazy });
+  public getAlbum(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Album> {
+    return this.getData("album", { provider, item_id, lazy });
+  }
+
+  public getAlbumTracks(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Track[]> {
+    return this.getData("album/tracks", { provider, item_id, lazy });
+  }
+
+  public getAlbumVersions(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Album[]> {
+    return this.getData("album/versions", { provider, item_id, lazy });
   }
 
   public getLibraryPlaylists(): Promise<Playlist[]> {
     return this.getData("playlists");
   }
 
-  public getPlaylist(uri: string, lazy = true): Promise<Playlist> {
-    return this.getData("playlists", { object_id: uri, lazy });
+  public getPlaylist(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Playlist> {
+    return this.getData("playlist", { provider, item_id, lazy });
   }
 
-  public getLibraryRadio(): Promise<Radio[]> {
-    return this.getData("radio");
+  public getPlaylistTracks(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Track[]> {
+    return this.getData("playlist/tracks", { provider, item_id, lazy });
   }
 
-  public getRadio(uri: string, lazy = true): Promise<Radio> {
-    return this.getData("radio", { object_id: uri, lazy });
+  public addPlaylistTracks(
+    provider: string,
+    item_id: string,
+    uri: string | string[],
+  ) {
+    this.executeCmd("playlist/tracks/add", { provider, item_id, uri });
+  }
+
+  public removePlaylistTracks(
+    provider: string,
+    item_id: string,
+    uri: string | string[],
+  ) {
+    this.executeCmd("playlist/tracks/remove", { provider, item_id, uri });
+  }
+
+  public getLibraryRadios(): Promise<Radio[]> {
+    return this.getData("radios");
+  }
+
+  public getRadio(
+    provider: string,
+    item_id: string,
+    lazy = true
+  ): Promise<Radio> {
+    return this.getData("radio", { provider, item_id, lazy });
   }
 
   public getItem(uri: string, lazy = true): Promise<MediaItemType> {
-    return this.getData("item", { object_id: uri, lazy });
+    return this.getData("item", { uri, lazy });
   }
 
-  public async addToLibrary(item: MediaItemType) {
-    item.in_library = true;
+  public async addToLibrary(items: MediaItemType[]) {
+    for (const x of items) {
+      x.in_library = true;
+    }
     // TODO
   }
-  public async removeFromLibrary(item: MediaItemType) {
+  public async removeFromLibrary(items: MediaItemType[]) {
+    for (const x of items) {
+      x.in_library = false;
+    }
     // TODO
-    item.in_library = false;
   }
   public async toggleLibrary(item: MediaItemType) {
     // TODO
-    if (item.in_library) return await this.removeFromLibrary(item);
-    return await this.addToLibrary(item);
+    if (item.in_library) return await this.removeFromLibrary([item]);
+    return await this.addToLibrary([item]);
   }
 
   public queueCommandPlay(playerId: string) {
@@ -409,18 +496,19 @@ export class MusicAssistantApi {
   }
 
   public playerQueueCommand(
-    playerId: string,
-    cmd: QueueCommand,
-    arg?: boolean | number
+    queue_id: string,
+    command: QueueCommand,
+    command_arg?: boolean | number
   ) {
-    this._lastId++;
-    (this._conn as Connection).sendMessage({
-      id: this._lastId,
-      object_id: playerId,
-      type: "mass/queue_command",
-      command: cmd,
-      command_arg: arg
-    });
+    this.executeCmd("queue_command", { queue_id, command, command_arg });
+  }
+
+  public playMedia(
+    queue_id: string,
+    uri: string | string[],
+    command: QueueOption = QueueOption.PLAY
+  ) {
+    this.executeCmd("play_media", { queue_id, command });
   }
 
   public getImageUrl(mediaItem?: MediaItemType | ItemMapping, key = "image") {
@@ -466,6 +554,16 @@ export class MusicAssistantApi {
       ...args
     });
   }
+
+  private executeCmd(endpoint: string, args?: Record<string, any>) {
+    this._lastId++;
+    (this._conn as Connection).sendMessage({
+      id: this._lastId,
+      type: `mass/${endpoint}`,
+      ...args
+    });
+  }
 }
 
 export const api = new MusicAssistantApi();
+export default api;

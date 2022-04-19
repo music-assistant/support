@@ -1,15 +1,14 @@
 <template>
-  <div>
-    <v-divider />
-    <v-app-bar flat dense color="transparent">
-      <v-label v-if="!selectedItems.length && items.length">{{
+  <section>
+    <v-toolbar dense flat color="transparent" height="35">
+      <span v-if="!selectedItems.length && items.length">{{
         $t("items_total", [items.length])
-      }}</v-label>
+      }}</span>
       <a
         v-else-if="selectedItems.length"
         @click="
-          contextMenuItems = selectedItems;
-          showContextMenu = true;
+          store.contextMenuItems = selectedItems;
+          store.showContextMenu = true;
         "
         >{{ $t("items_selected", [selectedItems.length]) }}</a
       >
@@ -56,53 +55,56 @@
         <v-icon v-if="viewMode == 'panel'" :icon="mdiViewList"></v-icon>
         <v-icon v-if="viewMode == 'list'" :icon="mdiGrid"></v-icon>
       </v-btn>
-    </v-app-bar>
+    </v-toolbar>
 
-    <v-container v-if="viewMode == 'panel'" fluid>
-      <v-row dense align-content="stretch" align="stretch">
+    <div
+      style="
+        padding-left: 15px;
+        padding-right: 15px;
+        padding-top: 20px;
+        padding-bottom: 20px;
+      "
+    >
+      <!-- panel view -->
+      <v-row dense align-content="stretch" align="stretch" v-if="viewMode == 'panel'">
         <v-col v-for="item in items" :key="item.uri" align-self="stretch">
           <PanelviewItem
             :item="item"
-            :thumb-width="thumbWidth"
-            :thumb-height="thumbHeight"
+            :size="thumbSize"
             :is-selected="isSelected(item)"
             @select="onSelect"
             @menu="onMenu"
-            @clicked="onClick"
+            @click="onClick"
           />
         </v-col>
       </v-row>
-    </v-container>
-    <div v-if="viewMode == 'list'">
-      <RecycleScroller
-        v-slot="{ item }"
-        class="scroller"
-        :items="items"
-        :item-size="66"
-        key-field="item_id"
-        page-mode
-      >
-        <ListviewItem
-          :item="item"
-          :show-track-number="itemtype == 'albumtracks'"
-          :show-duration="item.media_type != 'radio'"
-          :show-providers="item.provider == 'database'"
-          :is-selected="isSelected(item)"
-          @select="onSelect"
-          @menu="onMenu"
-          @clicked="onClick"
-        ></ListviewItem>
-      </RecycleScroller>
-    </div>
-    <!-- white space to reserve space for footer -->
-    <div style="height: 150px"></div>
 
-    <!-- <ContextMenu
-      v-model="showContextMenu"
-      :items="contextMenuItems"
-      :parent-item="parentItem"
-    /> -->
-  </div>
+      <!-- list view -->
+      <div v-if="viewMode == 'list'">
+        <RecycleScroller
+          v-slot="{ item }"
+          class="scroller"
+          :items="items"
+          :item-size="66"
+          key-field="item_id"
+          page-mode
+        >
+          <ListviewItem
+            :item="item"
+            :show-track-number="itemtype == 'albumtracks'"
+            :show-duration="item.media_type != 'radio'"
+            :show-providers="item.provider == 'database'"
+            :is-selected="isSelected(item)"
+            @select="onSelect"
+            @menu="onMenu"
+            @click="onClick"
+          ></ListviewItem>
+        </RecycleScroller>
+      </div>
+      <!-- white space to reserve space for footer -->
+      <div style="height: 150px"></div>
+    </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -124,7 +126,6 @@ import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import { store } from "../plugins/store";
 import ListviewItem from "./ListviewItem.vue";
 import PanelviewItem from "./PanelviewItem.vue";
-// import ContextMenu from "./ContextMenu.vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { api } from "../plugins/api";
@@ -154,15 +155,10 @@ const sortDesc = ref(false);
 const sortBy = ref<string[]>(["name"]);
 const sortKeys = ref<SortKey[]>([]);
 const selectedItems = ref<MediaItemType[]>([]);
-const contextMenuItems = ref<MediaItemType[]>([]);
-const showContextMenu = ref(false);
 
 // computed properties
-const thumbWidth = computed(() => {
-  return display.mobile ? 120 : 175;
-});
-const thumbHeight = computed(() => {
-  return (display.mobile ? 120 : 175) * 1.5;
+const thumbSize = computed(() => {
+  return display.mobile ? 150 : 225;
 });
 
 // methods
@@ -192,6 +188,7 @@ const isSelected = function (item: MediaItemType) {
   return selectedItems.value.includes(item);
 };
 const onSelect = function (item: MediaItemType, selected: boolean) {
+  console.log('onSelect', item)
   if (selected) {
     if (!selectedItems.value.includes(item)) selectedItems.value.push(item);
   } else {
@@ -203,25 +200,27 @@ const onSelect = function (item: MediaItemType, selected: boolean) {
   }
 };
 const onMenu = function (item: MediaItemType) {
-  contextMenuItems.value = [item];
-  showContextMenu.value = true;
+  console.log('onMenu', item)
+  store.contextMenuItems = [item];
+  store.showContextMenu = true;
 };
 const onClick = function (mediaItem: MediaItemType) {
   // mediaItem in the list is clicked
+  console.log('onClick', mediaItem)
   if (mediaItem.media_type === "artist") {
     router.push({
       name: "artist",
-      params: { id: mediaItem.item_id, provider: mediaItem.provider },
+      params: { item_id: mediaItem.item_id, provider: mediaItem.provider },
     });
   } else if (mediaItem.media_type === "album") {
     router.push({
       name: "album",
-      params: { id: mediaItem.item_id, provider: mediaItem.provider },
+      params: { item_id: mediaItem.item_id, provider: mediaItem.provider },
     });
   } else if (mediaItem.media_type === "playlist") {
     router.push({
       name: "playlist",
-      params: { id: mediaItem.item_id, provider: mediaItem.provider },
+      params: { item_id: mediaItem.item_id, provider: mediaItem.provider },
     });
   } else {
     // assume track (or radio) item
@@ -310,7 +309,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (keyListener !== undefined) document.removeEventListener("keydown", keyListener);
+  document.removeEventListener("keydown", keyListener);
 });
 </script>
 

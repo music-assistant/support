@@ -1,16 +1,15 @@
 <template>
   <v-card
-    @click="itemClick"
-    :min-height="thumbHeight"
-    :min-width="thumbWidth"
-    :max-width="thumbWidth * 1.4"
+    @click="emit('click', item)"
+    :min-height="[MediaType.ARTIST, MediaType.RADIO].includes(item.media_type) ? size * 1.7 : size * 2.2"
+    :min-width="size"
     hover
-    outlined
-    @contextmenu.prevent="menuClick"
+    border
+    @click.right.prevent="emit('menu', item)"
   >
-    <MediaItemThumb :item="item" :size="thumbWidth" />
-    <div v-if="isSelected" style="position: absolute; background-color: #82b1ff94">
-      <v-icon dark size="51"> mdi-checkbox-marked-outline </v-icon>
+    <MediaItemThumb :item="item" :size="size" :border="false" />
+    <div v-if="isSelected" style="position: absolute; top:0;background-color: #82b1ff94">
+      <v-btn variant="plain" size="51" :icon="mdiCheckboxMarkedOutline" @click.stop="emit('select', item, !isSelected)"></v-btn>
     </div>
     <div
       v-if="isHiRes"
@@ -37,30 +36,54 @@
         <span>{{ isHiRes }}</span>
       </v-tooltip>
     </div>
-    <v-divider />
+
     <v-card-title
-      :class="$vuetify.display.mobile ? 'body-2' : 'title'"
+      :class="$vuetify.display.mobile ? 'body-2' : 'text-subtitle-1'"
       style="padding: 8px; color: primary; margin-top: 8px"
-      v-text="item.name"
+      v-text="truncateString(item.name, 35)"
     />
     <v-card-subtitle
       v-if="'artist' in item && item.artist"
-      :class="$vuetify.display.mobile ? 'caption' : 'body-1'"
-      style="padding: 8px"
+      style="
+        padding: 8px;
+        position: absolute;
+        bottom: 0px;
+        display: flex;
+        align-items: flex-end;
+      "
       @click.stop="artistClick(item.artist)"
       v-text="item.artist.name"
     />
     <v-card-subtitle
       v-if="'artists' in item && item.artists"
-      :class="$vuetify.display.mobile ? 'caption' : 'body-1'"
-      style="padding: 8px"
+      style="
+        padding: 8px;
+        position: absolute;
+        bottom: 0px;
+        display: flex;
+        align-items: flex-end;
+      "
       @click.stop="artistClick(item.artists[0])"
       v-text="item.artists[0].name"
+    />
+    <v-card-subtitle
+      v-if="'owner' in item && item.owner"
+      style="
+        padding: 8px;
+        position: absolute;
+        bottom: 0px;
+        display: flex;
+        align-items: flex-end;
+      "
+      v-text="item.owner"
     />
   </v-card>
 </template>
 
 <script setup lang="ts">
+import {
+  mdiCheckboxMarkedOutline,
+} from "@mdi/js";
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 
@@ -74,7 +97,8 @@ import type {
   MediaItem,
   MediaItemType,
 } from "../plugins/api";
-import { formatDuration } from "../utils";
+import { MediaType } from "../plugins/api";
+import { formatDuration, truncateString } from "../utils";
 import { store } from "../plugins/store";
 
 // global refs
@@ -84,13 +108,11 @@ const actionInProgress = ref(false);
 // properties
 interface Props {
   item: MediaItemType;
-  thumbHeight?: number;
-  thumbWidth?: number;
+  size?: number;
   isSelected: boolean;
 }
 const props = withDefaults(defineProps<Props>(), {
-  thumbHeight: 400,
-  thumbWidth: 400,
+  size: 200,
 });
 
 // computed properties
@@ -116,38 +138,12 @@ const isHiRes = computed(() => {
 // emits
 const emit = defineEmits<{
   (e: "menu", value: MediaItem): void;
-  (e: "clicked", value: MediaItem): void;
+  (e: "click", value: MediaItem): void;
   (e: "select", value: MediaItem, selected: boolean): void;
 }>();
 
 // methods
-const itemClick = function () {
-  // contextmenu button clicked
-  if (actionInProgress.value) return;
-  actionInProgress.value = true;
-  emit("clicked", props.item);
 
-  setTimeout(() => {
-    actionInProgress.value = false;
-  }, 500);
-};
-
-const menuClick = function () {
-  // contextmenu button clicked
-  if (actionInProgress.value) return;
-  emit("menu", props.item);
-};
-
-const onSelect = function (event: Event) {
-  // contextmenu button clicked
-  if (actionInProgress.value) return;
-  actionInProgress.value = true;
-  event.preventDefault();
-  emit("select", props.item, !props.isSelected);
-  setTimeout(() => {
-    actionInProgress.value = false;
-  }, 500);
-};
 const albumClick = function (item: Album | ItemMapping) {
   // album entry clicked
   if (actionInProgress.value) return;
@@ -155,7 +151,7 @@ const albumClick = function (item: Album | ItemMapping) {
   router.push({
     name: "album",
     params: {
-      id: item.item_id,
+      item_id: item.item_id,
       provider: item.provider,
     },
   });
@@ -170,7 +166,7 @@ const artistClick = function (item: Artist | ItemMapping) {
   router.push({
     name: "artist",
     params: {
-      id: item.item_id,
+      item_id: item.item_id,
       provider: item.provider,
     },
   });

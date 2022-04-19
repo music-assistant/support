@@ -1,58 +1,64 @@
 <template>
   <v-dialog
-    :value="value"
-    max-width="500px"
-    overlay-opacity="0.8"
-    overlay-color="grey"
-    @input="$emit('input', $event)"
+    :model-value="modelValue"
+    fullscreen
+    :scrim="false"
+    transition="dialog-bottom-transition"
+    @click:outside="emit('update:model-value', false)"
   >
-    <v-card>
-      <v-card-title v-if="items">{{ header }}</v-card-title>
+    <v-card min-width="400px">
+      <v-toolbar dark color="primary">
+        <v-icon :icon="mdiPlayCircleOutline"></v-icon>
+        <v-toolbar-title style="padding-left: 10px">{{ header }}</v-toolbar-title>
+        <v-spacer></v-spacer>
+        <v-toolbar-items>
+          <v-btn dark text @click="emit('update:model-value', false)">{{
+            $t("close")
+          }}</v-btn>
+        </v-toolbar-items>
+      </v-toolbar>
       <!-- play contextmenu items -->
-      <div v-if="playlists.length === 0 && playMenuItems.length > 0">
-        <v-list-item-subtitle style="margin-left: 25px; margin-top: -10px"
-          >{{ $t("play_on") }}
-          <a @click="$store.state.showPlayersMenu = true">{{
-            selectedPlayer.name || $t("no_player")
-          }}</a></v-list-item-subtitle
-        >
+      <v-card-text v-if="playlists.length === 0 && playMenuItems.length > 0">
+        <v-select
+          :model-value="store.activePlayerQueue?.name"
+          :items="Object.values(api.queues).map((x) => x.name)"
+          :label="$t('play_on')"
+          dense
+          :disabled="true"
+        ></v-select>
         <v-list>
           <div v-for="item of playMenuItems" :key="item.label">
             <v-list-item @click="item.action()">
-              <v-list-item-avatar>
-                <v-icon>{{ item.icon }}</v-icon>
+              <v-list-item-avatar style="padding-right: 10px">
+                <v-icon :icon="item.icon"></v-icon>
               </v-list-item-avatar>
-              <v-list-item-content>
-                <v-list-item-title>{{ $t(item.label) }}</v-list-item-title>
-              </v-list-item-content>
+              <v-list-item-title>{{ $t(item.label) }}</v-list-item-title>
             </v-list-item>
             <v-divider></v-divider>
           </div>
         </v-list>
-      </div>
+      </v-card-text>
       <!-- action contextmenu items -->
-      <div v-if="playlists.length === 0 && actionMenuItems.length > 0">
+      <v-card-text v-if="playlists.length === 0 && actionMenuItems.length > 0">
         <v-list-item-subtitle style="margin-left: 25px; margin-top: 10px"
           >Acties</v-list-item-subtitle
         >
         <v-list v-if="playlists.length === 0">
           <div v-for="item of actionMenuItems" :key="item.label">
             <v-list-item @click="item.action()">
-              <v-list-item-avatar>
-                <v-icon>{{ item.icon }}</v-icon>
+              <v-list-item-avatar style="padding-right: 10px">
+                <v-icon :icon="item.icon"></v-icon>
               </v-list-item-avatar>
-              <v-list-item-content>
-                <v-list-item-title>{{ $t(item.label) }}</v-list-item-title>
-              </v-list-item-content>
+              <v-list-item-title>{{ $t(item.label) }}</v-list-item-title>
             </v-list-item>
             <v-divider></v-divider>
           </div>
         </v-list>
-      </div>
+      </v-card-text>
       <!-- playlists selection -->
-      <div v-if="playlists.length > 0">
+      <v-card-text v-if="playlists.length > 0">
         <v-card-subtitle>{{ $t("add_playlist") }}</v-card-subtitle>
-        <v-list>
+        <v-list style="overflow: hidden">
           <listviewItem
             v-for="(item, index) in playlists"
             :key="item.item_id"
@@ -64,267 +70,239 @@
             :hideproviders="false"
             :hidelibrary="true"
             :hidemenu="true"
+            :is-selected="false"
             :onclick-handler="addToPlaylist"
           ></listviewItem>
         </v-list>
-      </div>
+      </v-card-text>
     </v-card>
   </v-dialog>
 </template>
 
-<script lang="ts">
-  import type { PropType } from "vue";
-  import ListviewItem from "./ListviewItem.vue";
-  import { MediaItem, MediaType, Playlist, QueueOption } from "../plugins/api";
+<script setup lang="ts">
+import {
+  mdiHeart,
+  mdiHeartOutline,
+  mdiPlayCircleOutline,
+  mdiSkipNextCircleOutline,
+  mdiPlaylistPlus,
+  mdiInformationOutline,
+  mdiMinusCircleOutline,
+  mdiPlusCircleOutline,
+} from "@mdi/js";
+import ListviewItem from "./ListviewItem.vue";
+import { MediaType, QueueOption } from "../plugins/api";
+import type { MediaItem, MediaItemType, Playlist } from "../plugins/api";
+import { ref, watch, watchEffect } from "vue";
+import api from "../plugins/api";
+import { useI18n } from "vue-i18n";
+import { store } from "../plugins/store";
+import { useRouter } from "vue-router";
 
-  interface MenuItem {
-    label: string;
-    action: CallableFunction;
-    icon: string;
+const { t } = useI18n();
+const router = useRouter();
+
+interface MenuItem {
+  label: string;
+  action: CallableFunction;
+  icon: string;
+}
+
+interface Props {
+  modelValue: boolean;
+  items: MediaItemType[];
+  parentItem?: MediaItemType;
+}
+const props = defineProps<Props>();
+const actionMenuItems = ref<MenuItem[]>([]);
+const playMenuItems = ref<MenuItem[]>([]);
+const header = ref("");
+const playlists = ref<Playlist[]>([]);
+const curPlaylist = ref<Playlist>();
+
+const emit = defineEmits<{
+  (e: "update:model-value", value: boolean): void;
+}>();
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) showContextMenu();
+  }
+);
+
+const showContextMenu = function () {
+  // show contextmenu items for the selected mediaItem(s)
+  playlists.value = [];
+  if (!props.items) return;
+  curPlaylist.value = undefined;
+  const firstItem: MediaItem = props.items[0];
+  playMenuItems.value = [];
+  actionMenuItems.value = [];
+  if (props.items.length === 1) header.value = firstItem.name;
+  else header.value = t("items_selected", [props.items.length]).toString();
+  // Play NOW
+  if (itemIsAvailable(firstItem)) {
+    playMenuItems.value.push({
+      label: "play_now",
+      action: () => {
+        api.playMedia(
+          store.activePlayerQueue?.queue_id || "",
+          props.items.map((x) => x.uri),
+          QueueOption.PLAY
+        );
+        close();
+      },
+      icon: mdiPlayCircleOutline,
+    });
+  }
+  // Play NEXT
+  if (
+    itemIsAvailable(firstItem) &&
+    (props.items.length === 1 || firstItem.media_type === MediaType.TRACK)
+  ) {
+    playMenuItems.value.push({
+      label: "play_next",
+      action: () => {
+        api.playMedia(
+          store.activePlayerQueue?.queue_id || "",
+          props.items.map((x) => x.uri),
+          QueueOption.NEXT
+        );
+        close();
+      },
+      icon: mdiSkipNextCircleOutline,
+    });
+  }
+  // Add to Queue
+  if (itemIsAvailable(firstItem)) {
+    playMenuItems.value.push({
+      label: "add_queue",
+      action: () => {
+        api.playMedia(
+          store.activePlayerQueue?.queue_id || "",
+          props.items.map((x) => x.uri),
+          QueueOption.ADD
+        );
+        close();
+      },
+      icon: mdiPlaylistPlus,
+    });
   }
 
-  interface ComponentData {
-    actionMenuItems: MenuItem[];
-    playMenuItems: MenuItem[];
-    header: string;
-    playlists: Playlist[];
-    curPlaylist: Playlist | undefined;
-  }
-
-  export default Vue.extend({
-    components: {
-      ListviewItem,
-    },
-    props: {
-      value: {
-        type: Boolean,
-        required: true,
-        default: false,
-      },
-      items: {
-        type: Array as PropType<MediaItem[]>,
-        required: false,
-        default() {
-          return [];
-        },
-      },
-      parentItem: {
-        type: Object as PropType<MediaItem> | undefined,
-        required: false,
-        default: undefined,
-      },
-    },
-    data: (): ComponentData => ({
-      actionMenuItems: [],
-      playMenuItems: [],
-      header: "",
-      playlists: [],
-      curPlaylist: undefined,
-    }),
-    computed: {
-      ...mapGetters(["getLibraryPlaylists", "getItem", "selectedPlayer"]),
-    },
-    watch: {
-      value(newVal) {
-        if (newVal) {
-          this.showContextMenu();
-        }
-      },
-    },
-    mounted() {
-      this.dispatchGetLibraryPlaylists;
-    },
-    methods: {
-      ...mapActions([
-        "playMedia",
-        "addPlaylistTracks",
-        "removePlaylistTracks",
-        "addToLibrary",
-        "removeFromLibrary",
-        "refreshItems",
-        "dispatchGetLibraryPlaylists",
-      ]),
-      showContextMenu() {
-        // show contextmenu items for the selected mediaItem(s)
-        this.dispatchGetLibraryPlaylists();
-        this.playlists = [];
-        if (!this.items) return;
-        this.curPlaylist = undefined;
-        const firstItem: MediaItem = this.items[0];
-        const actionMenuItems: MenuItem[] = [];
-        const playMenuItems: MenuItem[] = [];
-        if (this.items.length === 1) this.header = firstItem.name;
-        else
-          this.header = this.$t("items_selected", [
-            this.items.length,
-          ]).toString();
-        // Play NOW
-        if (this.itemIsAvailable(firstItem)) {
-          playMenuItems.push({
-            label: "play_now",
-            action: () => {
-              this.playMedia({
-                items: this.items,
-                queueOpt: QueueOption.PLAY,
-              });
-              this.close();
-            },
-            icon: "play_circle_outline",
-          });
-        }
-        // Play NEXT
-        if (
-          this.itemIsAvailable(firstItem) &&
-          (this.items.length === 1 || firstItem.media_type === MediaType.TRACK)
-        ) {
-          playMenuItems.push({
-            label: "play_next",
-            action: () => {
-              this.playMedia({
-                items: this.items,
-                queueOpt: QueueOption.NEXT,
-              });
-              this.close();
-            },
-            icon: "queue_play_next",
-          });
-        }
-        // Add to Queue
-        if (this.itemIsAvailable(firstItem)) {
-          playMenuItems.push({
-            label: "add_queue",
-            action: () => {
-              this.playMedia({
-                items: this.items,
-                queueOpt: QueueOption.ADD,
-              });
-              this.close();
-            },
-            icon: "playlist_add",
-          });
-        }
-        this.playMenuItems = playMenuItems;
-        // show info
-        if (
-          this.items.length === 1 &&
-          firstItem !== this.parentItem &&
-          this.itemIsAvailable(firstItem)
-        ) {
-          actionMenuItems.push({
-            label: "show_info",
-            action: () => {
-              this.close();
-              this.$router.push({
-                name: firstItem.media_type,
-                params: {
-                  id: firstItem.item_id,
-                  provider: firstItem.provider,
-                },
-              });
-            },
-            icon: "info",
-          });
-        }
-        // add to library
-        if (!firstItem.in_library && this.itemIsAvailable(firstItem)) {
-          actionMenuItems.push({
-            label: "add_library",
-            action: () => {
-              this.addToLibrary(this.items);
-              this.close();
-            },
-            icon: "favorite_border",
-          });
-        }
-        // remove from library
-        if (firstItem.in_library) {
-          actionMenuItems.push({
-            label: "remove_library",
-            action: () => {
-              this.removeFromLibrary(this.items);
-              this.close();
-            },
-            icon: "favorite",
-          });
-        }
-        // remove from playlist (playlist tracks only)
-        if (
-          this.parentItem &&
-          this.parentItem.media_type === MediaType.PLAYLIST
-        ) {
-          const playlist = this.parentItem as Playlist;
-          if (
-            firstItem.media_type === MediaType.TRACK &&
-            playlist.is_editable
-          ) {
-            actionMenuItems.push({
-              label: "remove_playlist",
-              action: () => {
-                this.removePlaylistTracks({
-                  playlistId: playlist.item_id,
-                  tracks: this.items,
-                });
-                this.close();
-              },
-              icon: "remove_circle_outline",
-            });
-          }
-        }
-        // add to playlist action (tracks only)
-        if (firstItem.media_type === "track") {
-          actionMenuItems.push({
-            label: "add_playlist",
-            action: this.showPlaylistsMenu,
-            icon: "add_circle_outline",
-          });
-        }
-        // refresh item
-        if (!this.itemIsAvailable(firstItem)) {
-          actionMenuItems.push({
-            label: "refresh_item",
-            action: () => {
-              this.close();
-              this.refreshItems(this.items);
-            },
-            icon: "refresh",
-          });
-        }
-        this.actionMenuItems = actionMenuItems;
-      },
-      async showPlaylistsMenu() {
-        // get all editable playlists
-        const items = [];
-        for (const playlist of this.getLibraryPlaylists) {
-          if (
-            playlist.is_editable &&
-            !(
-              this.parentItem &&
-              this.parentItem.media_type === MediaType.PLAYLIST &&
-              playlist.item_id === this.parentItem.item_id
-            )
-          ) {
-            items.push(playlist);
-          }
-        }
-        this.playlists = items;
-      },
-      addToPlaylist(playlist: Playlist) {
-        /// add track(s) to playlist
-        this.addPlaylistTracks({
-          playlistId: playlist.item_id,
-          tracks: this.items,
+  // show info
+  if (
+    props.items.length === 1 &&
+    firstItem !== props.parentItem &&
+    itemIsAvailable(firstItem)
+  ) {
+    actionMenuItems.value.push({
+      label: "show_info",
+      action: () => {
+        close();
+        router.push({
+          name: firstItem.media_type,
+          params: {
+            item_id: firstItem.item_id,
+            provider: firstItem.provider,
+          },
         });
-        this.close();
       },
-      itemIsAvailable(item: MediaItem) {
-        for (const x of item.provider_ids) {
-          if (x.available) return true;
-        }
-        return false;
+      icon: mdiInformationOutline,
+    });
+  }
+  // add to library
+  if (!firstItem.in_library && itemIsAvailable(firstItem)) {
+    actionMenuItems.value.push({
+      label: "add_library",
+      action: () => {
+        api.addToLibrary(props.items);
+        close();
       },
-      close() {
-        this.$emit("input", false);
+      icon: mdiHeartOutline,
+    });
+  }
+  // remove from library
+  if (firstItem.in_library) {
+    actionMenuItems.value.push({
+      label: "remove_library",
+      action: () => {
+        api.removeFromLibrary(props.items);
+        close();
       },
-    },
-  });
+      icon: mdiHeart,
+    });
+  }
+  // remove from playlist (playlist tracks only)
+  if (props.parentItem && props.parentItem.media_type === MediaType.PLAYLIST) {
+    const playlist = props.parentItem as Playlist;
+    if (firstItem.media_type === MediaType.TRACK && playlist.is_editable) {
+      actionMenuItems.value.push({
+        label: "remove_playlist",
+        action: () => {
+          api.removePlaylistTracks(
+            playlist.provider,
+            playlist.item_id,
+            props.items.map((x) => x.uri)
+          );
+          close();
+        },
+        icon: mdiMinusCircleOutline,
+      });
+    }
+  }
+  // add to playlist action (tracks only)
+  if (firstItem.media_type === "track") {
+    actionMenuItems.value.push({
+      label: "add_playlist",
+      action: showPlaylistsMenu,
+      icon: mdiPlusCircleOutline,
+    });
+  }
+};
+const showPlaylistsMenu = async function () {
+  // get all editable playlists
+  const items = [];
+  for (const playlist of await api.getLibraryPlaylists()) {
+    if (
+      playlist.is_editable &&
+      !(
+        props.parentItem &&
+        props.parentItem.media_type === MediaType.PLAYLIST &&
+        playlist.item_id === props.parentItem.item_id
+      )
+    ) {
+      items.push(playlist);
+    }
+  }
+  playlists.value = items;
+};
+const addToPlaylist = function (playlist: Playlist) {
+  /// add track(s) to playlist
+  api.addPlaylistTracks(
+    playlist.provider,
+    playlist.item_id,
+    props.items.map((x) => x.uri)
+  );
+  close();
+};
+const itemIsAvailable = function (item: MediaItem) {
+  for (const x of item.provider_ids) {
+    if (x.available) return true;
+  }
+  return false;
+};
+const close = function () {
+  emit("update:model-value", false);
+};
+const getPlayerQueues = function () {
+  const result = [];
+  for (const queueId in api.queues) {
+    result.push({
+      title: api.queues[queueId].name,
+      value: api.queues[queueId].queue_id,
+    });
+  }
+  return result;
+};
 </script>
