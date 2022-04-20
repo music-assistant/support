@@ -1,18 +1,26 @@
 <template>
   <div class="provider-icons" :style="`height: ${height};`">
-    <img
+    <!-- <img
       class="provider-icon"
       v-for="prov of uniqueProviders"
       :key="prov.provider"
       :height="height"
       :src="getProviderIcon(prov.provider)"
       :style="$vuetify.theme.current == 'light' ? 'filter: invert(100%);' : ''"
+    /> -->
+    <img
+      class="provider-icon"
+      v-for="prov of uniqueProviders"
+      :key="prov.provider"
+      :height="height"
+      :src="getProviderIcon(prov.provider)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { MediaItemProviderId } from "../plugins/api";
+import { MediaQuality } from "../plugins/api";
 import { ref, computed } from "vue";
 
 interface Props {
@@ -66,6 +74,13 @@ export const getContentTypeIcon = function (contentType: ContentType) {
   if (contentType == ContentType.MP3) return iconMp3;
   if (contentType == ContentType.MPEG) return iconMp3;
   if (contentType == ContentType.OGG) return iconOgg;
+  return iconFallback;
+};
+export const getQualityIcon = function (quality: MediaQuality) {
+  if (quality == MediaQuality.LOSSY_AAC) return iconAac;
+  if (quality == MediaQuality.LOSSY_MP3) return iconMp3;
+  if (quality == MediaQuality.LOSSY_OGG) return iconOgg;
+  if (quality >= MediaQuality.FLAC_LOSSLESS) return iconFlac;
   return iconFallback;
 };
 </script>

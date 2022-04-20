@@ -3,7 +3,7 @@
     bottom
     fixed
     class="d-flex flex-column"
-    style="width: 100%; border-top-style: ridge;"
+    style="width: 100%; border-top-style: ridge"
     elevation="5"
   >
     <v-divider />
@@ -97,11 +97,7 @@
                 width="50"
                 center
                 :src="getProviderIcon(streamDetails.provider)"
-                :style="
-                  $vuetify.theme.current == 'light'
-                    ? 'object-fit: contain;filter: invert(100%);'
-                    : 'object-fit: contain;'
-                "
+                style="object-fit: contain"
               />
               {{ streamDetails.provider }}
             </v-list-item>
@@ -373,6 +369,11 @@ watchEffect(async () => {
         return;
       }
     }
+    // last resort: just the first queue
+    for (const queue_id in api?.queues) {
+      store.activePlayerQueue = api.queues[queue_id];
+      return;
+    }
   }
 });
 </script>
@@ -462,5 +463,4 @@ watchEffect(async () => {
   white-space: nowrap;
   overflow: hidden;
 }
-
 </style>

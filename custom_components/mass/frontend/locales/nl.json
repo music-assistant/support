@@ -38,16 +38,6 @@
   "refresh_item": "Vernieuwen",
   "items_total": "{0} item(s) totaal",
   "items_selected": "{0} item(s) geselecteerd",
-  "config": {
-    "enabled": "Ingeschakeld",
-    "base": "Algemene instellingen",
-    "security": "Beveiliging",
-    "player_providers": "Speler providers",
-    "music_providers": "Muziek providers",
-    "metadata_providers": "Metadata providers",
-    "plugins": "Plugins",
-    "player_settings": "Speler instellingen"
-  },
   "players": "Spelers",
   "play": "Afspelen",
   "play_on": "Afspelen op:",
@@ -74,27 +64,9 @@
     "paused": "gepauzeerd",
     "off": "uitgeschakeld"
   },
-  "login": {
-    "header": "Verbind met Music Assistant",
-    "server": "Serveradres",
-    "username": "Gebruikersnaam",
-    "password": "Wachtwoord",
-    "save_creds": "Ingelogd blijven.",
-    "login": "Inloggen",
-    "reset_form": "Reset formulier",
-    "server_empty": "Het serveradres kan niet leeg zijn.",
-    "username_empty": "De gebruikersnaam kan niet leeg zijn.",
-    "password_empty": "Het wachtwoord kan niet leeg zijn.",
-    "login_failed": "Kon niet inloggen, controleer of de server bereikbaar is en de inloggegevens juist zijn.",
-    "no_scheme": "Type enkel de naam/ip van de server, dus zonder http:// of https://",
-    "logoff": "Uitloggen"
-  },
-  "dark_mode": "Dark Mode",
-  "taskstatus": {
-    "0": "In de wacht",
-    "1": "Wordt verwerkt",
-    "2": "Klaar",
-    "3": "Fout",
-    "4": "Geannuleerd"
-  }
+  "dark_mode": "Donkere Modus",
+  "jobs_running": "Er zijn {0} achtergrondtaken actief.",
+  "actions": "Acties",
+  "no_content": "Geen items gevonden.",
+  "no_content_sync_running": "Items (nog) niet beschikbaar. Wacht tot de synchonisatietaken zijn voltooid."
 }

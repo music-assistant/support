@@ -27,6 +27,7 @@ QUEUE_ID = "queue_id"
 COMMAND = "command"
 COMMAND_ARG = "command_arg"
 LAZY = "lazy"
+REFRESH = "refresh"
 
 ERR_NOT_LOADED = "not_loaded"
 
@@ -59,6 +60,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_item)
     websocket_api.async_register_command(hass, websocket_artist_tracks)
     websocket_api.async_register_command(hass, websocket_artist_albums)
+    websocket_api.async_register_command(hass, websocket_jobs)
     websocket_api.async_register_command(hass, websocket_subscribe_events)
 
 
@@ -169,6 +171,7 @@ async def websocket_artists(
         vol.Required(ITEM_ID): str,
         vol.Required(PROVIDER): str,
         vol.Optional(LAZY, default=True): bool,
+        vol.Optional(REFRESH, default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -180,7 +183,9 @@ async def websocket_artist(
     mass: MusicAssistant,
 ) -> None:
     """Return artist."""
-    item = await mass.music.artists.get(msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY])
+    item = await mass.music.artists.get(
+        msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY], force_refresh=msg[REFRESH]
+    )
     if item is None:
         connection.send_error(
             msg[ID],
@@ -222,6 +227,7 @@ async def websocket_albums(
         vol.Required(ITEM_ID): str,
         vol.Required(PROVIDER): str,
         vol.Optional(LAZY, default=True): bool,
+        vol.Optional(REFRESH, default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -233,7 +239,9 @@ async def websocket_album(
     mass: MusicAssistant,
 ) -> None:
     """Return album."""
-    item = await mass.music.albums.get(msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY])
+    item = await mass.music.albums.get(
+        msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY], force_refresh=msg[REFRESH]
+    )
     if item is None:
         connection.send_error(
             msg[ID],
@@ -356,6 +364,7 @@ async def websocket_track_versions(
         vol.Required(ITEM_ID): str,
         vol.Required(PROVIDER): str,
         vol.Optional(LAZY, default=True): bool,
+        vol.Optional(REFRESH, default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -367,7 +376,9 @@ async def websocket_track(
     mass: MusicAssistant,
 ) -> None:
     """Return track."""
-    item = await mass.music.tracks.get(msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY])
+    item = await mass.music.tracks.get(
+        msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY], force_refresh=msg[REFRESH]
+    )
     if item is None:
         connection.send_error(
             msg[ID],
@@ -409,6 +420,7 @@ async def websocket_playlists(
         vol.Required(ITEM_ID): str,
         vol.Required(PROVIDER): str,
         vol.Optional(LAZY, default=True): bool,
+        vol.Optional(REFRESH, default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -420,7 +432,9 @@ async def websocket_playlist(
     mass: MusicAssistant,
 ) -> None:
     """Return track."""
-    item = await mass.music.playlists.get(msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY])
+    item = await mass.music.playlists.get(
+        msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY], force_refresh=[msg[REFRESH]]
+    )
     if item is None:
         connection.send_error(
             msg[ID],
@@ -436,7 +450,7 @@ async def websocket_playlist(
 
 @websocket_api.websocket_command(
     {
-        vol.Required(TYPE): f"{DOMAIN}/album/tracks",
+        vol.Required(TYPE): f"{DOMAIN}/playlist/tracks",
         vol.Required(ITEM_ID): str,
         vol.Required(PROVIDER): str,
         vol.Optional(LAZY): bool,
@@ -488,6 +502,7 @@ async def websocket_radios(
         vol.Required(ITEM_ID): str,
         vol.Required(PROVIDER): str,
         vol.Optional(LAZY, default=True): bool,
+        vol.Optional(REFRESH, default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -499,7 +514,9 @@ async def websocket_radio(
     mass: MusicAssistant,
 ) -> None:
     """Return radio."""
-    item = await mass.music.radio.get(msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY])
+    item = await mass.music.radio.get(
+        msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY], force_refresh=msg[REFRESH]
+    )
     if item is None:
         connection.send_error(
             msg[ID],
@@ -518,7 +535,8 @@ async def websocket_radio(
     {
         vol.Required(TYPE): f"{DOMAIN}/item",
         vol.Required(URI): str,
-        vol.Optional(LAZY): bool,
+        vol.Optional(LAZY, default=True): bool,
+        vol.Optional(REFRESH, default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -530,7 +548,9 @@ async def websocket_item(
     mass: MusicAssistant,
 ) -> None:
     """Return single MediaItem by uri."""
-    if item := await mass.music.get_item_by_uri(msg[URI], lazy=msg.get(LAZY, True)):
+    if item := await mass.music.get_item_by_uri(
+        msg[URI], lazy=msg[LAZY], force_refresh=msg[REFRESH]
+    ):
         connection.send_result(
             msg[ID],
             item.to_dict(),
@@ -630,7 +650,7 @@ async def websocket_queue_command(
     mass: MusicAssistant,
 ) -> None:
     """Execute command on PlayerQueue."""
-    if player_queue := mass.players.get_player_queue(msg[ITEM_ID]):
+    if player_queue := mass.players.get_player_queue(msg[QUEUE_ID]):
         if msg[COMMAND] == QueueCommand.PLAY:
             await player_queue.play()
         elif msg[COMMAND] == QueueCommand.PAUSE:
@@ -687,7 +707,7 @@ async def websocket_play_media(
     mass: MusicAssistant,
 ) -> None:
     """Execute play_media command on PlayerQueue."""
-    if player_queue := mass.players.get_player_queue(msg[ITEM_ID]):
+    if player_queue := mass.players.get_player_queue(msg[QUEUE_ID]):
         await player_queue.play_media(msg[URI], msg[COMMAND])
 
         connection.send_result(
@@ -695,7 +715,7 @@ async def websocket_play_media(
             "OK",
         )
         return
-    connection.send_error(msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[ITEM_ID]}")
+    connection.send_error(msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[QUEUE_ID]}")
 
 
 @websocket_api.websocket_command(
@@ -761,6 +781,26 @@ async def websocket_remove_playlist_tracks(
     connection.send_result(
         msg[ID],
         "OK",
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/jobs",
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_jobs(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return running background jobs."""
+    connection.send_result(
+        msg[ID],
+        mass.jobs,
     )
 
 

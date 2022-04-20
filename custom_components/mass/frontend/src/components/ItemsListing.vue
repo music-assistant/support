@@ -101,8 +101,11 @@
           ></ListviewItem>
         </RecycleScroller>
       </div>
-      <!-- white space to reserve space for footer -->
-      <div style="height: 150px"></div>
+
+      <!-- show alert if no items found -->
+      <v-alert type="info" v-if="items.length == 0">{{
+        api.jobs.value.length > 0 ? $t("no_content_sync_running") : $t("no_content")
+      }}</v-alert>
     </div>
   </section>
 </template>
@@ -188,7 +191,7 @@ const isSelected = function (item: MediaItemType) {
   return selectedItems.value.includes(item);
 };
 const onSelect = function (item: MediaItemType, selected: boolean) {
-  console.log('onSelect', item)
+  console.log("onSelect", item);
   if (selected) {
     if (!selectedItems.value.includes(item)) selectedItems.value.push(item);
   } else {
@@ -200,13 +203,13 @@ const onSelect = function (item: MediaItemType, selected: boolean) {
   }
 };
 const onMenu = function (item: MediaItemType) {
-  console.log('onMenu', item)
+  console.log("onMenu", item);
   store.contextMenuItems = [item];
   store.showContextMenu = true;
 };
 const onClick = function (mediaItem: MediaItemType) {
   // mediaItem in the list is clicked
-  console.log('onClick', mediaItem)
+  console.log("onClick", mediaItem);
   if (mediaItem.media_type === "artist") {
     router.push({
       name: "artist",

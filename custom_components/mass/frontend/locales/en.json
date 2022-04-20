@@ -38,16 +38,6 @@
   "refresh_item": "Refresh item",
   "items_total": "{0} total item(s)",
   "items_selected": "{0} item(s) selected",
-  "config": {
-    "enabled": "Enabled",
-    "base": "Generic settings",
-    "security": "Security",
-    "player_providers": "Player providers",
-    "music_providers": "Music providers",
-    "metadata_providers": "Metadata providers",
-    "plugins": "Plugins",
-    "player_settings": "Player settings"
-  },
   "players": "Players",
   "play": "Play",
   "play_on": "Play on:",
@@ -74,27 +64,9 @@
     "paused": "paused",
     "off": "off"
   },
-  "login": {
-    "header": "Connect to Music Assistant",
-    "server": "Server address",
-    "username": "Username",
-    "password": "Password",
-    "save_creds": "Keep me logged in.",
-    "login": "Login",
-    "reset_form": "reset form",
-    "server_empty": "The server address can not be empty.",
-    "username_empty": "The username can not be empty.",
-    "password_empty": "The password can not be empty.",
-    "login_failed": "Could not login, please verify the credentials and that the server is available.",
-    "no_scheme": "Provide only the name/ip to the server, so without http:// or https://",
-    "logoff": "Logoff"
-  },
-  "dark_mode": "Donkere modus",
-  "taskstatus": {
-    "0": "On-hold",
-    "1": "In progress",
-    "2": "Finished",
-    "3": "Error",
-    "4": "Cancelled"
-  }
+  "dark_mode": "Dark mode",
+  "jobs_running": "There are {0} background jobs running.",
+  "actions": "Actions",
+  "no_content": "No items found.",
+  "no_content_sync_running": "Items not (yet) available. Please wait for the Library synchronization to complete."
 }

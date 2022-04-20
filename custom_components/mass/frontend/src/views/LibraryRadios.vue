@@ -18,5 +18,5 @@ api.getLibraryRadios().then((radios) => {
 });
 
 store.topBarTransparent = false;
-store.topBarTitle = `${i18n.t("library")} | ${i18n.t("artists")}`;
+store.topBarTitle = `${i18n.t("library")} | ${i18n.t("radios")}`;
 </script>

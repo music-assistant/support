@@ -1,30 +1,33 @@
 <template>
   <v-dialog
     :model-value="modelValue"
-    fullscreen
-    :scrim="false"
     transition="dialog-bottom-transition"
     @click:outside="emit('update:model-value', false)"
+    overlay-opacity="0.8"
+    fullscreen
+    :class="$vuetify.display.mobile ? '' : 'padded-overlay'"
   >
-    <v-card min-width="400px">
+    <v-card>
       <v-toolbar dark color="primary">
         <v-icon :icon="mdiPlayCircleOutline"></v-icon>
-        <v-toolbar-title style="padding-left: 10px">{{ header }}</v-toolbar-title>
-        <v-spacer></v-spacer>
-        <v-toolbar-items>
-          <v-btn dark text @click="emit('update:model-value', false)">{{
-            $t("close")
-          }}</v-btn>
-        </v-toolbar-items>
+        <v-toolbar-title style="padding-left: 10px"
+          ><b>{{ header }}</b>
+          <span v-if="playlists.length > 0">
+            | {{ $t("add_playlist") }}
+          </span></v-toolbar-title
+        >
+
+        <v-btn :icon="mdiClose" dark text @click="emit('update:model-value', false)">{{
+          $t("close")
+        }}</v-btn>
       </v-toolbar>
       <!-- play contextmenu items -->
       <v-card-text v-if="playlists.length === 0 && playMenuItems.length > 0">
         <v-select
-          :model-value="store.activePlayerQueue?.name"
+          v-model="queueName"
           :items="Object.values(api.queues).map((x) => x.name)"
           :label="$t('play_on')"
           dense
-          :disabled="true"
         ></v-select>
         <v-list>
           <div v-for="item of playMenuItems" :key="item.label">
@@ -40,9 +43,9 @@
       </v-card-text>
       <!-- action contextmenu items -->
       <v-card-text v-if="playlists.length === 0 && actionMenuItems.length > 0">
-        <v-list-item-subtitle style="margin-left: 25px; margin-top: 10px"
-          >Acties</v-list-item-subtitle
-        >
+        <v-list-item-subtitle style="margin-left: 25px; margin-top: 10px">{{
+          $t("actions")
+        }}</v-list-item-subtitle>
         <v-list v-if="playlists.length === 0">
           <div v-for="item of actionMenuItems" :key="item.label">
             <v-list-item @click="item.action()">
@@ -57,7 +60,6 @@
       </v-card-text>
       <!-- playlists selection -->
       <v-card-text v-if="playlists.length > 0">
-        <v-card-subtitle>{{ $t("add_playlist") }}</v-card-subtitle>
         <v-list style="overflow: hidden">
           <listviewItem
             v-for="(item, index) in playlists"
@@ -89,6 +91,8 @@ import {
   mdiInformationOutline,
   mdiMinusCircleOutline,
   mdiPlusCircleOutline,
+  mdiClose,
+  mdiRefresh
 } from "@mdi/js";
 import ListviewItem from "./ListviewItem.vue";
 import { MediaType, QueueOption } from "../plugins/api";
@@ -119,6 +123,8 @@ const playMenuItems = ref<MenuItem[]>([]);
 const header = ref("");
 const playlists = ref<Playlist[]>([]);
 const curPlaylist = ref<Playlist>();
+// TEMP TODO // vuetify select has bug that object does not work so using plain text instead
+const queueName = ref("");
 
 const emit = defineEmits<{
   (e: "update:model-value", value: boolean): void;
@@ -130,6 +136,10 @@ watch(
     if (val) showContextMenu();
   }
 );
+
+watchEffect(async () => {
+  if (store.activePlayerQueue) queueName.value = store.activePlayerQueue.name;
+});
 
 const showContextMenu = function () {
   // show contextmenu items for the selected mediaItem(s)
@@ -147,7 +157,7 @@ const showContextMenu = function () {
       label: "play_now",
       action: () => {
         api.playMedia(
-          store.activePlayerQueue?.queue_id || "",
+          queueIdFromName(queueName.value),
           props.items.map((x) => x.uri),
           QueueOption.PLAY
         );
@@ -165,7 +175,7 @@ const showContextMenu = function () {
       label: "play_next",
       action: () => {
         api.playMedia(
-          store.activePlayerQueue?.queue_id || "",
+          queueIdFromName(queueName.value),
           props.items.map((x) => x.uri),
           QueueOption.NEXT
         );
@@ -180,7 +190,7 @@ const showContextMenu = function () {
       label: "add_queue",
       action: () => {
         api.playMedia(
-          store.activePlayerQueue?.queue_id || "",
+          queueIdFromName(queueName.value),
           props.items.map((x) => x.uri),
           QueueOption.ADD
         );
@@ -209,6 +219,25 @@ const showContextMenu = function () {
         });
       },
       icon: mdiInformationOutline,
+    });
+  }
+  // refresh item
+  if (props.items.length === 1) {
+    actionMenuItems.value.push({
+      label: "refresh_item",
+      action: () => {
+        close();
+        router.push({
+          name: firstItem.media_type,
+          params: {
+            item_id: firstItem.item_id,
+            provider: firstItem.provider,
+            refresh: "true",
+            lazy: "false",
+          },
+        });
+      },
+      icon: mdiRefresh,
     });
   }
   // add to library
@@ -295,14 +324,20 @@ const itemIsAvailable = function (item: MediaItem) {
 const close = function () {
   emit("update:model-value", false);
 };
-const getPlayerQueues = function () {
-  const result = [];
+const queueIdFromName = function (name: string) {
+  console.log(name);
   for (const queueId in api.queues) {
-    result.push({
-      title: api.queues[queueId].name,
-      value: api.queues[queueId].queue_id,
-    });
+    if (api.queues[queueId].name == name) return queueId;
   }
-  return result;
+  return "";
 };
 </script>
+
+<style>
+.padded-overlay .v-overlay__content {
+  padding: 50px;
+}
+.v-overlay__scrim {
+  opacity: 65%;
+}
+</style>

@@ -15,17 +15,12 @@
       :parent-item="store.contextMenuParentItem"
     />
     <player-select />
-    <v-app-bar dense app style="height: 55px" :color="topBarColor">
-      <v-app-bar-nav-icon
-        :icon="mdiArrowLeft"
-        @click="$router.push('/')"
-        v-if="$router.currentRoute.value.path != '/'"
-      />
-      <v-toolbar-title>{{ store.topBarTitle }}</v-toolbar-title>
-    </v-app-bar>
+    <TopBar />
     <v-main>
       <v-container fluid style="padding: 0">
         <router-view></router-view>
+        <!-- white space to reserve space for footer -->
+        <div style="height: 150px"></div>
       </v-container>
     </v-main>
     <player-o-s-d />
@@ -34,12 +29,12 @@
 
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure */
-import { mdiArrowLeft } from "@mdi/js";
-
-import { ref, computed, watchEffect, inject, reactive } from "vue";
+import { ref } from "vue";
 import { api } from "./plugins/api";
 import { store } from "./plugins/store";
-import { isColorDark, mergeDeep } from "./utils";
+import { useRouter } from "vue-router";
+import { isColorDark } from "./utils";
+import TopBar from "./components/TopBar.vue";
 import PlayerOSD from "./components/PlayerOSD.vue";
 import PlayerSelect from "./components/PlayerSelect.vue";
 import ContextMenu from "./components/ContextMenu.vue";
@@ -50,7 +45,8 @@ import { Connection } from "home-assistant-js-websocket";
 import type { HassPanelData, HassData } from "./main";
 import { useI18n } from "vue-i18n";
 
-const { t, locale } = useI18n({ useScope: "global" });
+const { locale } = useI18n({ useScope: "global" });
+const router = useRouter();
 
 interface HassPropEvent extends Event {
   detail: HassData;
@@ -58,28 +54,22 @@ interface HassPropEvent extends Event {
 interface HassPanelPropEvent extends Event {
   detail: HassPanelData;
 }
-const initialized = ref(false);
-
-const topBarColor = computed(() => {
-  if (store.topBarTransparent) return "transparent";
-  return store.topBarDefaultColor;
-});
 
 document.addEventListener("forward-hass-prop", function (e) {
-  console.log("hass prop updated");
-  if (!initialized.value) {
-    api.initialize((e as HassPropEvent).detail.connection);
-    locale.value = (e as HassPropEvent).detail.selectedLanguage;
+  const hass = (e as HassPropEvent).detail;
+  if (!hass) return;
+  if (!api.initialized) {
+    api.initialize(hass.connection);
+    locale.value = hass.selectedLanguage;
   }
-  setTheme((e as HassPropEvent).detail);
+  setTheme(hass);
 });
 
 document.addEventListener("forward-panel-prop", function (e) {
-  console.log("panel prop updated");
   store.defaultTopBarTitle = (e as HassPanelPropEvent).detail.config.title;
 });
 
-// set darkmode based on HA darkmode
+// set theme colors based on HA theme
 // TODO: we can set the entire vuetify theme based on HA theme
 const theme = ref("light");
 let lastTheme = "";
@@ -91,7 +81,6 @@ const setTheme = async function (hassData: HassData) {
   if (lastTheme == checkKey) return;
   lastTheme = checkKey;
 
-  // try to figure out topbar color
   if (curTheme == "default") {
     // default theme
     const defaultPrimaryColor = hassData.selectedTheme?.primaryColor || "#03A9F4";
@@ -112,6 +101,13 @@ const setTheme = async function (hassData: HassData) {
   }
   theme.value = store.darkTheme ? "dark" : "light";
 };
+
+setTimeout(() => {
+  if (!api.initialized) {
+    console.log("stand-alone mode activating...")
+    api.initialize();
+  }
+}, 500);
 </script>
 
 <style lang="scss">

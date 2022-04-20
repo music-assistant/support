@@ -26,6 +26,7 @@
               border: 3px solid rgba(0, 0, 0, 0.33);
               border-radius: 3px;
               margin-top: 15px;
+              margin-bottom: 10px;
             "
           />
         </div>
@@ -104,7 +105,14 @@
 
           <!-- play/info buttons -->
           <div style="margin-left: 14px; padding-bottom: 10px">
-            <v-btn color="primary" tile @click="showContextMenu = true">
+            <v-btn
+              color="primary"
+              tile
+              @click="
+                store.contextMenuItems = [item];
+                store.showContextMenu = true;
+              "
+            >
               <v-icon left :icon="mdiPlayCircle"></v-icon>
               {{ $t("play") }}
             </v-btn>
@@ -171,12 +179,11 @@
           </div>
         </div>
         <!-- provider icons -->
-        <div style="position:absolute;float:right;right:15px;top:15px">
+        <div style="position: absolute; float: right; right: 15px; top: 15px">
           <ProviderIcons :provider-ids="item.provider_ids" :height="25" />
         </div>
       </v-layout>
     </v-card>
-    <ContextMenu v-model="showContextMenu" :items="[item]" :parent-item="item" />
   </div>
 </template>
 
@@ -201,7 +208,7 @@ import type {
   MediaItem,
   MediaItemType,
 } from "../plugins/api";
-import { onActivated, onDeactivated, ref, watchEffect } from "vue";
+import { onActivated, onBeforeUnmount, onDeactivated, ref, watchEffect } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 
@@ -217,10 +224,16 @@ interface Props {
 }
 const props = defineProps<Props>();
 const showFullInfo = ref(false);
-const showContextMenu = ref(false);
 
 watchEffect(async () => {
-  if (props.item) store.topBarTitle = t(props.item.media_type) + " | " + props.item.name;
+  if (props.item) {
+    store.topBarTitle = t(props.item.media_type) + " | " + props.item.name;
+    store.contextMenuParentItem = props.item;
+  }
+});
+
+onBeforeUnmount(() => {
+  store.contextMenuParentItem = undefined;
 });
 
 const albumClick = function (item: Album | ItemMapping) {

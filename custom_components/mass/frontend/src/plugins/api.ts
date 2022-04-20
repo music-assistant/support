@@ -3,10 +3,10 @@ import {
   type Connection,
   createLongLivedTokenAuth,
   createConnection,
-  ERR_HASS_HOST_REQUIRED
+  ERR_HASS_HOST_REQUIRED,
+  getAuth
 } from "home-assistant-js-websocket";
-
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 
 export enum MediaType {
   ARTIST = "artist",
@@ -225,6 +225,7 @@ export enum MassEventType {
   QUEUE_ADDED = "queue_added",
   QUEUE_UPDATED = "queue updated",
   QUEUE_ITEMS_UPDATED = "queue items updated",
+  QUEUE_TIME_UPDATED = "queue time updated",
   SHUTDOWN = "application shutdown",
   ARTIST_ADDED = "artist added",
   ALBUM_ADDED = "album added",
@@ -232,7 +233,8 @@ export enum MassEventType {
   PLAYLIST_ADDED = "playlist added",
   RADIO_ADDED = "radio added",
   TASK_UPDATED = "task updated",
-  PROVIDER_REGISTERED = "PROVIDER_REGISTERED"
+  PROVIDER_REGISTERED = "provider registered",
+  BACKGROUND_JOBS_UPDATED = "background_jobs_updated"
 }
 
 export enum QueueOption {
@@ -252,27 +254,35 @@ export class MusicAssistantApi {
   // eslint-disable-next-line prettier/prettier
   private _conn?: Connection;
   private _lastId: number;
+  private _initialized: boolean;
   public players = reactive<{ [player_id: string]: Player }>({});
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
+  public jobs = ref<string[]>([]);
 
   constructor(conn?: Connection) {
+    this._initialized = false;
     this._conn = conn;
     this._lastId = 0;
   }
 
+  public get initialized() {
+    return this._initialized;
+  }
+
   public async initialize(conn?: Connection) {
-    console.log("initialize api");
     if (conn) this._conn = conn;
     else if (!this._conn) {
-      this._conn = await this.connectHassDev();
+      this._conn = await this.connectHassStandalone();
     }
     // load initial data from api
+    this._initialized = true;
     for (const player of await this.getPlayers()) {
       this.players[player.player_id] = player;
     }
     for (const queue of await this.getPlayerQueues()) {
       this.queues[queue.queue_id] = queue;
     }
+    this.jobs.value = await this.getData("jobs");
     // subscribe to mass events
     this._conn?.subscribeMessage(
       (msg: MassEvent) => {
@@ -284,20 +294,54 @@ export class MusicAssistantApi {
     );
   }
 
-  private async connectHassDev() {
-    const auth = createLongLivedTokenAuth(
-      "http://localhost:8123",
-      "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiI5YzVmZmViNThjNzM0NDIwOGYwYzEyMDMzZjViZDA0NyIsImlhdCI6MTY1MDI4NTk2NiwiZXhwIjoxOTY1NjQ1OTY2fQ.wC6W3m_chT7HCNrSWImjgmhVhH1IacMpId2vOkScG2A"
-    );
-    return await createConnection({ auth });
+  private async connectHassStandalone() {
+    console.log("connectHassStandalone");
+    let auth;
+    const storeAuth = true;
+    const authOptions = storeAuth
+      ? {
+          async loadTokens() {
+            try {
+              return JSON.parse(localStorage.hassTokens);
+            } catch (err) {
+              return undefined;
+            }
+          },
+          saveTokens: (tokens) => {
+            localStorage.hassTokens = JSON.stringify(tokens);
+          }
+        }
+      : {};
+    try {
+      auth = await getAuth(authOptions);
+    } catch (err) {
+      if (err === ERR_HASS_HOST_REQUIRED) {
+        authOptions.hassUrl = prompt(
+          "What host to connect to?",
+          "http://localhost:8123"
+        );
+        if (!authOptions.hassUrl) return;
+        auth = await getAuth(authOptions);
+      } else {
+        alert(`Unknown error: ${err}`);
+        return;
+      }
+    }
+    console.log("auth", auth);
+    const connection = await createConnection({ auth });
+    connection.addEventListener("ready", () => window.history.back() )
+    return connection;
   }
 
   private handleMassEvent(msg: MassEvent) {
-    console.log(msg.event);
+    console.log(msg.event, msg);
     if (msg.event == MassEventType.QUEUE_ADDED) {
       const queue = msg.data as PlayerQueue;
       this.queues[queue.queue_id] = queue;
     } else if (msg.event == MassEventType.QUEUE_UPDATED) {
+      const queue = msg.data as PlayerQueue;
+      Object.assign(this.queues[queue.queue_id], queue);
+    } else if (msg.event == MassEventType.QUEUE_TIME_UPDATED) {
       const queue = msg.data as PlayerQueue;
       Object.assign(this.queues[queue.queue_id], queue);
     } else if (msg.event == MassEventType.PLAYER_ADDED) {
@@ -306,6 +350,8 @@ export class MusicAssistantApi {
     } else if (msg.event == MassEventType.PLAYER_UPDATED) {
       const player = msg.data as Player;
       Object.assign(this.players[player.player_id], player);
+    } else if (msg.event == MassEventType.BACKGROUND_JOBS_UPDATED) {
+      this.jobs.value = msg.data as string[];
     }
   }
 
@@ -324,9 +370,10 @@ export class MusicAssistantApi {
   public getTrack(
     provider: string,
     item_id: string,
-    lazy = true
+    lazy = true,
+    refresh = false
   ): Promise<Track> {
-    return this.getData("track", { provider, item_id, lazy });
+    return this.getData("track", { provider, item_id, lazy, refresh });
   }
 
   public getTrackVersions(
@@ -344,9 +391,10 @@ export class MusicAssistantApi {
   public getArtist(
     provider: string,
     item_id: string,
-    lazy = true
+    lazy = true,
+    refresh = false
   ): Promise<Artist> {
-    return this.getData("artist", { provider, item_id, lazy });
+    return this.getData("artist", { provider, item_id, lazy, refresh });
   }
 
   public getArtistTracks(
@@ -372,9 +420,10 @@ export class MusicAssistantApi {
   public getAlbum(
     provider: string,
     item_id: string,
-    lazy = true
+    lazy = true,
+    refresh = false
   ): Promise<Album> {
-    return this.getData("album", { provider, item_id, lazy });
+    return this.getData("album", { provider, item_id, lazy, refresh });
   }
 
   public getAlbumTracks(
@@ -400,9 +449,10 @@ export class MusicAssistantApi {
   public getPlaylist(
     provider: string,
     item_id: string,
-    lazy = true
+    lazy = true,
+    refresh = false
   ): Promise<Playlist> {
-    return this.getData("playlist", { provider, item_id, lazy });
+    return this.getData("playlist", { provider, item_id, lazy, refresh });
   }
 
   public getPlaylistTracks(
@@ -416,7 +466,7 @@ export class MusicAssistantApi {
   public addPlaylistTracks(
     provider: string,
     item_id: string,
-    uri: string | string[],
+    uri: string | string[]
   ) {
     this.executeCmd("playlist/tracks/add", { provider, item_id, uri });
   }
@@ -424,7 +474,7 @@ export class MusicAssistantApi {
   public removePlaylistTracks(
     provider: string,
     item_id: string,
-    uri: string | string[],
+    uri: string | string[]
   ) {
     this.executeCmd("playlist/tracks/remove", { provider, item_id, uri });
   }
@@ -436,13 +486,18 @@ export class MusicAssistantApi {
   public getRadio(
     provider: string,
     item_id: string,
-    lazy = true
+    lazy = true,
+    refresh = false
   ): Promise<Radio> {
-    return this.getData("radio", { provider, item_id, lazy });
+    return this.getData("radio", { provider, item_id, lazy, refresh });
   }
 
-  public getItem(uri: string, lazy = true): Promise<MediaItemType> {
-    return this.getData("item", { uri, lazy });
+  public getItem(
+    uri: string,
+    lazy = true,
+    refresh = false
+  ): Promise<MediaItemType> {
+    return this.getData("item", { uri, lazy, refresh });
   }
 
   public async addToLibrary(items: MediaItemType[]) {
@@ -508,7 +563,7 @@ export class MusicAssistantApi {
     uri: string | string[],
     command: QueueOption = QueueOption.PLAY
   ) {
-    this.executeCmd("play_media", { queue_id, command });
+    this.executeCmd("play_media", { queue_id, command, uri });
   }
 
   public getImageUrl(mediaItem?: MediaItemType | ItemMapping, key = "image") {
