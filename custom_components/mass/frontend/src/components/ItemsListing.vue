@@ -13,38 +13,42 @@
         >{{ $t("items_selected", [selectedItems.length]) }}</a
       >
       <v-spacer></v-spacer>
-      <v-menu left :close-on-content-click="false">
+      <v-menu anchor="bottom end" :close-on-content-click="true" v-model="showSortMenu">
         <template v-slot:activator="{ props }">
           <v-btn icon v-bind="props">
             <v-icon :icon="mdiSort"></v-icon>
           </v-btn>
         </template>
-        <v-list>
-          <v-list-item
-            v-for="item of sortKeys"
-            :key="item.text"
-            @click="sortBy = item.value"
-            v-text="item.text"
-          >
-          </v-list-item>
-        </v-list>
+        <v-card>
+          <v-list>
+            <div v-for="item of sortKeys" :key="item.text">
+              <v-list-item @click="changeSort(item.value);">
+                <v-list-item-title v-text="item.text"></v-list-item-title>
+                <template v-slot:append>
+                  <v-icon v-if="sortBy == item.value" :icon="mdiCheck"></v-icon>
+                </template>
+              </v-list-item>
+              <v-divider />
+            </div>
+          </v-list>
+        </v-card>
       </v-menu>
-      <v-btn icon @click="sortDesc = !sortDesc">
+      <v-btn icon @click="changeSort(undefined, !sortDesc);">
         <v-icon v-if="!sortDesc" :icon="mdiArrowUp"></v-icon>
         <v-icon v-if="sortDesc" :icon="mdiArrowDown"></v-icon>
       </v-btn>
-      <v-menu left :close-on-content-click="false">
+      <v-menu anchor="bottom end" :close-on-content-click="false">
         <template v-slot:activator="{ props }">
           <v-btn icon v-bind="props">
             <v-icon :icon="mdiSearchWeb"></v-icon>
           </v-btn>
         </template>
-        <v-card>
+        <v-card min-width="350">
           <v-text-field
             v-model="search"
             clearable
             :prepend-inner-icon="mdiSearchWeb"
-            label="Search"
+            :label="$t('search')"
             hide-details
             solo
             dense
@@ -65,9 +69,10 @@
         padding-bottom: 20px;
       "
     >
+      <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
       <!-- panel view -->
       <v-row dense align-content="stretch" align="stretch" v-if="viewMode == 'panel'">
-        <v-col v-for="item in items" :key="item.uri" align-self="stretch">
+        <v-col v-for="item in filteredItems" :key="item.uri" align-self="stretch">
           <PanelviewItem
             :item="item"
             :size="thumbSize"
@@ -83,8 +88,7 @@
       <div v-if="viewMode == 'list'">
         <RecycleScroller
           v-slot="{ item }"
-          class="scroller"
-          :items="items"
+          :items="sorting ? [] : filteredItems"
           :item-size="66"
           key-field="item_id"
           page-mode
@@ -103,7 +107,7 @@
       </div>
 
       <!-- show alert if no items found -->
-      <v-alert type="info" v-if="items.length == 0">{{
+      <v-alert type="info" v-if="!loading && items.length == 0">{{
         api.jobs.value.length > 0 ? $t("no_content_sync_running") : $t("no_content")
       }}</v-alert>
     </div>
@@ -119,11 +123,18 @@ import {
   mdiSort,
   mdiGrid,
   mdiViewList,
+  mdiCheck
 } from "@mdi/js";
 
-import { watchEffect, ref, computed, onBeforeUnmount, onMounted } from "vue";
+import { watchEffect, ref, computed, onBeforeUnmount, onMounted, nextTick } from "vue";
 import { useDisplay } from "vuetify";
-import type { MediaItemType, MediaType, MusicAssistantApi } from "../plugins/api";
+import type {
+  Album,
+  MediaItemType,
+  MediaType,
+  MusicAssistantApi,
+  Track,
+} from "../plugins/api";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import { store } from "../plugins/store";
@@ -142,22 +153,23 @@ const display = useDisplay();
 interface Props {
   itemtype: string;
   items: MediaItemType[];
-  parentItem?: MediaItemType;
+  loading?: boolean;
 }
 interface SortKey {
   text: string;
-  value: string[];
+  value: string;
 }
 const props = defineProps<Props>();
-const storKey = "viewMode" + props.itemtype;
 
 // local refs
-const viewMode = ref("");
+const viewMode = ref("list");
 const search = ref("");
 const sortDesc = ref(false);
-const sortBy = ref<string[]>(["name"]);
+const sortBy = ref<string>("name");
 const sortKeys = ref<SortKey[]>([]);
 const selectedItems = ref<MediaItemType[]>([]);
+const sorting = ref(false);
+const showSortMenu = ref(false);
 
 // computed properties
 const thumbSize = computed(() => {
@@ -168,30 +180,71 @@ const thumbSize = computed(() => {
 const toggleViewMode = function () {
   if (viewMode.value === "panel") viewMode.value = "list";
   else viewMode.value = "panel";
-  localStorage.setItem(storKey, viewMode.value);
+  localStorage.setItem("viewMode" + props.itemtype, viewMode.value);
 };
-const filteredItems = function (mediaItems: MediaItemType[], search: string) {
-  if (!search) return mediaItems;
-  search = search.toLowerCase();
-  const newLst = [];
-  for (const item of mediaItems) {
-    if (item.name.toLowerCase().includes(search)) {
-      newLst.push(item);
-    } else if ("artist" in item && item.artist.name.toLowerCase().includes(search)) {
-      newLst.push(item);
-    } else if ("album" in item && item.album.name.toLowerCase().includes(search)) {
-      newLst.push(item);
-    } else if ("artists" in item && item.artists[0].name.toLowerCase().includes(search)) {
-      newLst.push(item);
+const filteredItems = computed(() => {
+  let result = [];
+  // search
+  if (search.value) {
+    const searchStr = search.value.toLowerCase();
+    for (const item of props.items) {
+      if (item.name.toLowerCase().includes(searchStr)) {
+        result.push(item);
+      } else if ("artist" in item && item.artist.name.toLowerCase().includes(searchStr)) {
+        result.push(item);
+      } else if ("album" in item && item.album?.name.toLowerCase().includes(searchStr)) {
+        result.push(item);
+      } else if (
+        "artists" in item &&
+        item.artists[0].name.toLowerCase().includes(searchStr)
+      ) {
+        result.push(item);
+      }
     }
+  } else {
+    result = props.items;
   }
-  return newLst;
-};
+  // sort
+  if (sortBy.value == "name") {
+    result.sort((a, b) => (a.sort_name || a.name).localeCompare(b.sort_name || b.name));
+  }
+  if (sortBy.value == "album.name") {
+    result.sort((a, b) =>
+      (a as Track).album?.name.localeCompare((b as Track).album?.name)
+    );
+  }
+  if (sortBy.value == "artist.name") {
+    result.sort((a, b) =>
+      (a as Album).artist.name.localeCompare((b as Album).artist.name)
+    );
+  }
+  if (sortBy.value == "artists.name") {
+    result.sort((a, b) =>
+      (a as Track).artists[0].name.localeCompare((b as Track).artists[0].name)
+    );
+  }
+  if (sortBy.value == "track_number") {
+    result.sort(
+      (a, b) => ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
+    );
+    result.sort(
+      (a, b) => ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
+    );
+  }
+  if (sortBy.value == "position") {
+    result.sort((a, b) => ((a as Track).position || 0) - ((b as Track).position || 0));
+  }
+  if (sortBy.value == "year") {
+    result.sort((a, b) => ((a as Album).year || 0) - ((b as Album).year || 0));
+  }
+
+  if (sortDesc.value) result.reverse();
+  return result;
+});
 const isSelected = function (item: MediaItemType) {
   return selectedItems.value.includes(item);
 };
 const onSelect = function (item: MediaItemType, selected: boolean) {
-  console.log("onSelect", item);
   if (selected) {
     if (!selectedItems.value.includes(item)) selectedItems.value.push(item);
   } else {
@@ -203,13 +256,11 @@ const onSelect = function (item: MediaItemType, selected: boolean) {
   }
 };
 const onMenu = function (item: MediaItemType) {
-  console.log("onMenu", item);
   store.contextMenuItems = [item];
   store.showContextMenu = true;
 };
 const onClick = function (mediaItem: MediaItemType) {
   // mediaItem in the list is clicked
-  console.log("onClick", mediaItem);
   if (mediaItem.media_type === "artist") {
     router.push({
       name: "artist",
@@ -231,61 +282,83 @@ const onClick = function (mediaItem: MediaItemType) {
   }
 };
 
+const changeSort = function (sort_key?: string, sort_desc?: boolean) {
+  sorting.value = true;
+  if (sort_key !== undefined) {
+    sortBy.value = sort_key;
+  }
+  if (sort_desc !== undefined) {
+    sortDesc.value = sort_desc;
+  }
+  // ugly hack to force the recyclescroller to re-render all items
+  setTimeout(() => {
+    sorting.value = false;
+    showSortMenu.value=false;
+  }, 500);
+};
+
 // watchers
 watchEffect(async () => {
-  sortKeys.value.push({
-    text: i18n.t("sort_name").toString(),
-    value: ["name"],
-  });
-  if (props.itemtype == "playlisttracks") {
-    // playlist tracks
-    sortKeys.value.push({
-      text: i18n.t("sort_position").toString(),
-      value: ["position"],
-    });
-    sortKeys.value.push({
-      text: i18n.t("sort_artist").toString(),
-      value: ["artists[0].name"],
-    });
-    sortKeys.value.push({
-      text: i18n.t("sort_album").toString(),
-      value: ["album.name"],
-    });
-    sortBy.value = ["position"];
-    viewMode.value = "list";
-  } else if (props.itemtype === "albumtracks") {
-    // album tracks
-    sortKeys.value.push({
-      text: i18n.t("sort_track_number").toString(),
-      value: ["disc_number", "track_number"],
-    });
-    sortBy.value = ["disc_number", "track_number"];
-    viewMode.value = "list";
-  } else if (props.itemtype === "tracks") {
-    // tracks listing
-    sortKeys.value.push({
-      text: i18n.t("sort_artist").toString(),
-      value: ["artists[0].name"],
-    });
-    sortKeys.value.push({
-      text: i18n.t("sort_album").toString(),
-      value: ["album.name"],
-    });
-    viewMode.value = "list";
-  } else if (props.itemtype === "albums") {
-    // albums listing
-    sortKeys.value.push({
-      text: i18n.t("sort_artist").toString(),
-      value: ["artist.name"],
-    });
-    sortKeys.value.push({
-      text: i18n.t("sort_date").toString(),
-      value: ["year"],
-    });
+  // get stored/default viewMode for this itemtype
+  const storKey = "viewMode" + props.itemtype;
+  const savedViewMode = localStorage.getItem(storKey);
+  if (savedViewMode) {
+    viewMode.value = savedViewMode;
+  } else if (props.itemtype == "artists") {
+    viewMode.value = "panel";
+  } else if (props.itemtype == "albums") {
     viewMode.value = "panel";
   } else {
     viewMode.value = "list";
   }
+  // determine sort keys
+  const _sortKeys = [];
+  _sortKeys.push({
+    text: i18n.t("sort_name").toString(),
+    value: "name",
+  });
+  if (props.itemtype == "playlisttracks") {
+    // playlist tracks
+    _sortKeys.push({
+      text: i18n.t("sort_position").toString(),
+      value: "position",
+    });
+    _sortKeys.push({
+      text: i18n.t("sort_artist").toString(),
+      value: "artists.name",
+    });
+    sortBy.value = "position";
+  } else if (props.itemtype === "albumtracks") {
+    // album tracks
+    _sortKeys.push({
+      text: i18n.t("sort_track_number").toString(),
+      value: "track_number",
+    });
+    sortBy.value = "track_number";
+  } else if (props.itemtype === "tracks") {
+    // tracks listing
+    _sortKeys.push({
+      text: i18n.t("sort_artist").toString(),
+      value: "artists.name",
+    });
+    if (props.items.length > 0 && "album" in props.items[0]) {
+      _sortKeys.push({
+        text: i18n.t("sort_album").toString(),
+        value: "album.name",
+      });
+    }
+  } else if (props.itemtype === "albums") {
+    // albums listing
+    _sortKeys.push({
+      text: i18n.t("sort_artist").toString(),
+      value: "artist.name",
+    });
+    _sortKeys.push({
+      text: i18n.t("sort_date").toString(),
+      value: "year",
+    });
+  }
+  sortKeys.value = _sortKeys;
 });
 
 // lifecycle hooks
@@ -296,20 +369,6 @@ const keyListener = function (e: KeyboardEvent) {
   }
 };
 document.addEventListener("keydown", keyListener);
-
-onMounted(() => {
-  // get stored/default viewMode for this itemtype
-  const savedViewMode = localStorage.getItem(storKey) || "panel";
-  console.log("storKey", storKey);
-  console.log("savedViewMode", savedViewMode);
-  if (savedViewMode) {
-    viewMode.value = savedViewMode;
-  } else if (props.itemtype == "artists") {
-    viewMode.value = "panel";
-  } else {
-    viewMode.value = "list";
-  }
-});
 
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", keyListener);

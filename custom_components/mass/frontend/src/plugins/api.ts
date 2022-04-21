@@ -295,7 +295,6 @@ export class MusicAssistantApi {
   }
 
   private async connectHassStandalone() {
-    console.log("connectHassStandalone");
     let auth;
     const storeAuth = true;
     const authOptions = storeAuth
@@ -327,14 +326,12 @@ export class MusicAssistantApi {
         return;
       }
     }
-    console.log("auth", auth);
     const connection = await createConnection({ auth });
     connection.addEventListener("ready", () => window.history.back() )
     return connection;
   }
 
   private handleMassEvent(msg: MassEvent) {
-    console.log(msg.event, msg);
     if (msg.event == MassEventType.QUEUE_ADDED) {
       const queue = msg.data as PlayerQueue;
       this.queues[queue.queue_id] = queue;

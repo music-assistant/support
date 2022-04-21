@@ -1,5 +1,5 @@
 <template>
-  <ItemsListing itemtype="radios" :items="items" />
+  <ItemsListing itemtype="radios" :items="items" :loading="loading" />
 </template>
 
 <script setup lang="ts">
@@ -12,11 +12,12 @@ import { store } from "../plugins/store";
 
 const i18n = useI18n();
 const items = ref<Radio[]>([]);
+const loading = ref(true);
 
 api.getLibraryRadios().then((radios) => {
-  items.value.push(...radios);
+  items.value = radios;
+  loading.value = false;
 });
 
-store.topBarTransparent = false;
 store.topBarTitle = `${i18n.t("library")} | ${i18n.t("radios")}`;
 </script>

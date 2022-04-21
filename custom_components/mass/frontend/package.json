@@ -4,6 +4,7 @@
   "scripts": {
     "serve": "vite preview",
     "build": "vite build",
+    "https-preview": "serve dist",
     "test:unit": "vitest --environment jsdom",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "dev": "vite",
@@ -40,6 +41,7 @@
     "@vuetify/vite-plugin": "^1.0.0-alpha.0",
     "eslint": "^8.5.0",
     "eslint-plugin-vue": "^8.2.0",
+    "https-localhost": "^4.7.1",
     "jsdom": "^19.0.0",
     "prettier": "^2.5.1",
     "sass": "^1.38.0",

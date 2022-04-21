@@ -1,6 +1,7 @@
 import type { PlayerQueue } from "./api";
-import { reactive, type App } from "vue";
+import { reactive } from "vue";
 import type { MediaItemType } from "./api";
+import type {LocationQuery, RouteParams, RouteMeta} from "vue-router";
 
 interface Store {
   activePlayerQueue?: PlayerQueue;
@@ -9,11 +10,17 @@ interface Store {
   showContextMenu: boolean;
   darkTheme: boolean;
   topBarTitle?: string;
-  topBarTransparent: boolean;
-  topBarDefaultColor: string;
+  topBarColor: string;
+  topBarTextColor: string;
   defaultTopBarTitle: string;
   contextMenuItems: MediaItemType[];
   contextMenuParentItem?: MediaItemType;
+  prevRoutes: Array<{
+    name: string;
+    params: RouteParams;
+    query: LocationQuery;
+    meta: RouteMeta;
+  }>;
 }
 
 export const store: Store = reactive({
@@ -22,9 +29,10 @@ export const store: Store = reactive({
   showPlayersMenu: false,
   showContextMenu: false,
   darkTheme: false,
-  topBarTransparent: false,
-  topBarDefaultColor: "#03A9F4",
-  defaultTopBarTitle: "",
+  topBarColor: "#424242",
+  topBarTextColor: "#ffffff",
+  defaultTopBarTitle: "Music Assistant",
   contextMenuItems: [],
-  contextMenuParentItem: undefined
+  contextMenuParentItem: undefined,
+  prevRoutes: []
 });

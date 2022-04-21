@@ -19,6 +19,7 @@
     <ItemsListing
       :items="trackVersions"
       itemtype="tracks"
+      :loading="loading"
       :parent-item="track"
       v-if="activeTab == 'versions'"
     />
@@ -83,9 +84,9 @@ const activeTab = ref(0);
 
 const track = ref<Track>();
 const trackVersions = ref<Track[]>([]);
+const loading = ref(true);
 
 watchEffect(async () => {
-  console.log("track", props);
   const item = await api.getTrack(
     props.provider,
     props.item_id,
@@ -93,7 +94,9 @@ watchEffect(async () => {
     parseBool(props.refresh)
   );
   track.value = item;
+  // fetch additional info once main info retrieved
   trackVersions.value = await api.getTrackVersions(props.provider, props.item_id);
+  loading.value = false;
 });
 
 </script>

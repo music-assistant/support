@@ -1,5 +1,5 @@
 <template>
-  <ItemsListing itemtype="albums" :items="items" />
+  <ItemsListing itemtype="albums" :items="items" :loading="loading" />
 </template>
 
 <script setup lang="ts">
@@ -12,11 +12,12 @@ import { store } from "../plugins/store";
 
 const i18n = useI18n();
 const items = ref<Album[]>([]);
+const loading = ref(true);
 
 api.getLibraryAlbums().then((albums) => {
-  items.value.push(...albums);
+  items.value = albums;
+  loading.value = false;
 });
 
-store.topBarTransparent = false;
 store.topBarTitle = `${i18n.t("library")} | ${i18n.t("albums")}`;
 </script>

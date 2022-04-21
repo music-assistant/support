@@ -1,8 +1,7 @@
 <template>
   <v-dialog
-    :model-value="modelValue"
+    v-model="store.showContextMenu"
     transition="dialog-bottom-transition"
-    @click:outside="emit('update:model-value', false)"
     overlay-opacity="0.8"
     fullscreen
     :class="$vuetify.display.mobile ? '' : 'padded-overlay'"
@@ -17,9 +16,7 @@
           </span></v-toolbar-title
         >
 
-        <v-btn :icon="mdiClose" dark text @click="emit('update:model-value', false)">{{
-          $t("close")
-        }}</v-btn>
+        <v-btn :icon="mdiClose" dark text @click="close()">{{ $t("close") }}</v-btn>
       </v-toolbar>
       <!-- play contextmenu items -->
       <v-card-text v-if="playlists.length === 0 && playMenuItems.length > 0">
@@ -92,7 +89,7 @@ import {
   mdiMinusCircleOutline,
   mdiPlusCircleOutline,
   mdiClose,
-  mdiRefresh
+  mdiRefresh,
 } from "@mdi/js";
 import ListviewItem from "./ListviewItem.vue";
 import { MediaType, QueueOption } from "../plugins/api";
@@ -112,12 +109,6 @@ interface MenuItem {
   icon: string;
 }
 
-interface Props {
-  modelValue: boolean;
-  items: MediaItemType[];
-  parentItem?: MediaItemType;
-}
-const props = defineProps<Props>();
 const actionMenuItems = ref<MenuItem[]>([]);
 const playMenuItems = ref<MenuItem[]>([]);
 const header = ref("");
@@ -126,31 +117,24 @@ const curPlaylist = ref<Playlist>();
 // TEMP TODO // vuetify select has bug that object does not work so using plain text instead
 const queueName = ref("");
 
-const emit = defineEmits<{
-  (e: "update:model-value", value: boolean): void;
-}>();
-
 watch(
-  () => props.modelValue,
+  () => store.showContextMenu,
   (val) => {
     if (val) showContextMenu();
   }
 );
 
-watchEffect(async () => {
-  if (store.activePlayerQueue) queueName.value = store.activePlayerQueue.name;
-});
-
 const showContextMenu = function () {
   // show contextmenu items for the selected mediaItem(s)
+  queueName.value = store.activePlayerQueue?.name || "";
   playlists.value = [];
-  if (!props.items) return;
+  if (!store.contextMenuItems) return;
   curPlaylist.value = undefined;
-  const firstItem: MediaItem = props.items[0];
+  const firstItem: MediaItem = store.contextMenuItems[0];
   playMenuItems.value = [];
   actionMenuItems.value = [];
-  if (props.items.length === 1) header.value = firstItem.name;
-  else header.value = t("items_selected", [props.items.length]).toString();
+  if (store.contextMenuItems.length === 1) header.value = firstItem.name;
+  else header.value = t("items_selected", [store.contextMenuItems.length]).toString();
   // Play NOW
   if (itemIsAvailable(firstItem)) {
     playMenuItems.value.push({
@@ -158,7 +142,7 @@ const showContextMenu = function () {
       action: () => {
         api.playMedia(
           queueIdFromName(queueName.value),
-          props.items.map((x) => x.uri),
+          store.contextMenuItems.map((x) => x.uri),
           QueueOption.PLAY
         );
         close();
@@ -169,14 +153,14 @@ const showContextMenu = function () {
   // Play NEXT
   if (
     itemIsAvailable(firstItem) &&
-    (props.items.length === 1 || firstItem.media_type === MediaType.TRACK)
+    (store.contextMenuItems.length === 1 || firstItem.media_type === MediaType.TRACK)
   ) {
     playMenuItems.value.push({
       label: "play_next",
       action: () => {
         api.playMedia(
           queueIdFromName(queueName.value),
-          props.items.map((x) => x.uri),
+          store.contextMenuItems.map((x) => x.uri),
           QueueOption.NEXT
         );
         close();
@@ -191,7 +175,7 @@ const showContextMenu = function () {
       action: () => {
         api.playMedia(
           queueIdFromName(queueName.value),
-          props.items.map((x) => x.uri),
+          store.contextMenuItems.map((x) => x.uri),
           QueueOption.ADD
         );
         close();
@@ -202,8 +186,8 @@ const showContextMenu = function () {
 
   // show info
   if (
-    props.items.length === 1 &&
-    firstItem !== props.parentItem &&
+    store.contextMenuItems.length === 1 &&
+    firstItem !== store.contextMenuParentItem &&
     itemIsAvailable(firstItem)
   ) {
     actionMenuItems.value.push({
@@ -222,7 +206,7 @@ const showContextMenu = function () {
     });
   }
   // refresh item
-  if (props.items.length === 1) {
+  if (store.contextMenuItems.length === 1 && firstItem == store.contextMenuParentItem) {
     actionMenuItems.value.push({
       label: "refresh_item",
       action: () => {
@@ -245,7 +229,7 @@ const showContextMenu = function () {
     actionMenuItems.value.push({
       label: "add_library",
       action: () => {
-        api.addToLibrary(props.items);
+        api.addToLibrary(store.contextMenuItems);
         close();
       },
       icon: mdiHeartOutline,
@@ -256,15 +240,18 @@ const showContextMenu = function () {
     actionMenuItems.value.push({
       label: "remove_library",
       action: () => {
-        api.removeFromLibrary(props.items);
+        api.removeFromLibrary(store.contextMenuItems);
         close();
       },
       icon: mdiHeart,
     });
   }
   // remove from playlist (playlist tracks only)
-  if (props.parentItem && props.parentItem.media_type === MediaType.PLAYLIST) {
-    const playlist = props.parentItem as Playlist;
+  if (
+    store.contextMenuParentItem &&
+    store.contextMenuParentItem.media_type === MediaType.PLAYLIST
+  ) {
+    const playlist = store.contextMenuParentItem as Playlist;
     if (firstItem.media_type === MediaType.TRACK && playlist.is_editable) {
       actionMenuItems.value.push({
         label: "remove_playlist",
@@ -272,7 +259,7 @@ const showContextMenu = function () {
           api.removePlaylistTracks(
             playlist.provider,
             playlist.item_id,
-            props.items.map((x) => x.uri)
+            store.contextMenuItems.map((x) => x.uri)
           );
           close();
         },
@@ -296,9 +283,9 @@ const showPlaylistsMenu = async function () {
     if (
       playlist.is_editable &&
       !(
-        props.parentItem &&
-        props.parentItem.media_type === MediaType.PLAYLIST &&
-        playlist.item_id === props.parentItem.item_id
+        store.contextMenuParentItem &&
+        store.contextMenuParentItem.media_type === MediaType.PLAYLIST &&
+        playlist.item_id === store.contextMenuParentItem.item_id
       )
     ) {
       items.push(playlist);
@@ -311,7 +298,7 @@ const addToPlaylist = function (playlist: Playlist) {
   api.addPlaylistTracks(
     playlist.provider,
     playlist.item_id,
-    props.items.map((x) => x.uri)
+    store.contextMenuItems.map((x) => x.uri)
   );
   close();
 };
@@ -322,10 +309,9 @@ const itemIsAvailable = function (item: MediaItem) {
   return false;
 };
 const close = function () {
-  emit("update:model-value", false);
+  store.showContextMenu = false;
 };
 const queueIdFromName = function (name: string) {
-  console.log(name);
   for (const queueId in api.queues) {
     if (api.queues[queueId].name == name) return queueId;
   }

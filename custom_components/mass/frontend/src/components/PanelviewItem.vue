@@ -5,7 +5,7 @@
     :min-width="size"
     hover
     border
-    @click.right.prevent="emit('menu', item)"
+    @click.right.prevent="emit('select', item, !isSelected)"
   >
     <MediaItemThumb :item="item" :size="size" :border="false" />
     <div v-if="isSelected" style="position: absolute; top:0;background-color: #82b1ff94">

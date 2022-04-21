@@ -12,6 +12,7 @@
     <v-divider />
     <ItemsListing
       :items="playlistTracks"
+      :loading="loading"
       itemtype="playlisttracks"
       :parent-item="playlist"
       v-if="activeTab == 'tracks'"
@@ -25,22 +26,35 @@ import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
 import type { Playlist, Track } from "../plugins/api";
 import api from "../plugins/api";
+import { watchEffect } from "vue";
+import { parseBool } from "../utils";
 
 interface Props {
   item_id: string;
   provider: string;
+  lazy?: boolean | string;
+  refresh?: boolean | string;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  lazy: true,
+  refresh: false,
+});
 const activeTab = ref(0);
 
 const playlist = ref<Playlist>();
 const playlistTracks = ref<Track[]>([]);
+const loading = ref(true);
 
-api.getPlaylist(props.provider, props.item_id).then((x) => {
-  playlist.value = x;
-});
-api.getPlaylistTracks(props.provider, props.item_id).then((x) => {
-  playlistTracks.value.push(...x);
+watchEffect(async () => {
+  const item = await api.getPlaylist(
+    props.provider,
+    props.item_id,
+    parseBool(props.lazy),
+    parseBool(props.refresh)
+  );
+  playlist.value = item;
+  // fetch additional info once main info retrieved
+  playlistTracks.value = await api.getPlaylistTracks(props.provider, props.item_id);
+  loading.value = false;
 });
 </script>
-

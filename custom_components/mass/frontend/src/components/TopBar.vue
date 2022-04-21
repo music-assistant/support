@@ -1,11 +1,13 @@
 <template>
-  <v-app-bar dense app style="height: 55px" :color="topBarColor">
+  <v-app-bar dense app style="height: 55px" :color="store.topBarColor">
     <v-app-bar-nav-icon
       :icon="mdiArrowLeft"
-      @click="$router.push('/')"
-      v-if="$router.currentRoute.value.path != '/'"
+      :color="store.topBarTextColor"
+      @click="backButton"
+      v-if="store.prevRoutes.length > 0"
+      style="margin-left:-15px"
     />
-    <v-toolbar-title>{{ store.topBarTitle }}</v-toolbar-title>
+    <v-toolbar-title :style="`color: ${store.topBarTextColor}`">{{ store.topBarTitle }}</v-toolbar-title>
     <template v-slot:append>
       <div style="align-items: center">
         <v-dialog>
@@ -15,13 +17,14 @@
                 <v-progress-circular
                   v-if="api.jobs.value.length > 0"
                   indeterminate
+                  :color="store.topBarTextColor"
                   v-bind="mergeProps(menu, tooltip)"
                 ></v-progress-circular>
               </template>
               <span>{{ $t("jobs_running", [api.jobs.value.length]) }}</span>
             </v-tooltip>
           </template>
-          <v-card>
+          <v-card min-width="400">
             <v-card-title>{{ $t("jobs_running", [api.jobs.value.length]) }}</v-card-title>
             <v-list>
               <v-list-item v-for="(item, index) in api.jobs.value" :key="index">
@@ -34,6 +37,8 @@
         <v-btn
           :icon="mdiDotsVertical"
           v-if="store.contextMenuParentItem"
+          :color="store.topBarTextColor"
+          style="margin-right:-20px;"
           @click="
             store.contextMenuItems = [store.contextMenuParentItem];
             store.showContextMenu = true;
@@ -47,12 +52,23 @@
 <script setup lang="ts">
 import { mdiArrowLeft, mdiDotsVertical } from "@mdi/js";
 
-import { computed, mergeProps } from "vue";
+import { mergeProps } from "vue";
+import { useRouter } from "vue-router";
 import { api } from "../plugins/api";
 import { store } from "../plugins/store";
 
-const topBarColor = computed(() => {
-  if (store.topBarTransparent) return "transparent";
-  return store.topBarDefaultColor;
-});
+const router = useRouter();
+
+const backButton = function () {
+  const prevRoute = store.prevRoutes.pop();
+  if (prevRoute) {
+    prevRoute.params['backnav'] = 'true';
+    router.replace(prevRoute).then(() => {
+      setTimeout(() => {
+      window.scrollTo(0, prevRoute.meta.scrollPos || 0)
+    },400)
+    })
+  }
+}
+
 </script>

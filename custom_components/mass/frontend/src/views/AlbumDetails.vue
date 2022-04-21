@@ -18,12 +18,14 @@
     <v-divider />
     <ItemsListing
       :items="albumTracks"
+      :loading="loading"
       itemtype="albumtracks"
       :parent-item="album"
       v-if="activeTab == 'tracks'"
     />
     <ItemsListing
       :items="albumVersions"
+      :loading="loading"
       itemtype="albums"
       :parent-item="album"
       v-if="activeTab == 'versions'"
@@ -37,26 +39,37 @@ import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
 import type { Album, Track } from "../plugins/api";
 import api from "../plugins/api";
+import { watchEffect } from "vue";
+import { parseBool } from "../utils";
 
 interface Props {
   item_id: string;
   provider: string;
+  lazy?: boolean | string;
+  refresh?: boolean | string;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  lazy: true,
+  refresh: false,
+});
 const activeTab = ref(0);
 
 const album = ref<Album>();
 const albumTracks = ref<Track[]>([]);
 const albumVersions = ref<Album[]>([]);
+const loading = ref(true);
 
-api.getAlbum(props.provider, props.item_id).then((x) => {
-  album.value = x;
-});
-api.getAlbumVersions(props.provider, props.item_id).then((x) => {
-  albumVersions.value.push(...x);
-});
-api.getAlbumTracks(props.provider, props.item_id).then((x) => {
-  albumTracks.value.push(...x);
+watchEffect(async () => {
+  const item = await api.getAlbum(
+    props.provider,
+    props.item_id,
+    parseBool(props.lazy),
+    parseBool(props.refresh)
+  );
+  album.value = item;
+  // fetch additional info once main info retrieved
+  albumVersions.value = await api.getAlbumVersions(props.provider, props.item_id);
+  albumTracks.value = await api.getAlbumTracks(props.provider, props.item_id);
+  loading.value = false;
 });
 </script>
-

@@ -1,23 +1,49 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "@vuetify/vite-plugin";
-import vueI18n from "@intlify/vite-plugin-vue-i18n";
+import { VitePWA } from "vite-plugin-pwa";
 
 const path = require("path");
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    // vue({ customElement: true }),
     vue(),
-    // https://github.com/vuetifyjs/vuetify-loader/tree/next/packages/vite-plugin
     vuetify({
-      autoImport: true,
-      // styles: "expose"
+      autoImport: true
+    }),
+    VitePWA({
+      includeAssets: [
+        "favicon.svg",
+        "favicon.ico",
+        "robots.txt",
+        "apple-touch-icon.png"
+      ],
+      manifest: {
+        name: "Music Assistant",
+        short_name: "Music library manager",
+        description: "Turn Home Assistant into a jukebox.",
+        theme_color: "#ffffff",
+        icons: [
+          {
+            src: "pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png"
+          },
+          {
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png"
+          },
+          {
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any maskable"
+          }
+        ]
+      }
     })
-    // vueI18n({
-    //   include: path.resolve(__dirname, '../translations/**')
-    // })
   ],
   define: { "process.env": {} },
   resolve: {

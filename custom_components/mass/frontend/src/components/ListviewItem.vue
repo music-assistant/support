@@ -4,7 +4,6 @@
       ripple
       @click.stop="emit('click', item)"
       @click.right.prevent="emit('menu', item)"
-      :key="item.uri"
       style="padding-right: 0px"
     >
       <template v-slot:prepend
