@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@mdi/font": "5.9.55",
-    "home-assistant-js-websocket": "^7.0.2",
+    "home-assistant-js-websocket": "^7.0.3",
     "html-parsed-element": "^0.4.1",
     "mitt": "^3.0.0",
     "pinia": "^2.0.13",
