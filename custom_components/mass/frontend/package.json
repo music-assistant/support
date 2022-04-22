@@ -18,7 +18,7 @@
     "mitt": "^3.0.0",
     "pinia": "^2.0.13",
     "require": "^0.4.4",
-    "vue": "^3.2.31",
+    "vue": "^3.2.33",
     "vue-i18n": "^9.1.9",
     "vue-observe-visibility": "^2.0.0-alpha.1",
     "vue-router": "^4.0.14",
