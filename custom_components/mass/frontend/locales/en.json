@@ -69,5 +69,6 @@
   "actions": "Actions",
   "no_content": "No items found.",
   "no_content_sync_running": "Items not (yet) available. Please wait for the Library synchronization to complete.",
-  "details": "Details"
+  "details": "Details",
+  "explicit": "Explicit"
 }

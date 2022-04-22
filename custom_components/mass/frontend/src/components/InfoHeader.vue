@@ -1,18 +1,22 @@
 <template>
   <div>
-    <v-card flat :img="imgGradient" style="margin-top: -10px; z-index: 0">
+    <v-card
+      flat
+      :img="imgGradient"
+      style="margin-top: -10px; z-index: 0"
+      min-height="150"
+    >
       <v-img
         width="100%"
         height="100%"
         cover
-        position="center"
+        class="background-image"
         :src="api.getFanartUrl(item, true)"
         :gradient="
           store.darkTheme
             ? 'to bottom, rgba(0,0,0,.90), rgba(0,0,0,.75)'
             : 'to bottom, rgba(255,255,255,.90), rgba(255,255,255,.75)'
         "
-        style="position: absolute"
       >
       </v-img>
       <v-layout v-if="item" style="padding-left: 15px; padding-right: 15px">
@@ -227,7 +231,10 @@ const showFullInfo = ref(false);
 
 watchEffect(async () => {
   if (props.item) {
-    store.topBarTitle = t(props.item.media_type) + " | " + props.item.name;
+    store.topBarTitle =
+      '<span style="opacity:0.5">' +
+      t(props.item.media_type + "s") +
+      ` | </span>${props.item.name}`;
     store.contextMenuParentItem = props.item;
   }
 });
@@ -282,3 +289,13 @@ const truncateText = function (text: string, maxChars: number) {
   return valContainer;
 };
 </script>
+
+<style>
+
+.background-image {
+  position: absolute;
+}
+.background-image .v-img__img--cover {
+  object-position: 50% 20%
+}
+</style>

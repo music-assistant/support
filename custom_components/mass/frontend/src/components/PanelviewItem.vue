@@ -90,12 +90,13 @@ import { useRouter } from "vue-router";
 import MediaItemThumb from "./MediaItemThumb.vue";
 import ProviderIcons from "./ProviderIcons.vue";
 import { iconHiRes } from "./ProviderIcons.vue";
-import type {
+import {
   Album,
   Artist,
   ItemMapping,
   MediaItem,
   MediaItemType,
+  MediaQuality,
 } from "../plugins/api";
 import { MediaType } from "../plugins/api";
 import { formatDuration, truncateString } from "../utils";
@@ -118,14 +119,14 @@ const props = withDefaults(defineProps<Props>(), {
 // computed properties
 const isHiRes = computed(() => {
   for (const prov of props.item.provider_ids) {
-    if (prov.quality !== 99 && prov.quality > 6) {
+    if (prov.quality >= MediaQuality.FLAC_LOSSLESS_HI_RES_1) {
       if (prov.details) {
         return prov.details;
-      } else if (prov.quality === 7) {
+      } else if (prov.quality === MediaQuality.FLAC_LOSSLESS_HI_RES_1) {
         return "44.1/48khz 24 bits";
-      } else if (prov.quality === 8) {
+      } else if (prov.quality === MediaQuality.FLAC_LOSSLESS_HI_RES_2) {
         return "88.2/96khz 24 bits";
-      } else if (prov.quality === 9) {
+      } else if (prov.quality === MediaQuality.FLAC_LOSSLESS_HI_RES_3) {
         return "176/192khz 24 bits";
       } else {
         return "+192kHz 24 bits";

@@ -24,9 +24,9 @@
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
-import type { Playlist, Track } from "../plugins/api";
+import { MassEvent, MassEventType, Playlist, Track } from "../plugins/api";
 import api from "../plugins/api";
-import { watchEffect } from "vue";
+import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
 interface Props {
@@ -57,4 +57,15 @@ watchEffect(async () => {
   playlistTracks.value = await api.getPlaylistTracks(props.provider, props.item_id);
   loading.value = false;
 });
+
+// listen for item updates to refresh interface when that happens
+const unsub = api.subscribe(MassEventType.PLAYLIST_UPDATED, async (evt: MassEvent) => {
+  const updItem = evt.data as Playlist;
+  if (updItem.item_id == props.item_id) {
+    // got update for current item
+    // fetch playlist tracks as they might have changed
+    playlistTracks.value = await api.getPlaylistTracks(props.provider, props.item_id);
+  }
+});
+onBeforeUnmount(unsub);
 </script>

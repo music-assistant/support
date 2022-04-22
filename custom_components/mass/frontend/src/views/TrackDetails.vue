@@ -32,14 +32,17 @@
             <th class="text-left">Available ?</th>
             <th class="text-left">Quality</th>
             <th class="text-left">details</th>
+            <th class="text-left">preview</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in track?.provider_ids" :key="item.item_id">
+          <tr v-for="(item, index) of track?.provider_ids" :key="item.item_id">
             <td class="details-column">
               <v-img width="25px" :src="getProviderIcon(item.provider)"></v-img>
             </td>
-            <td class="details-column">{{ item.item_id }}</td>
+            <td class="details-column">
+              <a :href="item.url" target="_blank">{{ item.item_id }}</a>
+            </td>
             <td class="details-column">{{ item.available }}</td>
             <td class="details-column">
               <v-img
@@ -53,6 +56,12 @@
               ></v-img>
             </td>
             <td class="details-column">{{ item.details }}</td>
+            <td
+              class="details-column"
+              @mouseover="fetchPreviewUrl(item.provider, item.item_id, index)"
+            >
+              <audio style="width: 260px" controls :src="previewUrls[index]"></audio>
+            </td>
           </tr>
         </tbody>
       </v-table>
@@ -61,13 +70,14 @@
 </template>
 
 <script setup lang="ts">
+import { mdiPlayCircleOutline } from "@mdi/js";
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
-import { ref } from "@vue/reactivity";
-import type { Track } from "../plugins/api";
+import { ref, reactive } from "@vue/reactivity";
+import { MassEvent, MassEventType, Track } from "../plugins/api";
 import api from "../plugins/api";
 import { getProviderIcon, getQualityIcon } from "../components/ProviderIcons.vue";
-import { watchEffect } from "vue";
+import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
 interface Props {
@@ -85,6 +95,7 @@ const activeTab = ref(0);
 const track = ref<Track>();
 const trackVersions = ref<Track[]>([]);
 const loading = ref(true);
+const previewUrls = reactive<Record<number, string>>({});
 
 watchEffect(async () => {
   const item = await api.getTrack(
@@ -99,6 +110,30 @@ watchEffect(async () => {
   loading.value = false;
 });
 
+const fetchPreviewUrl = async function (
+  provider: string,
+  item_id: string,
+  index: number
+) {
+  if (index in previewUrls) return;
+  const url = await api.getTrackPreviewUrl(provider, item_id);
+  previewUrls[index] = url;
+};
+
+// listen for item updates to refresh interface when that happens
+const unsub = api.subscribe(MassEventType.TRACK_ADDED, (evt: MassEvent) => {
+  const newItem = evt.data as Track;
+  if (
+    (props.provider == "database" && newItem.item_id == props.item_id) ||
+    newItem.provider_ids.filter(
+      (x) => x.provider == props.provider && x.item_id == props.item_id
+    ).length > 0
+  ) {
+    // got update for current item
+    track.value = newItem;
+  }
+});
+onBeforeUnmount(unsub);
 </script>
 
 <style>

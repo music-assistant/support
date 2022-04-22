@@ -7,7 +7,10 @@
       style="padding-right: 0px"
     >
       <template v-slot:prepend
-        ><v-list-item-avatar class="listitem-thumb" @click.stop="emit('select', item, !isSelected)">
+        ><v-list-item-avatar
+          class="listitem-thumb"
+          @click.stop="emit('select', item, !isSelected)"
+        >
           <MediaItemThumb :item="item" :size="50" />
           <div
             v-if="isSelected"
@@ -22,6 +25,19 @@
         {{ item.name }}
         <span v-if="'version' in item && item.version">({{ item.version }})</span>
         <b v-if="!itemIsAvailable(item)"> UNAVAILABLE</b>
+        <!-- explicit icon -->
+        <v-tooltip anchor="bottom">
+          <template #activator="{ props }">
+            <v-icon
+              v-bind="props"
+              class="listitem-action"
+              :icon="mdiAlphaEBox"
+              width="35"
+              v-if="parseBool(item.metadata['explicit'])"
+            />
+          </template>
+          <span>{{ $t("explicit") }}</span>
+        </v-tooltip>
       </template>
 
       <!-- subtitle -->
@@ -58,13 +74,6 @@
       <!-- actions -->
       <template v-slot:append>
         <div class="listitem-actions">
-          <!-- provider icons -->
-          <ProviderIcons
-            v-if="item.provider_ids && showProviders && !$vuetify.display.mobile"
-            :provider-ids="item.provider_ids"
-            :height="20"
-            class="listitem-actions"
-          />
 
           <!-- hi res icon -->
           <v-img
@@ -80,6 +89,14 @@
           >
             <v-tooltip activator="parent" anchor="bottom">{{ highResDetails }}</v-tooltip>
           </v-img>
+
+          <!-- provider icons -->
+          <ProviderIcons
+            v-if="item.provider_ids && showProviders && !$vuetify.display.mobile"
+            :provider-ids="item.provider_ids"
+            :height="20"
+            class="listitem-actions"
+          />
 
           <!-- in library (heart) icon -->
           <div
@@ -134,6 +151,7 @@ import {
   mdiHeartOutline,
   mdiDotsVertical,
   mdiCheckboxMarkedOutline,
+  mdiAlphaEBox,
 } from "@mdi/js";
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
@@ -149,8 +167,8 @@ import type {
   MediaItem,
   MediaItemType,
 } from "../plugins/api";
-import { api } from "../plugins/api";
-import { formatDuration } from "../utils";
+import { api, MediaQuality } from "../plugins/api";
+import { formatDuration, parseBool } from "../utils";
 import { store } from "../plugins/store";
 
 // global refs
@@ -179,14 +197,15 @@ const props = withDefaults(defineProps<Props>(), {
 const highResDetails = computed(() => {
   if (!props.item.provider_ids) return "";
   for (const prov of props.item.provider_ids) {
-    if (prov.quality !== 99 && prov.quality > 6) {
+    if (!prov.quality) continue;
+    if (prov.quality >= MediaQuality.FLAC_LOSSLESS_HI_RES_1) {
       if (prov.details) {
         return prov.details;
-      } else if (prov.quality === 7) {
+      } else if (prov.quality === MediaQuality.FLAC_LOSSLESS_HI_RES_1) {
         return "44.1/48khz 24 bits";
-      } else if (prov.quality === 8) {
+      } else if (prov.quality === MediaQuality.FLAC_LOSSLESS_HI_RES_2) {
         return "88.2/96khz 24 bits";
-      } else if (prov.quality === 9) {
+      } else if (prov.quality === MediaQuality.FLAC_LOSSLESS_HI_RES_3) {
         return "176/192khz 24 bits";
       } else {
         return "+192kHz 24 bits";
@@ -198,9 +217,9 @@ const highResDetails = computed(() => {
 
 // emits
 const emit = defineEmits<{
-  (e: "menu", value: MediaItem): void;
-  (e: "click", value: MediaItem): void;
-  (e: "select", value: MediaItem, selected: boolean): void;
+  (e: "menu", value: MediaItemType): void;
+  (e: "click", value: MediaItemType): void;
+  (e: "select", value: MediaItemType, selected: boolean): void;
 }>();
 
 // methods
@@ -240,7 +259,6 @@ const itemIsAvailable = function (item: MediaItem) {
 </script>
 
 <style scoped>
-
 .listitem-actions {
   display: flex;
   justify-content: end;

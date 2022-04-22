@@ -7,7 +7,7 @@
       v-if="store.prevRoutes.length > 0"
       style="margin-left:-15px"
     />
-    <v-toolbar-title :style="`color: ${store.topBarTextColor}`">{{ store.topBarTitle }}</v-toolbar-title>
+    <v-toolbar-title :style="`color: ${store.topBarTextColor}`" v-html="store.topBarTitle"></v-toolbar-title>
     <template v-slot:append>
       <div style="align-items: center">
         <v-dialog>

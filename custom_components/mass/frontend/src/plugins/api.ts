@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   type Connection,
-  createLongLivedTokenAuth,
   createConnection,
   ERR_HASS_HOST_REQUIRED,
   getAuth
@@ -18,22 +17,23 @@ export enum MediaType {
 }
 
 export enum MediaQuality {
-  LOSSY_MP3 = 0,
-  LOSSY_OGG = 1,
-  LOSSY_AAC = 2,
-  FLAC_LOSSLESS = 6, // 44.1/48khz 16 bits
-  FLAC_LOSSLESS_HI_RES_1 = 7, // 44.1/48khz 24 bits HI-RES
-  FLAC_LOSSLESS_HI_RES_2 = 8, // 88.2/96khz 24 bits HI-RES
-  FLAC_LOSSLESS_HI_RES_3 = 9, // 176/192khz 24 bits HI-RES
-  FLAC_LOSSLESS_HI_RES_4 = 10, // above 192khz 24 bits HI-RES
-  UNKNOWN = 99
+  UNKNOWN = 0,
+  LOSSY_MP3 = 1,
+  LOSSY_OGG = 2,
+  LOSSY_AAC = 3,
+  FLAC_LOSSLESS = 10, // 44.1/48khz 16 bits
+  FLAC_LOSSLESS_HI_RES_1 = 20, // 44.1/48khz 24 bits HI-RES
+  FLAC_LOSSLESS_HI_RES_2 = 21, // 88.2/96khz 24 bits HI-RES
+  FLAC_LOSSLESS_HI_RES_3 = 22, // 176/192khz 24 bits HI-RES
+  FLAC_LOSSLESS_HI_RES_4 = 23 // above 192khz 24 bits HI-RES
 }
 
 export interface MediaItemProviderId {
   provider: string;
   item_id: string;
-  quality: MediaQuality;
+  quality?: MediaQuality;
   details?: string;
+  url?: string;
   available: boolean;
 }
 
@@ -42,7 +42,7 @@ export interface MediaItem {
   provider: string;
   name: string;
   sort_name?: string;
-  metadata: Record<string, string>;
+  metadata: Record<string, string | boolean | number | string[]>;
   provider_ids: MediaItemProviderId[];
   in_library: boolean;
   media_type: MediaType;
@@ -231,10 +231,13 @@ export enum MassEventType {
   ALBUM_ADDED = "album added",
   TRACK_ADDED = "track added",
   PLAYLIST_ADDED = "playlist added",
+  PLAYLIST_UPDATED = "playlist updated",
   RADIO_ADDED = "radio added",
   TASK_UPDATED = "task updated",
   PROVIDER_REGISTERED = "provider registered",
-  BACKGROUND_JOBS_UPDATED = "background_jobs_updated"
+  BACKGROUND_JOBS_UPDATED = "background_jobs_updated",
+  // special types for local subscriptions only
+  ALL = "*"
 }
 
 export enum QueueOption {
@@ -258,11 +261,13 @@ export class MusicAssistantApi {
   public players = reactive<{ [player_id: string]: Player }>({});
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
   public jobs = ref<string[]>([]);
+  private _wsEventCallbacks: Array<[string, CallableFunction]>;
 
   constructor(conn?: Connection) {
     this._initialized = false;
     this._conn = conn;
     this._lastId = 0;
+    this._wsEventCallbacks = [];
   }
 
   public get initialized() {
@@ -294,62 +299,18 @@ export class MusicAssistantApi {
     );
   }
 
-  private async connectHassStandalone() {
-    let auth;
-    const storeAuth = true;
-    const authOptions = storeAuth
-      ? {
-          async loadTokens() {
-            try {
-              return JSON.parse(localStorage.hassTokens);
-            } catch (err) {
-              return undefined;
-            }
-          },
-          saveTokens: (tokens) => {
-            localStorage.hassTokens = JSON.stringify(tokens);
-          }
-        }
-      : {};
-    try {
-      auth = await getAuth(authOptions);
-    } catch (err) {
-      if (err === ERR_HASS_HOST_REQUIRED) {
-        authOptions.hassUrl = prompt(
-          "What host to connect to?",
-          "http://localhost:8123"
-        );
-        if (!authOptions.hassUrl) return;
-        auth = await getAuth(authOptions);
-      } else {
-        alert(`Unknown error: ${err}`);
-        return;
+  public subscribe(eventFilter: MassEventType, callback: CallableFunction) {
+    // subscribe a listener for events
+    // returns handle to remove the listener
+    const listener: [MassEventType, CallableFunction] = [eventFilter, callback];
+    this._wsEventCallbacks.push(listener);
+    const removeCallback = () => {
+      const index = this._wsEventCallbacks.indexOf(listener);
+      if (index > -1) {
+        this._wsEventCallbacks.splice(index, 1);
       }
-    }
-    const connection = await createConnection({ auth });
-    connection.addEventListener("ready", () => window.history.back() )
-    return connection;
-  }
-
-  private handleMassEvent(msg: MassEvent) {
-    if (msg.event == MassEventType.QUEUE_ADDED) {
-      const queue = msg.data as PlayerQueue;
-      this.queues[queue.queue_id] = queue;
-    } else if (msg.event == MassEventType.QUEUE_UPDATED) {
-      const queue = msg.data as PlayerQueue;
-      Object.assign(this.queues[queue.queue_id], queue);
-    } else if (msg.event == MassEventType.QUEUE_TIME_UPDATED) {
-      const queue = msg.data as PlayerQueue;
-      Object.assign(this.queues[queue.queue_id], queue);
-    } else if (msg.event == MassEventType.PLAYER_ADDED) {
-      const player = msg.data as Player;
-      this.players[player.player_id] = player;
-    } else if (msg.event == MassEventType.PLAYER_UPDATED) {
-      const player = msg.data as Player;
-      Object.assign(this.players[player.player_id], player);
-    } else if (msg.event == MassEventType.BACKGROUND_JOBS_UPDATED) {
-      this.jobs.value = msg.data as string[];
-    }
+    };
+    return removeCallback;
   }
 
   public async getPlayers(): Promise<Player[]> {
@@ -379,6 +340,13 @@ export class MusicAssistantApi {
     lazy = true
   ): Promise<Track[]> {
     return this.getData("track/versions", { provider, item_id, lazy });
+  }
+
+  public getTrackPreviewUrl(
+    provider: string,
+    item_id: string
+  ): Promise<string> {
+    return this.getData("track/preview", { provider, item_id });
   }
 
   public getLibraryArtists(): Promise<Artist[]> {
@@ -460,20 +428,12 @@ export class MusicAssistantApi {
     return this.getData("playlist/tracks", { provider, item_id, lazy });
   }
 
-  public addPlaylistTracks(
-    provider: string,
-    item_id: string,
-    uri: string | string[]
-  ) {
-    this.executeCmd("playlist/tracks/add", { provider, item_id, uri });
+  public addPlaylistTracks(item_id: string, uri: string | string[]) {
+    this.executeCmd("playlist/tracks/add", { item_id, uri });
   }
 
-  public removePlaylistTracks(
-    provider: string,
-    item_id: string,
-    uri: string | string[]
-  ) {
-    this.executeCmd("playlist/tracks/remove", { provider, item_id, uri });
+  public removePlaylistTracks(item_id: string, position: number | number[]) {
+    this.executeCmd("playlist/tracks/remove", { item_id, position });
   }
 
   public getLibraryRadios(): Promise<Radio[]> {
@@ -500,17 +460,16 @@ export class MusicAssistantApi {
   public async addToLibrary(items: MediaItemType[]) {
     for (const x of items) {
       x.in_library = true;
+      this.executeCmd("library/add", { uri: x.uri });
     }
-    // TODO
   }
   public async removeFromLibrary(items: MediaItemType[]) {
     for (const x of items) {
       x.in_library = false;
+      this.executeCmd("library/remove", { uri: x.uri });
     }
-    // TODO
   }
   public async toggleLibrary(item: MediaItemType) {
-    // TODO
     if (item.in_library) return await this.removeFromLibrary([item]);
     return await this.addToLibrary([item]);
   }
@@ -567,7 +526,7 @@ export class MusicAssistantApi {
     // get imageurl for mediaItem
     if (!mediaItem || !mediaItem.media_type) return "";
     if ("metadata" in mediaItem && mediaItem.metadata[key])
-      return mediaItem.metadata[key];
+      return mediaItem.metadata[key] as string;
     if (
       "album" in mediaItem &&
       mediaItem.album !== null &&
@@ -575,14 +534,14 @@ export class MusicAssistantApi {
       mediaItem.album.metadata &&
       mediaItem.album.metadata[key]
     )
-      return mediaItem.album.metadata[key];
+      return mediaItem.album.metadata[key] as string;
     if (
       "artist" in mediaItem &&
       "metadata" in mediaItem.artist &&
       mediaItem.artist.metadata &&
       mediaItem.artist.metadata[key]
     )
-      return mediaItem.artist.metadata[key];
+      return mediaItem.artist.metadata[key] as string;
   }
 
   public getFanartUrl(mediaItem?: MediaItemType, fallbackToImage = true) {
@@ -596,6 +555,74 @@ export class MusicAssistantApi {
     if (url) return url;
     const fullItem = await this.getItem(item.uri);
     return this.getImageUrl(fullItem);
+  }
+
+  private async connectHassStandalone() {
+    let auth;
+    const storeAuth = true;
+    const authOptions = storeAuth
+      ? {
+          async loadTokens() {
+            try {
+              return JSON.parse(localStorage.hassTokens);
+            } catch (err) {
+              return undefined;
+            }
+          },
+          saveTokens: (tokens) => {
+            localStorage.hassTokens = JSON.stringify(tokens);
+          }
+        }
+      : {};
+    try {
+      auth = await getAuth(authOptions);
+    } catch (err) {
+      if (err === ERR_HASS_HOST_REQUIRED) {
+        authOptions.hassUrl = prompt(
+          "What host to connect to?",
+          "http://localhost:8123"
+        );
+        if (!authOptions.hassUrl) return;
+        auth = await getAuth(authOptions);
+      } else {
+        alert(`Unknown error: ${err}`);
+        return;
+      }
+    }
+    const connection = await createConnection({ auth });
+    connection.addEventListener("ready", () => window.history.back());
+    return connection;
+  }
+
+  private handleMassEvent(msg: MassEvent) {
+    if (msg.event == MassEventType.QUEUE_ADDED) {
+      const queue = msg.data as PlayerQueue;
+      this.queues[queue.queue_id] = queue;
+    } else if (msg.event == MassEventType.QUEUE_UPDATED) {
+      const queue = msg.data as PlayerQueue;
+      Object.assign(this.queues[queue.queue_id], queue);
+    } else if (msg.event == MassEventType.QUEUE_TIME_UPDATED) {
+      const queue = msg.data as PlayerQueue;
+      Object.assign(this.queues[queue.queue_id], queue);
+    } else if (msg.event == MassEventType.PLAYER_ADDED) {
+      const player = msg.data as Player;
+      this.players[player.player_id] = player;
+    } else if (msg.event == MassEventType.PLAYER_UPDATED) {
+      const player = msg.data as Player;
+      Object.assign(this.players[player.player_id], player);
+    } else if (msg.event == MassEventType.BACKGROUND_JOBS_UPDATED) {
+      this.jobs.value = msg.data as string[];
+    }
+    this.signalEvent(msg);
+  }
+
+  private signalEvent(msg: MassEvent) {
+    // signal event to all listeners
+    for (const listener of this._wsEventCallbacks) {
+      if (listener[0] === MassEventType.ALL || listener[0] === msg.event) {
+        listener[1](msg);
+      }
+    }
   }
 
   private getData<T>(endpoint: string, args?: Record<string, any>): Promise<T> {

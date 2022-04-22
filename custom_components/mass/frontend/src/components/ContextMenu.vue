@@ -70,7 +70,7 @@
             :hidelibrary="true"
             :hidemenu="true"
             :is-selected="false"
-            :onclick-handler="addToPlaylist"
+            @click="addToPlaylist"
           ></listviewItem>
         </v-list>
       </v-card-text>
@@ -92,7 +92,7 @@ import {
   mdiRefresh,
 } from "@mdi/js";
 import ListviewItem from "./ListviewItem.vue";
-import { MediaType, QueueOption } from "../plugins/api";
+import { MediaType, QueueOption, Track } from "../plugins/api";
 import type { MediaItem, MediaItemType, Playlist } from "../plugins/api";
 import { ref, watch, watchEffect } from "vue";
 import api from "../plugins/api";
@@ -257,9 +257,8 @@ const showContextMenu = function () {
         label: "remove_playlist",
         action: () => {
           api.removePlaylistTracks(
-            playlist.provider,
             playlist.item_id,
-            store.contextMenuItems.map((x) => x.uri)
+            store.contextMenuItems.map((x) => (x as Track).position as number)
           );
           close();
         },
@@ -293,11 +292,10 @@ const showPlaylistsMenu = async function () {
   }
   playlists.value = items;
 };
-const addToPlaylist = function (playlist: Playlist) {
+const addToPlaylist = function (value: MediaItemType) {
   /// add track(s) to playlist
   api.addPlaylistTracks(
-    playlist.provider,
-    playlist.item_id,
+    value.item_id,
     store.contextMenuItems.map((x) => x.uri)
   );
   close();

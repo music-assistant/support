@@ -97,7 +97,6 @@
             :item="item"
             :show-track-number="itemtype == 'albumtracks'"
             :show-duration="item.media_type != 'radio'"
-            :show-providers="item.provider == 'database'"
             :is-selected="isSelected(item)"
             @select="onSelect"
             @menu="onMenu"

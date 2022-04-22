@@ -10,7 +10,7 @@ import { api } from "../plugins/api";
 import type { Track } from "../plugins/api";
 import { store } from "../plugins/store";
 
-const i18n = useI18n();
+const { t } = useI18n();
 const items = ref<Track[]>([]);
 const loading = ref(true);
 
@@ -19,5 +19,5 @@ api.getLibraryTracks().then((tracks) => {
   loading.value = false;
 });
 
-store.topBarTitle = `${i18n.t("library")} | ${i18n.t("tracks")}`;
+store.topBarTitle = t("tracks");
 </script>

@@ -22,6 +22,7 @@ ID = "id"
 ITEM_ID = "item_id"
 PROVIDER = "provider"
 URI = "uri"
+POSITION = "position"
 PLAYER_ID = "player_id"
 QUEUE_ID = "queue_id"
 COMMAND = "command"
@@ -48,6 +49,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_tracks)
     websocket_api.async_register_command(hass, websocket_track)
     websocket_api.async_register_command(hass, websocket_track_versions)
+    websocket_api.async_register_command(hass, websocket_track_preview)
     websocket_api.async_register_command(hass, websocket_playlists)
     websocket_api.async_register_command(hass, websocket_playlist)
     websocket_api.async_register_command(hass, websocket_playlist_tracks)
@@ -58,6 +60,8 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_queue_command)
     websocket_api.async_register_command(hass, websocket_play_media)
     websocket_api.async_register_command(hass, websocket_item)
+    websocket_api.async_register_command(hass, websocket_library_add)
+    websocket_api.async_register_command(hass, websocket_library_remove)
     websocket_api.async_register_command(hass, websocket_artist_tracks)
     websocket_api.async_register_command(hass, websocket_artist_albums)
     websocket_api.async_register_command(hass, websocket_jobs)
@@ -84,64 +88,7 @@ def async_get_mass(orig_func: Callable) -> Callable:
     return async_get_mass_func
 
 
-@websocket_api.websocket_command(
-    {vol.Required(TYPE): f"{DOMAIN}/players", vol.Optional(PLAYER_ID): str}
-)
-@websocket_api.async_response
-@async_get_mass
-async def websocket_players(
-    hass: HomeAssistant,
-    connection: ActiveConnection,
-    msg: dict,
-    mass: MusicAssistant,
-) -> None:
-    """Return player(s)."""
-    if PLAYER_ID in msg:
-        item = mass.players.get_player(msg[PLAYER_ID])
-        if item is None:
-            connection.send_error(
-                msg[ID], ERR_NOT_FOUND, f"Player not found: {msg[PLAYER_ID]}"
-            )
-            return
-        result = item.to_dict()
-    else:
-        # all items
-        result = [item.to_dict() for item in mass.players.players]
-
-    connection.send_result(
-        msg[ID],
-        result,
-    )
-
-
-@websocket_api.websocket_command(
-    {vol.Required(TYPE): f"{DOMAIN}/playerqueues", vol.Optional(QUEUE_ID): str}
-)
-@websocket_api.async_response
-@async_get_mass
-async def websocket_playerqueues(
-    hass: HomeAssistant,
-    connection: ActiveConnection,
-    msg: dict,
-    mass: MusicAssistant,
-) -> None:
-    """Return player queue(s)."""
-    if ITEM_ID in msg:
-        item = mass.players.get_player_queue(msg[QUEUE_ID])
-        if item is None:
-            connection.send_error(
-                msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[QUEUE_ID]}"
-            )
-            return
-        result = item.to_dict()
-    else:
-        # all items
-        result = [item.to_dict() for item in mass.players.player_queues]
-
-    connection.send_result(
-        msg[ID],
-        result,
-    )
+##### ARTIST RELATED COMMANDS ##################
 
 
 @websocket_api.websocket_command(
@@ -198,6 +145,63 @@ async def websocket_artist(
         msg[ID],
         item.to_dict(),
     )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/artist/tracks",
+        vol.Required(ITEM_ID): str,
+        vol.Required(PROVIDER): str,
+        vol.Optional(LAZY): bool,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_artist_tracks(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return artist toptracks."""
+    result = [
+        item.to_dict()
+        for item in await mass.music.artists.toptracks(msg[ITEM_ID], msg[PROVIDER])
+    ]
+    connection.send_result(
+        msg[ID],
+        result,
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/artist/albums",
+        vol.Required(ITEM_ID): str,
+        vol.Required(PROVIDER): str,
+        vol.Optional(LAZY): bool,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_artist_albums(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return artist albums."""
+    result = [
+        item.to_dict()
+        for item in await mass.music.artists.albums(msg[ITEM_ID], msg[PROVIDER])
+    ]
+    connection.send_result(
+        msg[ID],
+        result,
+    )
+
+
+##### ALBUM RELATED COMMANDS ##################
 
 
 @websocket_api.websocket_command(
@@ -310,6 +314,9 @@ async def websocket_album_versions(
     )
 
 
+##### TRACK RELATED COMMANDS ##################
+
+
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/tracks",
@@ -391,6 +398,33 @@ async def websocket_track(
         msg[ID],
         item.to_dict(),
     )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/track/preview",
+        vol.Required(ITEM_ID): str,
+        vol.Required(PROVIDER): str,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_track_preview(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return track preview url."""
+    url = await mass.streams.get_preview_url(msg[PROVIDER], msg[ITEM_ID])
+
+    connection.send_result(
+        msg[ID],
+        url,
+    )
+
+
+##### PLAYLIST RELATED COMMANDS ##################
 
 
 @websocket_api.websocket_command(
@@ -477,6 +511,64 @@ async def websocket_playlist_tracks(
 
 @websocket_api.websocket_command(
     {
+        vol.Required(TYPE): f"{DOMAIN}/playlist/tracks/add",
+        vol.Required(ITEM_ID): str,
+        vol.Required(URI): vol.Any(str, list),
+        vol.Optional(COMMAND, default=QueueOption.PLAY): vol.Coerce(QueueOption),
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_add_playlist_tracks(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Add playlist tracks command."""
+    if isinstance(msg[URI], list):
+        await mass.music.playlists.add_playlist_tracks(msg[ITEM_ID], msg[URI])
+    else:
+        await mass.music.playlists.add_playlist_track(msg[ITEM_ID], msg[URI])
+
+    connection.send_result(
+        msg[ID],
+        "OK",
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/playlist/tracks/remove",
+        vol.Required(ITEM_ID): str,
+        vol.Required(POSITION): vol.Any(int, list),
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_remove_playlist_tracks(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Add playlist tracks command."""
+    positions = msg[POSITION]
+    if isinstance(msg[POSITION], int):
+        positions = [msg[POSITION]]
+    await mass.music.playlists.remove_playlist_tracks(msg[ITEM_ID], positions)
+
+    connection.send_result(
+        msg[ID],
+        "OK",
+    )
+
+
+##### RADIO RELATED COMMANDS ##################
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required(TYPE): f"{DOMAIN}/radios",
     }
 )
@@ -531,6 +623,9 @@ async def websocket_radio(
     )
 
 
+##### GENERIC MEDIA ITEM RELATED COMMANDS ##################
+
+
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/item",
@@ -561,25 +656,85 @@ async def websocket_item(
 
 @websocket_api.websocket_command(
     {
-        vol.Required(TYPE): f"{DOMAIN}/artist/tracks",
-        vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
-        vol.Optional(LAZY): bool,
+        vol.Required(TYPE): f"{DOMAIN}/library/add",
+        vol.Required(URI): str,
     }
 )
 @websocket_api.async_response
 @async_get_mass
-async def websocket_artist_tracks(
+async def websocket_library_add(
     hass: HomeAssistant,
     connection: ActiveConnection,
     msg: dict,
     mass: MusicAssistant,
 ) -> None:
-    """Return artist toptracks."""
-    result = [
-        item.to_dict()
-        for item in await mass.music.artists.toptracks(msg[ITEM_ID], msg[PROVIDER])
-    ]
+    """Add item to library."""
+    item = await mass.music.get_item_by_uri(msg[URI])
+    if not item:
+        connection.send_error(msg[ID], ERR_NOT_FOUND, f"Item not found: {msg[URI]}")
+
+    await mass.music.add_to_library(item.media_type, item.item_id, item.provider)
+
+    connection.send_result(
+        msg[ID],
+        "OK",
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/library/remove",
+        vol.Required(URI): str,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_library_remove(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Remove item from library."""
+    item = await mass.music.get_item_by_uri(msg[URI])
+    if not item:
+        connection.send_error(msg[ID], ERR_NOT_FOUND, f"Item not found: {msg[URI]}")
+
+    await mass.music.remove_from_library(item.media_type, item.item_id, item.provider)
+
+    connection.send_result(
+        msg[ID],
+        "OK",
+    )
+
+
+##### PLAYER/QUEUE RELATED COMMANDS ##################
+
+
+@websocket_api.websocket_command(
+    {vol.Required(TYPE): f"{DOMAIN}/players", vol.Optional(PLAYER_ID): str}
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_players(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return player(s)."""
+    if PLAYER_ID in msg:
+        item = mass.players.get_player(msg[PLAYER_ID])
+        if item is None:
+            connection.send_error(
+                msg[ID], ERR_NOT_FOUND, f"Player not found: {msg[PLAYER_ID]}"
+            )
+            return
+        result = item.to_dict()
+    else:
+        # all items
+        result = [item.to_dict() for item in mass.players.players]
+
     connection.send_result(
         msg[ID],
         result,
@@ -587,26 +742,29 @@ async def websocket_artist_tracks(
 
 
 @websocket_api.websocket_command(
-    {
-        vol.Required(TYPE): f"{DOMAIN}/artist/albums",
-        vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
-        vol.Optional(LAZY): bool,
-    }
+    {vol.Required(TYPE): f"{DOMAIN}/playerqueues", vol.Optional(QUEUE_ID): str}
 )
 @websocket_api.async_response
 @async_get_mass
-async def websocket_artist_albums(
+async def websocket_playerqueues(
     hass: HomeAssistant,
     connection: ActiveConnection,
     msg: dict,
     mass: MusicAssistant,
 ) -> None:
-    """Return artist albums."""
-    result = [
-        item.to_dict()
-        for item in await mass.music.artists.albums(msg[ITEM_ID], msg[PROVIDER])
-    ]
+    """Return player queue(s)."""
+    if ITEM_ID in msg:
+        item = mass.players.get_player_queue(msg[QUEUE_ID])
+        if item is None:
+            connection.send_error(
+                msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[QUEUE_ID]}"
+            )
+            return
+        result = item.to_dict()
+    else:
+        # all items
+        result = [item.to_dict() for item in mass.players.player_queues]
+
     connection.send_result(
         msg[ID],
         result,
@@ -716,72 +874,6 @@ async def websocket_play_media(
         )
         return
     connection.send_error(msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[QUEUE_ID]}")
-
-
-@websocket_api.websocket_command(
-    {
-        vol.Required(TYPE): f"{DOMAIN}/playlist/tracks/add",
-        vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
-        vol.Required(URI): vol.Any(str, list),
-        vol.Optional(COMMAND, default=QueueOption.PLAY): vol.Coerce(QueueOption),
-    }
-)
-@websocket_api.async_response
-@async_get_mass
-async def websocket_add_playlist_tracks(
-    hass: HomeAssistant,
-    connection: ActiveConnection,
-    msg: dict,
-    mass: MusicAssistant,
-) -> None:
-    """Add playlist tracks command."""
-    if isinstance(msg[URI], list):
-        await mass.music.playlists.add_playlist_tracks(
-            msg[ITEM_ID], msg[PROVIDER], msg[URI]
-        )
-    else:
-        await mass.music.playlists.add_playlist_track(
-            msg[ITEM_ID], msg[PROVIDER], msg[URI]
-        )
-
-    connection.send_result(
-        msg[ID],
-        "OK",
-    )
-
-
-@websocket_api.websocket_command(
-    {
-        vol.Required(TYPE): f"{DOMAIN}/playlist/tracks/remove",
-        vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
-        vol.Required(URI): vol.Any(str, list),
-        vol.Optional(COMMAND, default=QueueOption.PLAY): vol.Coerce(QueueOption),
-    }
-)
-@websocket_api.async_response
-@async_get_mass
-async def websocket_remove_playlist_tracks(
-    hass: HomeAssistant,
-    connection: ActiveConnection,
-    msg: dict,
-    mass: MusicAssistant,
-) -> None:
-    """Add playlist tracks command."""
-    if isinstance(msg[URI], list):
-        await mass.music.playlists.remove_playlist_tracks(
-            msg[ITEM_ID], msg[PROVIDER], msg[URI]
-        )
-    else:
-        await mass.music.playlists.remove_playlist_track(
-            msg[ITEM_ID], msg[PROVIDER], msg[URI]
-        )
-
-    connection.send_result(
-        msg[ID],
-        "OK",
-    )
 
 
 @websocket_api.websocket_command(

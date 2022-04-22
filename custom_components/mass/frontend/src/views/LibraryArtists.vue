@@ -10,7 +10,7 @@ import { api } from "../plugins/api";
 import type { Artist } from "../plugins/api";
 import { store } from "../plugins/store";
 
-const i18n = useI18n();
+const { t } = useI18n();
 const items = ref<Artist[]>([]);
 const loading = ref(true);
 
@@ -19,5 +19,5 @@ api.getLibraryArtists().then((artists) => {
   loading.value = false;
 });
 
-store.topBarTitle = `${i18n.t("library")} | ${i18n.t("artists")}`;
+store.topBarTitle = t("artists");
 </script>

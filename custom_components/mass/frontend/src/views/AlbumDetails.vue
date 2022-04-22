@@ -37,9 +37,9 @@
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
-import type { Album, Track } from "../plugins/api";
+import { Album, MassEvent, MassEventType, Track } from "../plugins/api";
 import api from "../plugins/api";
-import { watchEffect } from "vue";
+import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
 interface Props {
@@ -72,4 +72,19 @@ watchEffect(async () => {
   albumTracks.value = await api.getAlbumTracks(props.provider, props.item_id);
   loading.value = false;
 });
+
+// listen for item updates to refresh interface when that happens
+const unsub = api.subscribe(MassEventType.ALBUM_ADDED, (evt: MassEvent) => {
+  const newItem = evt.data as Album;
+  if (
+    (props.provider == "database" && newItem.item_id == props.item_id) ||
+    newItem.provider_ids.filter(
+      (x) => x.provider == props.provider && x.item_id == props.item_id
+    ).length > 0
+  ) {
+    // got update for current item
+    album.value = newItem;
+  }
+});
+onBeforeUnmount(unsub);
 </script>

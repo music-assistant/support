@@ -42,7 +42,7 @@ const uniqueProviders = computed(() => {
       output.push(prov);
     }
   });
-  return output;
+  return output.sort((a, b) => a.provider.localeCompare(b.provider));
 });
 </script>
 
@@ -76,7 +76,8 @@ export const getContentTypeIcon = function (contentType: ContentType) {
   if (contentType == ContentType.OGG) return iconOgg;
   return iconFallback;
 };
-export const getQualityIcon = function (quality: MediaQuality) {
+export const getQualityIcon = function (quality?: MediaQuality) {
+  if (!quality) return iconFallback;
   if (quality == MediaQuality.LOSSY_AAC) return iconAac;
   if (quality == MediaQuality.LOSSY_MP3) return iconMp3;
   if (quality == MediaQuality.LOSSY_OGG) return iconOgg;

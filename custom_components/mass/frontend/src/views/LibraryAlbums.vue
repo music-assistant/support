@@ -10,7 +10,7 @@ import { api } from "../plugins/api";
 import type { Album } from "../plugins/api";
 import { store } from "../plugins/store";
 
-const i18n = useI18n();
+const { t } = useI18n();
 const items = ref<Album[]>([]);
 const loading = ref(true);
 
@@ -19,5 +19,5 @@ api.getLibraryAlbums().then((albums) => {
   loading.value = false;
 });
 
-store.topBarTitle = `${i18n.t("library")} | ${i18n.t("albums")}`;
+store.topBarTitle = t("albums");
 </script>

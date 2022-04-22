@@ -10,7 +10,7 @@ import { api } from "../plugins/api";
 import type { Radio } from "../plugins/api";
 import { store } from "../plugins/store";
 
-const i18n = useI18n();
+const {t } = useI18n();
 const items = ref<Radio[]>([]);
 const loading = ref(true);
 
@@ -19,5 +19,5 @@ api.getLibraryRadios().then((radios) => {
   loading.value = false;
 });
 
-store.topBarTitle = `${i18n.t("library")} | ${i18n.t("radios")}`;
+store.topBarTitle = t("radios");
 </script>
