@@ -5,9 +5,15 @@ name: Test with Pre-commit and Tox
 
 on:
   push:
-    branches: [master]
+    branches: [main]
+    paths:
+      - '**.py'
+      - 'requirements_dev.txt'
   pull_request:
-    branches: [master]
+    branches: [main]
+    paths:
+      - '**.py'
+      - 'requirements_dev.txt'
   workflow_dispatch:
 
 jobs:
