@@ -23,7 +23,7 @@
     "vue-observe-visibility": "^2.0.0-alpha.1",
     "vue-router": "^4.0.14",
     "vue-virtual-scroller": "^2.0.0-alpha.1",
-    "vuetify": "^3.0.0-beta.0",
+    "vuetify": "^3.0.0-beta.1",
     "webfontloader": "^1.0.0"
   },
   "devDependencies": {
