@@ -467,7 +467,7 @@ async def websocket_playlist(
 ) -> None:
     """Return track."""
     item = await mass.music.playlists.get(
-        msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY], force_refresh=[msg[REFRESH]]
+        msg[ITEM_ID], msg[PROVIDER], lazy=msg[LAZY], force_refresh=msg[REFRESH]
     )
     if item is None:
         connection.send_error(
@@ -892,7 +892,7 @@ async def websocket_jobs(
     """Return running background jobs."""
     connection.send_result(
         msg[ID],
-        mass.jobs,
+        [x.to_dict() for x in mass.jobs],
     )
 
 

@@ -13,18 +13,16 @@
   >
     <template v-slot:placeholder>
       <div class="d-flex align-center justify-center fill-height">
-        <v-progress-circular
-          indeterminate
-          color="grey-lighten-4"
-        ></v-progress-circular>
+        <v-progress-circular indeterminate color="grey-lighten-4"></v-progress-circular>
       </div>
     </template>
   </v-img>
 </template>
 
 <script setup lang="ts">
+import { store } from "@/plugins/store";
 import { watchEffect, ref } from "vue";
-import type { ItemMapping, MediaItemType } from "../plugins/api";
+import { MediaType, type ItemMapping, type MediaItemType } from "../plugins/api";
 import { api } from "../plugins/api";
 
 interface Props {
@@ -53,7 +51,12 @@ const getImageThumb = (url: string, size = 200) => {
 
 watchEffect(async () => {
   if (!props.item) return;
-  const url = await api?.getImageUrlForMediaItem(props.item);
+  let url: string | undefined = '';
+  // const url = await api?.getImageUrlForMediaItem(props.item);
+  url = api?.getImageUrl(props.item);
+  if (!url && store.contextMenuParentItem) {
+    url = api?.getImageUrl(store.contextMenuParentItem);
+  }
 
   if (typeof url == "string" && (!props.size || props.size > 200)) {
     // simply use the fullsize url

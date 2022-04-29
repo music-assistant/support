@@ -1,14 +1,14 @@
 import { createRouter, createWebHashHistory, type Router } from "vue-router";
-import HomeView from "../views/Home.vue";
-import LibraryArtistsView from "../views/LibraryArtists.vue";
-import LibraryTracksView from "../views/LibraryTracks.vue";
-import LibraryAlbumsView from "@/views/LibraryAlbums.vue";
-import LibraryPlaylistsView from "@/views/LibraryPlaylists.vue";
-import LibraryRadiosView from "@/views/LibraryRadios.vue";
-import ArtistDetailsView from "@/views/ArtistDetails.vue";
-import AlbumDetailsView from "@/views/AlbumDetails.vue";
-import TrackDetailsView from "@/views/TrackDetails.vue";
-import PlaylistDetailsView from "@/views/PlaylistDetails.vue";
+import HomeView from "../views/HomeView.vue";
+import LibraryArtists from "../views/LibraryArtists.vue";
+import LibraryTracks from "../views/LibraryTracks.vue";
+import LibraryAlbums from "@/views/LibraryAlbums.vue";
+import LibraryPlaylists from "@/views/LibraryPlaylists.vue";
+import LibraryRadios from "@/views/LibraryRadios.vue";
+import ArtistDetails from "@/views/ArtistDetails.vue";
+import AlbumDetails from "@/views/AlbumDetails.vue";
+import TrackDetails from "@/views/TrackDetails.vue";
+import PlaylistDetails from "@/views/PlaylistDetails.vue";
 import { store } from "./store";
 
 declare module "vue-router" {
@@ -22,45 +22,45 @@ const routes = [
   {
     name: "artists",
     path: "/artists",
-    component: LibraryArtistsView,
+    component: LibraryArtists,
     props: true,
   },
   {
     name: "tracks",
     path: "/tracks",
-    component: LibraryTracksView,
+    component: LibraryTracks,
     props: true,
   },
   {
     name: "albums",
     path: "/albums",
-    component: LibraryAlbumsView,
+    component: LibraryAlbums,
     props: true,
   },
   {
     name: "playlists",
     path: "/playlists",
-    component: LibraryPlaylistsView,
+    component: LibraryPlaylists,
     props: true,
   },
   {
     name: "radios",
     path: "/radios",
-    component: LibraryRadiosView,
+    component: LibraryRadios,
     props: true,
   },
   {
     name: "artist",
     path: "/artist",
-    component: ArtistDetailsView,
+    component: ArtistDetails,
     props: true,
   },
-  { name: "album", path: "/album", component: AlbumDetailsView, props: true },
-  { name: "track", path: "/track", component: TrackDetailsView, props: true },
+  { name: "album", path: "/album", component: AlbumDetails, props: true },
+  { name: "track", path: "/track", component: TrackDetails, props: true },
   {
     name: "playlist",
     path: "/playlist",
-    component: PlaylistDetailsView,
+    component: PlaylistDetails,
     props: true,
   },
 ];

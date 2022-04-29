@@ -3,7 +3,7 @@ import {
   type Connection,
   createConnection,
   ERR_HASS_HOST_REQUIRED,
-  getAuth,
+  getAuth
 } from "home-assistant-js-websocket";
 import { reactive, ref } from "vue";
 
@@ -13,7 +13,7 @@ export enum MediaType {
   TRACK = "track",
   PLAYLIST = "playlist",
   RADIO = "radio",
-  UNKNOWN = "unknown",
+  UNKNOWN = "unknown"
 }
 
 export enum MediaQuality {
@@ -25,7 +25,7 @@ export enum MediaQuality {
   FLAC_LOSSLESS_HI_RES_1 = 20, // 44.1/48khz 24 bits HI-RES
   FLAC_LOSSLESS_HI_RES_2 = 21, // 88.2/96khz 24 bits HI-RES
   FLAC_LOSSLESS_HI_RES_3 = 22, // 176/192khz 24 bits HI-RES
-  FLAC_LOSSLESS_HI_RES_4 = 23, // above 192khz 24 bits HI-RES
+  FLAC_LOSSLESS_HI_RES_4 = 23 // above 192khz 24 bits HI-RES
 }
 
 export interface MediaItemProviderId {
@@ -37,22 +37,77 @@ export interface MediaItemProviderId {
   available: boolean;
 }
 
-export interface MediaItem {
-  item_id: string;
-  provider: string;
-  name: string;
-  sort_name?: string;
-  metadata: Record<string, string | boolean | number | string[]>;
-  provider_ids: MediaItemProviderId[];
-  in_library: boolean;
-  media_type: MediaType;
-  uri: string;
+export enum LinkType {
+  WEBSITE = "website",
+  FACEBOOK = "facebook",
+  TWITTER = "twitter",
+  LASTFM = "lastfm",
+  YOUTUBE = "youtube",
+  INSTAGRAM = "instagram",
+  SNAPCHAT = "snapchat",
+  TIKTOK = "tiktok",
+  DISCOGS = "discogs",
+  WIKIPEDIA = "wikipedia",
+  ALLMUSIC = "allmusic"
+}
+
+export enum ImageType {
+  THUMB = "thumb",
+  WIDE_THUMB = "wide_thumb",
+  FANART = "fanart",
+  LOGO = "logo",
+  CLEARART = "clearart",
+  BANNER = "banner",
+  CUTOUT = "cutout",
+  BACK = "back",
+  CDART = "cdart",
+  OTHER = "other"
+}
+
+export interface MediaItemLink {
+  type: LinkType;
+  url: string;
+}
+
+export interface MediaItemImage {
+  type: ImageType;
+  url: string;
+}
+
+export interface MediaItemMetadata {
+  description?: string;
+  review?: string;
+  explicit?: boolean;
+  images?: MediaItemImage[];
+  genres?: string[];
+  mood?: string;
+  style?: string;
+  copyright?: string;
+  lyrics?: string;
+  label?: string;
+  links?: MediaItemLink[];
+  performers?: string[];
+  preview?: string;
+  replaygain?: number;
+  popularity?: number;
 }
 
 export interface ItemMapping {
   item_id: string;
   provider: string;
   name: string;
+  media_type: MediaType;
+  uri: string;
+}
+
+export interface MediaItem {
+  item_id: string;
+  provider: string;
+  name: string;
+  sort_name?: string;
+  metadata: MediaItemMetadata;
+  provider_ids: MediaItemProviderId[];
+  in_library: boolean;
   media_type: MediaType;
   uri: string;
 }
@@ -65,7 +120,7 @@ export enum AlbumType {
   ALBUM = "album",
   SINGLE = "single",
   COMPILATION = "compilation",
-  UNKNOWN = "unknown",
+  UNKNOWN = "unknown"
 }
 
 export interface Album extends MediaItem {
@@ -74,12 +129,14 @@ export interface Album extends MediaItem {
   artist: ItemMapping | Artist;
   album_type: AlbumType;
   upc?: string;
+  musicbrainz_id?: string;
 }
 
 export interface Track extends MediaItem {
   duration: number;
   version: string;
   isrc: string;
+  musicbrainz_id?: string;
   artists: Array<ItemMapping | Artist>;
   // album track only
   album: ItemMapping | Album;
@@ -105,7 +162,7 @@ export enum StreamType {
   EXECUTABLE = "executable",
   URL = "url",
   FILE = "file",
-  CACHE = "cache",
+  CACHE = "cache"
 }
 
 export enum ContentType {
@@ -119,7 +176,7 @@ export enum ContentType {
   PCM_S24LE = "s24le", // PCM signed 24-bit little-endian
   PCM_S32LE = "s32le", // PCM signed 32-bit little-endian
   PCM_F32LE = "f32le", // PCM 32-bit floating-point little-endian
-  PCM_F64LE = "f64le,", // PCM 64-bit floating-point little-endian
+  PCM_F64LE = "f64le," // PCM 64-bit floating-point little-endian
 }
 
 export interface StreamDetails {
@@ -144,7 +201,7 @@ export enum PlayerState {
   IDLE = "idle",
   PAUSED = "paused",
   PLAYING = "playing",
-  OFF = "off",
+  OFF = "off"
 }
 
 export interface DeviceInfo {
@@ -211,7 +268,7 @@ export enum QueueCommand {
   SHUFFLE = "shuffle",
   REPEAT = "repeat",
   CLEAR = "clear",
-  PLAY_INDEX = "play_index",
+  PLAY_INDEX = "play_index"
 }
 
 export enum MassEventType {
@@ -235,16 +292,16 @@ export enum MassEventType {
   RADIO_ADDED = "radio added",
   TASK_UPDATED = "task updated",
   PROVIDER_REGISTERED = "provider registered",
-  BACKGROUND_JOBS_UPDATED = "background_jobs_updated",
+  BACKGROUND_JOB_UPDATED = "background_job_updated",
   // special types for local subscriptions only
-  ALL = "*",
+  ALL = "*"
 }
 
 export enum QueueOption {
   PLAY = "play",
   REPLACE = "replace",
   NEXT = "next",
-  ADD = "add",
+  ADD = "add"
 }
 
 export type MassEvent = {
@@ -294,7 +351,7 @@ export class MusicAssistantApi {
         this.handleMassEvent(msg);
       },
       {
-        type: "mass/subscribe",
+        type: "mass/subscribe"
       }
     );
   }
@@ -522,30 +579,54 @@ export class MusicAssistantApi {
     this.executeCmd("play_media", { queue_id, command, uri });
   }
 
-  public getImageUrl(mediaItem?: MediaItemType | ItemMapping, key = "image") {
+  public getImageUrl(
+    mediaItem?: MediaItemType | ItemMapping,
+    type: ImageType = ImageType.THUMB
+  ) {
     // get imageurl for mediaItem
     if (!mediaItem || !mediaItem.media_type) return "";
-    if ("metadata" in mediaItem && mediaItem.metadata[key])
-      return mediaItem.metadata[key] as string;
+    if ("metadata" in mediaItem && mediaItem.metadata.images) {
+      for (const img of mediaItem.metadata.images) {
+        if (img.type == type) return img.url;
+      }
+    }
+    // retry with album of track
     if (
       "album" in mediaItem &&
-      mediaItem.album !== null &&
+      mediaItem.album &&
       "metadata" in mediaItem.album &&
       mediaItem.album.metadata &&
-      mediaItem.album.metadata[key]
-    )
-      return mediaItem.album.metadata[key] as string;
+      mediaItem.album.metadata.images
+    ) {
+      for (const img of mediaItem.album.metadata.images) {
+        if (img.type == type) return img.url;
+      }
+    }
+    // retry with album artist
     if (
       "artist" in mediaItem &&
       "metadata" in mediaItem.artist &&
       mediaItem.artist.metadata &&
-      mediaItem.artist.metadata[key]
-    )
-      return mediaItem.artist.metadata[key] as string;
+      mediaItem.artist.metadata.images
+    ) {
+      for (const img of mediaItem.artist.metadata.images) {
+        if (img.type == type) return img.url;
+      }
+    }
+    // retry with track artist
+    if ("artists" in mediaItem && mediaItem.artists) {
+      for (const artist of mediaItem.artists) {
+        if ("metadata" in artist && artist.metadata.images) {
+          for (const img of artist.metadata.images) {
+            if (img.type == type) return img.url;
+          }
+        }
+      }
+    }
   }
 
   public getFanartUrl(mediaItem?: MediaItemType, fallbackToImage = true) {
-    const fanartImage = this.getImageUrl(mediaItem, "fanart");
+    const fanartImage = this.getImageUrl(mediaItem, ImageType.FANART);
     if (fanartImage) return fanartImage;
     if (fallbackToImage) return this.getImageUrl(mediaItem);
   }
@@ -571,7 +652,7 @@ export class MusicAssistantApi {
           },
           saveTokens: (tokens) => {
             localStorage.hassTokens = JSON.stringify(tokens);
-          },
+          }
         }
       : {};
     try {
@@ -630,7 +711,7 @@ export class MusicAssistantApi {
     return (this._conn as Connection).sendMessagePromise({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args,
+      ...args
     });
   }
 
@@ -639,7 +720,7 @@ export class MusicAssistantApi {
     (this._conn as Connection).sendMessage({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args,
+      ...args
     });
   }
 }
