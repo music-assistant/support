@@ -7,25 +7,25 @@
       padding-bottom: 20px;
     "
   >
-    <v-row dense align-content="stretch" align="stretch">
-      <v-col v-for="card in cards" :key="card.key" align-self="stretch">
+    <v-row dense>
+      <v-col v-for="card in cards" :key="card.key">
         <v-card
           @click="$router.push(card.path)"
           hover
           border
-          min-width="220"
+          min-width="120"
           align="center"
           justify="center"
         >
           <v-icon
             variant="plain"
             :icon="card.icon"
-            size="120"
-            style="align: center"
+            size="70"
+            style="align: center;padding: 10px"
           >
           </v-icon>
           <v-divider />
-          <div class="text-center text-h5" style="padding: 10px">
+          <div class="text-center text-subtitle-1" style="padding: 10px">
             {{ $t(card.key) }}
           </div>
         </v-card>

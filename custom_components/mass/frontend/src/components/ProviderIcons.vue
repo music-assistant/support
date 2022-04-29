@@ -1,19 +1,13 @@
 <template>
   <div class="provider-icons" :style="`height: ${height};`">
-    <!-- <img
-      class="provider-icon"
-      v-for="prov of uniqueProviders"
-      :key="prov.provider"
-      :height="height"
-      :src="getProviderIcon(prov.provider)"
-      :style="$vuetify.theme.current == 'light' ? 'filter: invert(100%);' : ''"
-    /> -->
     <img
       class="provider-icon"
       v-for="prov of uniqueProviders"
       :key="prov.provider"
       :height="height"
       :src="getProviderIcon(prov.provider)"
+      @click="enableLink ? provClicked(prov) : ''"
+      :style="enableLink ? 'cursor: pointer' : ''"
     />
   </div>
 </template>
@@ -26,6 +20,7 @@ import { computed } from "vue";
 interface Props {
   providerIds: MediaItemProviderId[];
   height: number;
+  enableLink?: boolean;
 }
 const props = defineProps<Props>();
 
@@ -42,21 +37,22 @@ const uniqueProviders = computed(() => {
   });
   return output.sort((a, b) => a.provider.localeCompare(b.provider));
 });
+
+const provClicked = function (prov: MediaItemProviderId) {
+  if (prov.url) {
+    window.open(prov.url, "_blank");
+  }
+};
 </script>
 
 <script lang="ts">
 import { ContentType } from "../plugins/api";
 
-export const iconSpotify = new URL("../assets/spotify.png", import.meta.url)
-  .href;
+export const iconSpotify = new URL("../assets/spotify.png", import.meta.url).href;
 export const iconQobuz = new URL("../assets/qobuz.png", import.meta.url).href;
-export const iconFilesystem = new URL(
-  "../assets/filesystem.png",
-  import.meta.url
-).href;
+export const iconFilesystem = new URL("../assets/filesystem.png", import.meta.url).href;
 export const iconTuneIn = new URL("../assets/tunein.png", import.meta.url).href;
-export const iconFallback = new URL("../assets/fallback.png", import.meta.url)
-  .href;
+export const iconFallback = new URL("../assets/fallback.png", import.meta.url).href;
 
 export const iconAac = new URL("../assets/aac.png", import.meta.url).href;
 export const iconFlac = new URL("../assets/flac.png", import.meta.url).href;

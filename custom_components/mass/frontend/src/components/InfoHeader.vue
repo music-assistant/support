@@ -108,7 +108,7 @@
                 color="primary"
                 style="margin-left: -3px; margin-right: 3px"
                 small
-                :iocn="mdiAlbum"
+                :icon="mdiAlbum"
               ></v-icon>
               <a style="color: secondary" @click="albumClick(item.album)">{{
                 item.album.name
@@ -121,12 +121,12 @@
             <v-btn
               color="primary"
               tile
+              :prepend-icon="mdiPlayCircle"
               @click="
                 store.contextMenuItems = [item];
                 store.showContextMenu = true;
               "
             >
-              <v-icon left :icon="mdiPlayCircle"></v-icon>
               {{ $t("play") }}
             </v-btn>
             <v-btn
@@ -134,9 +134,9 @@
               style="margin-left: 10px"
               color="primary"
               tile
+               :prepend-icon="mdiHeartOutline"
               @click="api.addToLibrary([item])"
             >
-              <v-icon left :icon="mdiHeartOutline"></v-icon>
               {{ $t("add_library") }}
             </v-btn>
             <v-btn
@@ -144,9 +144,9 @@
               style="margin-left: 10px"
               color="primary"
               tile
+              :prepend-icon="mdiHeart"
               @click="api.removeFromLibrary([item])"
             >
-              <v-icon left :icon="mdiHeart"></v-icon>
               {{ $t("remove_library") }}
             </v-btn>
           </div>
@@ -196,7 +196,7 @@
         </div>
         <!-- provider icons -->
         <div style="position: absolute; float: right; right: 15px; top: 15px">
-          <ProviderIcons :provider-ids="item.provider_ids" :height="25" />
+          <ProviderIcons :provider-ids="item.provider_ids" :height="25" :enable-link="true"  />
         </div>
       </v-layout>
     </v-card>

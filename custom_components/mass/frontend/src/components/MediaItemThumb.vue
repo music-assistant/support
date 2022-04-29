@@ -51,12 +51,10 @@ const getImageThumb = (url: string, size = 200) => {
 
 watchEffect(async () => {
   if (!props.item) return;
-  let url: string | undefined = '';
-  // const url = await api?.getImageUrlForMediaItem(props.item);
-  url = api?.getImageUrl(props.item);
-  if (!url && store.contextMenuParentItem) {
-    url = api?.getImageUrl(store.contextMenuParentItem);
-  }
+  const url =
+    api?.getImageUrl(props.item) ||
+    api?.getImageUrl(store.contextMenuParentItem) ||
+    (await api?.getImageUrlForMediaItem(props.item));
 
   if (typeof url == "string" && (!props.size || props.size > 200)) {
     // simply use the fullsize url

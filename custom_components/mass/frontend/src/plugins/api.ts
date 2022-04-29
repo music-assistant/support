@@ -310,6 +310,21 @@ export type MassEvent = {
   data?: Record<string, any>;
 };
 
+export enum JobStatus {
+  PENDING = "pending",
+  RUNNING = "running",
+  CANCELLED = "cancelled",
+  FINISHED = "success",
+  ERROR = "error"
+}
+
+export type BackgroundJob = {
+  id: string;
+  name: string;
+  timestamp: number;
+  status: JobStatus;
+};
+
 export class MusicAssistantApi {
   // eslint-disable-next-line prettier/prettier
   private _conn?: Connection;
@@ -317,7 +332,7 @@ export class MusicAssistantApi {
   private _initialized: boolean;
   public players = reactive<{ [player_id: string]: Player }>({});
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
-  public jobs = ref<string[]>([]);
+  public jobs = ref<BackgroundJob[]>([]);
   private _wsEventCallbacks: Array<[string, CallableFunction]>;
 
   constructor(conn?: Connection) {
@@ -691,8 +706,11 @@ export class MusicAssistantApi {
     } else if (msg.event == MassEventType.PLAYER_UPDATED) {
       const player = msg.data as Player;
       Object.assign(this.players[player.player_id], player);
-    } else if (msg.event == MassEventType.BACKGROUND_JOBS_UPDATED) {
-      this.jobs.value = msg.data as string[];
+    } else if (msg.event == MassEventType.BACKGROUND_JOB_UPDATED) {
+      this.jobs.value = this.jobs.value.filter(
+        (x) => x.id !== msg.data?.id && x.status !== JobStatus.FINISHED
+      );
+      this.jobs.value.push(msg.data as BackgroundJob);
     }
     this.signalEvent(msg);
   }

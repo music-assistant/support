@@ -65,6 +65,7 @@
     "off": "uitgeschakeld"
   },
   "dark_mode": "Donkere Modus",
+  "jobs": "Achtergrondtaken",
   "jobs_running": "Er zijn {0} achtergrondtaken actief.",
   "actions": "Acties",
   "no_content": "Geen items gevonden.",

@@ -65,6 +65,7 @@
     "off": "off"
   },
   "dark_mode": "Dark mode",
+  "jobs": "Background jobs",
   "jobs_running": "There are {0} background jobs running.",
   "actions": "Actions",
   "no_content": "No items found.",
