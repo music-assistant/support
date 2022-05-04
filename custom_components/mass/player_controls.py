@@ -50,8 +50,8 @@ from .const import (
     CONF_MUTE_POWER_PLAYERS,
     CONF_PLAYER_ENTITIES,
     DOMAIN,
-    SQUEEZEBOX_DOMAIN,
-    SQUEEZEBOX_EVENT,
+    SLIMPROTO_DOMAIN,
+    SLIMPROTO_EVENT,
 )
 from .media_source import MEDIA_CONTENT_TYPE_FLAC
 
@@ -221,9 +221,9 @@ class HassSqueezeboxPlayer(HassPlayer):
     ) -> None:
         """Initialize player."""
         self.squeeze_id = squeeze_id
-        self.slimserver = hass.data[SQUEEZEBOX_DOMAIN]
+        self.slimserver = hass.data[SLIMPROTO_DOMAIN]
         self._unsubs = [
-            hass.bus.async_listen(SQUEEZEBOX_EVENT, self.on_squeezebox_event)
+            hass.bus.async_listen(SLIMPROTO_EVENT, self.on_squeezebox_event)
         ]
         super().__init__(hass, entity_id, False)
 
@@ -418,7 +418,7 @@ class HassPlayerControls:
                 if dev_entry := dev_reg.async_get(ent_entry.device_id):
                     if dev_entry.model == "Google Cast Group":
                         player = HassCastGroupPlayer(self.hass, entity_id)
-            elif ent_entry.platform == SQUEEZEBOX_DOMAIN:
+            elif ent_entry.platform == SLIMPROTO_DOMAIN:
                 player = HassSqueezeboxPlayer(self.hass, entity_id, ent_entry.unique_id)
             elif ent_entry.platform == GROUP_DOMAIN:
                 player = HassGroupPlayer(self.hass, entity_id)

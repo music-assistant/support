@@ -36,10 +36,9 @@
 <script setup lang="ts">
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
-import { ref } from "@vue/reactivity";
 import { Album, MassEvent, MassEventType, Track } from "../plugins/api";
 import api from "../plugins/api";
-import { onBeforeUnmount, watchEffect } from "vue";
+import { onBeforeUnmount, watchEffect, ref } from "vue";
 import { parseBool } from "../utils";
 
 interface Props {

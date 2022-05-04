@@ -35,5 +35,5 @@ ATTR_ACTIVE_QUEUE = "active_queue"
 ATTR_QUEUE_ITEMS = "items_in_queue"
 
 
-SQUEEZEBOX_DOMAIN = "squeezebox_local"
-SQUEEZEBOX_EVENT = "squeezebox_local_player_event"
+SLIMPROTO_DOMAIN = "slimproto"
+SLIMPROTO_EVENT = "slimproto_player_event"
