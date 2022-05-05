@@ -294,6 +294,7 @@
                 </template>
                 <template v-slot:append>
                 <v-slider
+                style="vertical-align: middle; margin-top: 15px;"
                   color="primary"
                   thumb-label="always"
                   :min="-50"
@@ -312,7 +313,7 @@
             <!-- crossfade duration -->
             <v-list-item>
               <template v-slot:prepend>
-                <v-list-item-avatar style="padding-right: 10px">
+                <v-list-item-avatar style="padding-right: 15px">
                   <v-icon :icon="mdiCameraTimer"></v-icon>
                 </v-list-item-avatar>
               </template>
@@ -321,9 +322,10 @@
                 </template>
                 <template v-slot:append>
                 <v-slider
+                  style="vertical-align: middle;margin-top: 10px;"
                   color="primary"
                   thumb-label="always"
-                  :min="-50"
+                  :min="0"
                   :max="10"
                   v-model="store.activePlayerQueue.crossfade_duration"
                   @update:model-value="
