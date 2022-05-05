@@ -62,6 +62,7 @@
   "volume_normalization_enabled": "Volume normalisatie ingeschakeld",
   "volume_normalization_target": "Volume normalizatisatie doelvolume",
   "crossfade_enabled": "Crossfade ingeschakeld",
+  "crossfade_duration": "Crossfade duur (0-10 seconds)",
   "state": {
     "playing": "afspelen",
     "idle": "gestopt",

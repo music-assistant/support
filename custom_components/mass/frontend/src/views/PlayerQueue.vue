@@ -295,13 +295,39 @@
                 <template v-slot:append>
                 <v-slider
                   color="primary"
-                  :label="$t('volume_normalization_target')"
-                  :thumb-label="true"
+                  thumb-label="always"
                   :min="-50"
                   :max="10"
                   v-model="store.activePlayerQueue.volume_normalization_target"
                   @update:model-value="
                     api.queueCommandSetVolumeNormalizationTarget(
+                      store.activePlayerQueue?.queue_id,
+                      $event
+                    )
+                  "
+                ></v-slider>
+              </template>
+            </v-list-item>
+
+            <!-- crossfade duration -->
+            <v-list-item>
+              <template v-slot:prepend>
+                <v-list-item-avatar style="padding-right: 10px">
+                  <v-icon :icon="mdiCameraTimer"></v-icon>
+                </v-list-item-avatar>
+              </template>
+              <template v-slot:title>
+                {{ $t("crossfade_duration") }}
+                </template>
+                <template v-slot:append>
+                <v-slider
+                  color="primary"
+                  thumb-label="always"
+                  :min="-50"
+                  :max="10"
+                  v-model="store.activePlayerQueue.crossfade_duration"
+                  @update:model-value="
+                    api.queueCommandSetCrossfadeDuration(
                       store.activePlayerQueue?.queue_id,
                       $event
                     )
@@ -326,7 +352,8 @@ import {
   mdiInformationOutline,
   mdiShuffle,
   mdiRepeat,
-  mdiChartBar
+  mdiChartBar,
+  mdiCameraTimer
 
   } from "@mdi/js";
 import { ref } from "@vue/reactivity";

@@ -62,6 +62,7 @@
   "volume_normalization_enabled": "Volume normalization enabled",
   "volume_normalization_target": "Volume normalization target",
   "crossfade_enabled": "Crossfade enabled",
+  "crossfade_duration": "Crossfade duration (0-10 seconds)",
   "state": {
     "playing": "playing",
     "idle": "idle",
