@@ -173,4 +173,11 @@ div.v-navigation-drawer__scrim {
   height: 30px;
   border-radius: 5px;
 }
+
+.padded-overlay .v-overlay__content {
+  padding: 50px;
+}
+.v-overlay__scrim {
+  opacity: 65%;
+}
 </style>

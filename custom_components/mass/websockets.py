@@ -40,6 +40,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     """Register all of our websocket commands."""
     websocket_api.async_register_command(hass, websocket_players)
     websocket_api.async_register_command(hass, websocket_playerqueues)
+    websocket_api.async_register_command(hass, websocket_playerqueue_items)
     websocket_api.async_register_command(hass, websocket_artists)
     websocket_api.async_register_command(hass, websocket_artist)
     websocket_api.async_register_command(hass, websocket_albums)
@@ -753,7 +754,7 @@ async def websocket_playerqueues(
     mass: MusicAssistant,
 ) -> None:
     """Return player queue(s)."""
-    if ITEM_ID in msg:
+    if QUEUE_ID in msg:
         item = mass.players.get_player_queue(msg[QUEUE_ID])
         if item is None:
             connection.send_error(
@@ -764,6 +765,32 @@ async def websocket_playerqueues(
     else:
         # all items
         result = [item.to_dict() for item in mass.players.player_queues]
+
+    connection.send_result(
+        msg[ID],
+        result,
+    )
+
+
+@websocket_api.websocket_command(
+    {vol.Required(TYPE): f"{DOMAIN}/playerqueues/items", vol.Required(QUEUE_ID): str}
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_playerqueue_items(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return player queue items."""
+    queue = mass.players.get_player_queue(msg[QUEUE_ID])
+    if queue is None:
+        connection.send_error(
+            msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[QUEUE_ID]}"
+        )
+        return
+    result = [x.to_dict() for x in queue.items]
 
     connection.send_result(
         msg[ID],
@@ -789,6 +816,12 @@ class QueueCommand(str, Enum):
     REPEAT = "repeat"
     CLEAR = "clear"
     PLAY_INDEX = "play_index"
+    MOVE_UP = "move_up"
+    MOVE_DOWN = "move_down"
+    MOVE_NEXT = "move_next"
+    VOLUME_NORMALIZATION_ENABLED = "volume_normalization_enabled"
+    VOLUME_NORMALIZATION_TARGET = "volume_normalization_target"
+    CROSSFADE_DURATION = "crossfade_duration"
 
 
 @websocket_api.websocket_command(
@@ -796,7 +829,7 @@ class QueueCommand(str, Enum):
         vol.Required(TYPE): f"{DOMAIN}/queue_command",
         vol.Required(QUEUE_ID): str,
         vol.Required(COMMAND): str,
-        vol.Optional(COMMAND_ARG): vol.Any(int, bool, float),
+        vol.Optional(COMMAND_ARG): vol.Any(int, bool, float, str),
     }
 )
 @websocket_api.async_response
@@ -833,12 +866,24 @@ async def websocket_queue_command(
             await player_queue.player.power(msg[COMMAND_ARG])
         elif msg[COMMAND] == QueueCommand.PLAY_INDEX:
             await player_queue.play_index(msg[COMMAND_ARG])
+        elif msg[COMMAND] == QueueCommand.MOVE_UP:
+            await player_queue.move_item(msg[COMMAND_ARG], -1)
+        elif msg[COMMAND] == QueueCommand.MOVE_DOWN:
+            await player_queue.move_item(msg[COMMAND_ARG], 1)
+        elif msg[COMMAND] == QueueCommand.MOVE_NEXT:
+            await player_queue.move_item(msg[COMMAND_ARG], 0)
         elif msg[COMMAND] == QueueCommand.CLEAR:
             await player_queue.clear()
         elif msg[COMMAND] == QueueCommand.SHUFFLE:
             await player_queue.set_shuffle_enabled(bool(msg[COMMAND_ARG]))
         elif msg[COMMAND] == QueueCommand.REPEAT:
             await player_queue.set_repeat_enabled(bool(msg[COMMAND_ARG]))
+        elif msg[COMMAND] == QueueCommand.VOLUME_NORMALIZATION_ENABLED:
+            await player_queue.set_volume_normalization_enabled(bool(msg[COMMAND_ARG]))
+        elif msg[COMMAND] == QueueCommand.VOLUME_NORMALIZATION_TARGET:
+            await player_queue.set_volume_normalization_target(float(msg[COMMAND_ARG]))
+        elif msg[COMMAND] == QueueCommand.CROSSFADE_DURATION:
+            await player_queue.set_crossfade_duration(int(msg[COMMAND_ARG]))
 
         connection.send_result(
             msg[ID],

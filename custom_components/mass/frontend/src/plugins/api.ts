@@ -233,6 +233,8 @@ export interface QueueItem {
   sort_index: number;
   streamdetails?: StreamDetails;
   media_type: MediaType;
+  image?: string;
+  available?: boolean;
   is_media_item: boolean;
 }
 
@@ -244,6 +246,7 @@ export interface PlayerQueue {
   elapsed_time: number;
   state: PlayerState;
   available: boolean;
+  current_index?: number;
   current_item?: QueueItem;
   next_item?: QueueItem;
   shuffle_enabled: boolean;
@@ -268,7 +271,13 @@ export enum QueueCommand {
   SHUFFLE = "shuffle",
   REPEAT = "repeat",
   CLEAR = "clear",
-  PLAY_INDEX = "play_index"
+  PLAY_INDEX = "play_index",
+  MOVE_UP = "move_up",
+  MOVE_DOWN = "move_down",
+  MOVE_NEXT = "move_next",
+  VOLUME_NORMALIZATION_ENABLED = "volume_normalization_enabled",
+    VOLUME_NORMALIZATION_TARGET = "volume_normalization_target",
+    CROSSFADE_DURATION = "crossfade_duration",
 }
 
 export enum MassEventType {
@@ -395,6 +404,10 @@ export class MusicAssistantApi {
 
   public getLibraryTracks(): Promise<Track[]> {
     return this.getData("tracks");
+  }
+
+  public async getPlayerQueueItems(queue_id: string): Promise<QueueItem[]> {
+    return this.getData("playerqueues/items", { queue_id });
   }
 
   public getTrack(
@@ -546,42 +559,72 @@ export class MusicAssistantApi {
     return await this.addToLibrary([item]);
   }
 
-  public queueCommandPlay(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.PLAY);
+  public queueCommandPlay(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.PLAY);
   }
-  public queueCommandPause(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.PAUSE);
+  public queueCommandPause(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.PAUSE);
   }
-  public queueCommandPlayPause(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.PLAY_PAUSE);
+  public queueCommandPlayPause(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.PLAY_PAUSE);
   }
-  public queueCommandStop(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.STOP);
+  public queueCommandStop(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.STOP);
   }
-  public queueCommandPowerToggle(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.POWER_TOGGLE);
+  public queueCommandPowerToggle(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.POWER_TOGGLE);
   }
-  public queueCommandNext(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.NEXT);
+  public queueCommandNext(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.NEXT);
   }
-  public queueCommandPrevious(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.PREVIOUS);
+  public queueCommandPrevious(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.PREVIOUS);
   }
-  public queueCommandVolume(playerId: string, newVolume: number) {
-    this.playerQueueCommand(playerId, QueueCommand.VOLUME, newVolume);
-    this.players[playerId].volume_level = newVolume;
+  public queueCommandVolume(queueId: string, newVolume: number) {
+    this.playerQueueCommand(queueId, QueueCommand.VOLUME, newVolume);
+    this.players[queueId].volume_level = newVolume;
   }
-  public queueCommandVolumeUp(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.VOLUME_UP);
+  public queueCommandVolumeUp(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.VOLUME_UP);
   }
-  public queueCommandVolumeDown(playerId: string) {
-    this.playerQueueCommand(playerId, QueueCommand.VOLUME_DOWN);
+  public queueCommandVolumeDown(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.VOLUME_DOWN);
+  }
+  public queueCommandRepeat(queueId: string, repeat: boolean) {
+    this.playerQueueCommand(queueId, QueueCommand.REPEAT, repeat);
+  }
+  public queueCommandShuffle(queueId: string, shuffle: boolean) {
+    this.playerQueueCommand(queueId, QueueCommand.SHUFFLE, shuffle);
+  }
+  public queueCommandClear(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.CLEAR);
+  }
+  public queueCommandPlayIndex(queueId: string, index: number | string) {
+    this.playerQueueCommand(queueId, QueueCommand.PLAY_INDEX, index);
+  }
+  public queueCommandMoveUp(queueId: string, itemId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.MOVE_UP, itemId);
+  }
+  public queueCommandMoveDown(queueId: string, itemId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.MOVE_DOWN, itemId);
+  }
+  public queueCommandMoveNext(queueId: string, itemId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.MOVE_NEXT, itemId);
+  }
+  public queueCommandSetVolumeNormalizationEnabled(queueId: string, enabled: boolean) {
+    this.playerQueueCommand(queueId, QueueCommand.VOLUME_NORMALIZATION_ENABLED, enabled);
+  }
+  public queueCommandSetVolumeNormalizationTarget(queueId: string, target: number) {
+    this.playerQueueCommand(queueId, QueueCommand.VOLUME_NORMALIZATION_TARGET, target);
+  }
+  public queueCommandSetCrossfadeDuration(queueId: string, duration: number) {
+    this.playerQueueCommand(queueId, QueueCommand.CROSSFADE_DURATION, duration);
   }
 
   public playerQueueCommand(
     queue_id: string,
     command: QueueCommand,
-    command_arg?: boolean | number
+    command_arg?: boolean | number | string
   ) {
     this.executeCmd("queue_command", { queue_id, command, command_arg });
   }
@@ -595,10 +638,12 @@ export class MusicAssistantApi {
   }
 
   public getImageUrl(
-    mediaItem?: MediaItemType | ItemMapping,
+    mediaItem?: MediaItemType | ItemMapping | QueueItem,
     type: ImageType = ImageType.THUMB
   ) {
     // get imageurl for mediaItem
+    if (!mediaItem) return;
+    if ("image" in mediaItem) return mediaItem.image; // queueItem
     if (!mediaItem || !mediaItem.media_type) return "";
     if ("metadata" in mediaItem && mediaItem.metadata.images) {
       for (const img of mediaItem.metadata.images) {
@@ -646,10 +691,8 @@ export class MusicAssistantApi {
     if (fallbackToImage) return this.getImageUrl(mediaItem);
   }
 
-  public async getImageUrlForMediaItem(item: MediaItemType | ItemMapping) {
-    const url = this.getImageUrl(item);
-    if (url) return url;
-    const fullItem = await this.getItem(item.uri);
+  public async getImageUrlForMediaItem(uri: string) {
+    const fullItem = await this.getItem(uri);
     return this.getImageUrl(fullItem);
   }
 

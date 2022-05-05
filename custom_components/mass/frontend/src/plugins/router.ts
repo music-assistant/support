@@ -9,6 +9,7 @@ import ArtistDetails from "@/views/ArtistDetails.vue";
 import AlbumDetails from "@/views/AlbumDetails.vue";
 import TrackDetails from "@/views/TrackDetails.vue";
 import PlaylistDetails from "@/views/PlaylistDetails.vue";
+import PlayerQueue from "@/views/PlayerQueue.vue";
 import { store } from "./store";
 
 declare module "vue-router" {
@@ -61,6 +62,12 @@ const routes = [
     name: "playlist",
     path: "/playlist",
     component: PlaylistDetails,
+    props: true,
+  },
+  {
+    name: "playerqueue",
+    path: "/playerqueue",
+    component: PlayerQueue,
     props: true,
   },
 ];

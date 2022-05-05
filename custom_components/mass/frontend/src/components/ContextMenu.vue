@@ -326,11 +326,3 @@ const queueIdFromName = function (name: string) {
 };
 </script>
 
-<style>
-.padded-overlay .v-overlay__content {
-  padding: 50px;
-}
-.v-overlay__scrim {
-  opacity: 65%;
-}
-</style>

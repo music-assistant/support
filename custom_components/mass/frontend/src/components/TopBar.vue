@@ -36,9 +36,12 @@
             <v-toolbar dark color="primary">
               <v-icon :icon="mdiReload"></v-icon>
               <v-toolbar-title style="padding-left: 10px"
-                ><b>{{ $t("jobs") }}</b></v-toolbar-title>
+                ><b>{{ $t("jobs") }}</b></v-toolbar-title
+              >
 
-              <v-btn :icon="mdiClose" dark text @click="dialog = !dialog">{{ $t("close") }}</v-btn>
+              <v-btn :icon="mdiClose" dark text @click="dialog = !dialog">{{
+                $t("close")
+              }}</v-btn>
             </v-toolbar>
 
             <v-list>
@@ -54,13 +57,10 @@
 
         <v-btn
           :icon="mdiDotsVertical"
-          v-if="store.contextMenuParentItem"
+          v-if="store.contextMenuParentItem || store.customContextMenuCallback"
           :color="store.topBarTextColor"
           style="margin-right: -20px"
-          @click="
-            store.contextMenuItems = [store.contextMenuParentItem];
-            store.showContextMenu = true;
-          "
+          @click="onContextMenuBtn"
         ></v-btn>
       </div>
     </template>
@@ -76,7 +76,7 @@ import {
   mdiCheckOutline,
   mdiAlertCircle,
   mdiReload,
-  mdiClose
+  mdiClose,
 } from "@mdi/js";
 
 import { computed, mergeProps, ref } from "vue";
@@ -103,6 +103,15 @@ const backButton = function () {
         window.scrollTo(0, prevRoute.meta.scrollPos || 0);
       }, 400);
     });
+  }
+};
+
+const onContextMenuBtn = function () {
+  if (store.customContextMenuCallback) {
+    store.customContextMenuCallback();
+  } else if (store.contextMenuParentItem) {
+    store.contextMenuItems = [store.contextMenuParentItem];
+    store.showContextMenu = true;
   }
 };
 

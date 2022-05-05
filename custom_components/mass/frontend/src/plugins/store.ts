@@ -15,6 +15,7 @@ interface Store {
   defaultTopBarTitle: string;
   contextMenuItems: MediaItemType[];
   contextMenuParentItem?: MediaItemType;
+  customContextMenuCallback?: () => void;
   prevRoutes: Array<{
     name: string;
     params: RouteParams;

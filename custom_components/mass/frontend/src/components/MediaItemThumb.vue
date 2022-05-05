@@ -22,11 +22,11 @@
 <script setup lang="ts">
 import { store } from "@/plugins/store";
 import { watchEffect, ref } from "vue";
-import { MediaType, type ItemMapping, type MediaItemType } from "../plugins/api";
+import type { ItemMapping, MediaItemType, QueueItem } from "../plugins/api";
 import { api } from "../plugins/api";
 
 interface Props {
-  item?: MediaItemType | ItemMapping;
+  item?: MediaItemType | ItemMapping | QueueItem;
   size?: number;
   width?: string;
   height?: string;
@@ -54,7 +54,7 @@ watchEffect(async () => {
   const url =
     api?.getImageUrl(props.item) ||
     api?.getImageUrl(store.contextMenuParentItem) ||
-    (await api?.getImageUrlForMediaItem(props.item));
+    (await api?.getImageUrlForMediaItem(props.item.uri));
 
   if (typeof url == "string" && (!props.size || props.size > 200)) {
     // simply use the fullsize url
