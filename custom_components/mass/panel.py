@@ -11,7 +11,7 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 PANEL_FOLDER = "frontend/dist"
-JS_FILENAME = "mass.umd.js"
+JS_FILENAME = "mass.iife.js"
 LIB_URL_BASE = f"/lib/{DOMAIN}/"
 JS_URL = LIB_URL_BASE + JS_FILENAME
 

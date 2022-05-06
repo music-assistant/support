@@ -53,14 +53,14 @@ export default defineConfig({
     },
   },
   build: {
-    // inject css into lib only works in umd mode
+    // inject css into lib only works in umd/iife mode
     // https://github.com/vitejs/vite/issues/1579
     cssCodeSplit: true,
     lib: {
       entry: path.resolve(__dirname, "src/main.ts"),
       name: "MusicAssistant",
       fileName: (format) => `mass.${format}.js`,
-      formats: ["iife", "umd"],
+      formats: ["iife"],
     },
     rollupOptions: {
       output: {

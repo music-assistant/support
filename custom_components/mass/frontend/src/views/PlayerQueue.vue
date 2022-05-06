@@ -291,10 +291,10 @@
               </template>
               <template v-slot:title>
                 {{ $t("volume_normalization_target") }}
-                </template>
-                <template v-slot:append>
+              </template>
+              <template v-slot:append>
                 <v-slider
-                style="vertical-align: middle; margin-top: 15px;"
+                  style="vertical-align: middle; margin-top: 15px"
                   color="primary"
                   thumb-label="always"
                   :min="-50"
@@ -319,10 +319,10 @@
               </template>
               <template v-slot:title>
                 {{ $t("crossfade_duration") }}
-                </template>
-                <template v-slot:append>
+              </template>
+              <template v-slot:append>
                 <v-slider
-                  style="vertical-align: middle;margin-top: 10px;"
+                  style="vertical-align: middle; margin-top: 10px"
                   color="primary"
                   thumb-label="always"
                   :min="0"
@@ -356,7 +356,6 @@ import {
   mdiRepeat,
   mdiChartBar,
   mdiCameraTimer
-
   } from "@mdi/js";
 import { ref } from "@vue/reactivity";
 import { type QueueItem, MassEventType, type MassEvent , MediaType} from "../plugins/api";
