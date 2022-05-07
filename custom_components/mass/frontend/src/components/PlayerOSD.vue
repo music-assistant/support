@@ -20,7 +20,7 @@
       style="position: absolute; background-size: 100%; padding: 0; margin-top: -10px"
     />
     <!-- now playing media -->
-    <div class="mediadetails">
+    <div class="mediadetails" v-if="curMediaItem">
       <media-item-thumb
         class="mediadetails-thumb"
         :key="curMediaItem.item_id"
@@ -29,16 +29,10 @@
         v-if="curMediaItem"
         style="width: 50px; border: 1px solid rgba(0, 0, 0, 0.54)"
       />
-      <v-icon v-else :icon="mdiSpeaker" />
 
       <v-list-item two-line class="mediadetails-title">
         <div>
-          <v-list-item-title v-if="curMediaItem">
-            {{ curMediaItem.name }}</v-list-item-title
-          >
-          <v-list-item-title v-else-if="store.activePlayerQueue">
-            {{ store.activePlayerQueue.name }}</v-list-item-title
-          >
+          <v-list-item-title> {{ curMediaItem.name }}</v-list-item-title>
           <v-list-item-subtitle
             v-if="curMediaItem && 'artists' in curMediaItem"
             style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
@@ -218,10 +212,9 @@
       >
         <v-icon :icon="mdiSpeaker" />
         <span v-if="store.activePlayerQueue">{{ store.activePlayerQueue.name }}</span>
-        <span v-else class="text-caption"> </span>
       </v-btn>
       <!-- active player volume -->
-      <div v-if="!$vuetify.display.mobile">
+      <div v-if="!$vuetify.display.mobile && store.activePlayerQueue">
         <v-menu anchor="bottom end">
           <template v-slot:activator="{ props }">
             <v-btn

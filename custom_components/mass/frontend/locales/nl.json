@@ -73,7 +73,7 @@
   "crossfademode": {
     "disabled": "Crossfade uitschakelen",
     "strict": "Strikt: Alleen indien liedjes van verschillend album en zelfde sample rate",
-    "smart": "Slim/automatisch: Crossfade indien mogelijk zonder kwaliteitsverlies",
+    "smart": "Slim/automatisch: Crossfade indien mogelijk (zonder samplerate verlagingen)",
     "always": "Crossfade geforceerd inschakelen (past gefixeerde sample rate toe)"
   },
   "on": "Aan",

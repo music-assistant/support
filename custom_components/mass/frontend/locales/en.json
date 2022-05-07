@@ -73,7 +73,7 @@
   "crossfademode": {
     "disabled": "Crossfade disabled",
     "strict": "Strict: Do not crossfade tracks of same album or different sample rate",
-    "smart": "Smart: Crossfade tracks when possible without resampling",
+    "smart": "Smart: Crossfade tracks when possible (without downsampling)",
     "always": "Crossfade all tracks (resamples all audio to fixed rate)"
   },
   "on": "On",

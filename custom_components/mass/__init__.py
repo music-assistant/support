@@ -1,6 +1,8 @@
 """Music Assistant (music-assistant.github.io) integration."""
 from __future__ import annotations
 
+import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     EVENT_CALL_SERVICE,
@@ -38,6 +40,8 @@ from .const import (
 from .panel import async_register_panel
 from .player_controls import HassPlayerControls
 from .websockets import async_register_websockets
+
+LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ("media_player", "switch", "number")
 
@@ -78,10 +82,11 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
             )
     except MusicAssistantError as err:
         await mass.stop()
+        LOGGER.exception(err)
         raise ConfigEntryNotReady from err
     except Exception as exc:  # pylint: disable=broad-except
         await mass.stop()
-        raise ConfigEntryNotReady from exc
+        raise exc
 
     hass.data[DOMAIN] = mass
 

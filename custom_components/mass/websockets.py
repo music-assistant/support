@@ -898,9 +898,9 @@ async def websocket_playerqueue_command(
             vol.Optional("repeat_mode"): vol.Coerce(RepeatMode),
             vol.Optional("crossfade_mode"): vol.Coerce(CrossFadeMode),
             vol.Optional("shuffle_enabled"): bool,
-            vol.Optional("crossfade_duration"): int,
+            vol.Optional("crossfade_duration"): vol.Coerce(int),
             vol.Optional("volume_normalization_enabled"): bool,
-            vol.Optional("volume_normalization_target"): float,
+            vol.Optional("volume_normalization_target"): vol.Coerce(float),
         },
     }
 )

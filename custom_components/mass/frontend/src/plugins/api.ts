@@ -643,7 +643,6 @@ export class MusicAssistantApi {
 
   public playerQueueSettings(queueId: string, settings: QueueSettingsUpdate) {
     this.executeCmd("playerqueue/settings", { queue_id: queueId, settings });
-    console.log('playerQueueSettings', queueId)
   }
 
   public playMedia(
@@ -758,8 +757,8 @@ export class MusicAssistantApi {
       const queue = msg.data as PlayerQueue;
       Object.assign(this.queues[queue.queue_id], queue);
     } else if (msg.event == MassEventType.QUEUE_TIME_UPDATED) {
-      const queue = msg.data as PlayerQueue;
-      Object.assign(this.queues[queue.queue_id], queue);
+      const queueId = msg.object_id as string;
+      this.queues[queueId].elapsed_time = msg.data as unknown as number;
     } else if (msg.event == MassEventType.PLAYER_ADDED) {
       const player = msg.data as Player;
       this.players[player.player_id] = player;
@@ -771,6 +770,8 @@ export class MusicAssistantApi {
         (x) => x.id !== msg.data?.id && x.status !== JobStatus.FINISHED
       );
       this.jobs.value.push(msg.data as BackgroundJob);
+    } else {
+      console.log("unhandled event", msg);
     }
     this.signalEvent(msg);
   }
@@ -786,6 +787,7 @@ export class MusicAssistantApi {
 
   private getData<T>(endpoint: string, args?: Record<string, any>): Promise<T> {
     this._lastId++;
+    console.log(endpoint, args);
     return (this._conn as Connection).sendMessagePromise({
       id: this._lastId,
       type: `mass/${endpoint}`,
@@ -795,12 +797,12 @@ export class MusicAssistantApi {
 
   private executeCmd(endpoint: string, args?: Record<string, any>) {
     this._lastId++;
+    console.log(endpoint, args);
     (this._conn as Connection).sendMessage({
       id: this._lastId,
       type: `mass/${endpoint}`,
       ...args
     });
-    console.log(args);
   }
 }
 

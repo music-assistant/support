@@ -110,9 +110,12 @@
           <v-divider></v-divider>
         </div>
       </RecycleScroller>
-      <v-alert type="info" v-if="!loading && items.length == 0" style="margin: 20px">{{
-        $t("no_content")
-      }}</v-alert>
+      <v-alert
+        type="info"
+        v-if="!loading && items.length == 0"
+        style="margin: 20px"
+        >{{ $t("no_content") }}</v-alert
+      >
     </div>
 
     <!-- contextmenu -->
@@ -226,7 +229,9 @@
               <v-select
                 :label="$t('shuffle')"
                 :prepend-icon="mdiShuffle"
-                :model-value="store.activePlayerQueue.settings.shuffle_enabled.toString()"
+                :model-value="
+                  store.activePlayerQueue.settings.shuffle_enabled.toString()
+                "
                 :items="[
                   { title: $t('on'), value: 'true' },
                   { title: $t('off'), value: 'false' },
@@ -244,7 +249,7 @@
               <v-select
                 :label="$t('repeat')"
                 :prepend-icon="mdiRepeat"
-                v-model="store.activePlayerQueue.settings.repeat_mode"
+                :model-value="store.activePlayerQueue.settings.repeat_mode"
                 :items="[
                   { title: $t('repeatmode.off'), value: RepeatMode.OFF },
                   { title: $t('repeatmode.one'), value: RepeatMode.ONE },
@@ -252,7 +257,7 @@
                 ]"
                 @update:model-value="
                   api.playerQueueSettings(store.activePlayerQueue?.queue_id, {
-                    repeat_enabled: $event,
+                    repeat_mode: $event,
                   })
                 "
               ></v-select>
@@ -287,12 +292,16 @@
                   padding-bottom: 0;
                   margin-top: -40px;
                 "
-                :disabled="!store.activePlayerQueue.settings.volume_normalization_enabled"
+                :disabled="
+                  !store.activePlayerQueue.settings.volume_normalization_enabled
+                "
                 color="primary"
                 :min="-50"
                 :max="10"
-                :step="1"
-                v-model="store.activePlayerQueue.settings.volume_normalization_target"
+                :step="0.5"
+                :model-value="
+                  store.activePlayerQueue.settings.volume_normalization_target
+                "
                 @update:model-value="
                   api.playerQueueSettings(store.activePlayerQueue?.queue_id, {
                     volume_normalization_target: $event,
@@ -303,7 +312,8 @@
                   <div class="text-caption">
                     {{
                       $t("volume_normalization_target", [
-                        store.activePlayerQueue.settings.volume_normalization_target,
+                        store.activePlayerQueue.settings
+                          .volume_normalization_target,
                       ])
                     }}
                   </div>
@@ -314,14 +324,26 @@
             <!-- crossfade mode -->
             <v-list-item>
               <v-select
-                v-model="store.activePlayerQueue.settings.crossfade_mode"
+                :model-value="store.activePlayerQueue.settings.crossfade_mode"
                 :label="$t('crossfade')"
                 :prepend-icon="mdiCameraTimer"
                 :items="[
-                  { title: $t('crossfademode.disabled'), value: CrossFadeMode.DISABLED },
-                  { title: $t('crossfademode.strict'), value: CrossFadeMode.STRICT },
-                  { title: $t('crossfademode.smart'), value: CrossFadeMode.SMART },
-                  { title: $t('crossfademode.always'), value: CrossFadeMode.ALWAYS },
+                  {
+                    title: $t('crossfademode.disabled'),
+                    value: CrossFadeMode.DISABLED,
+                  },
+                  {
+                    title: $t('crossfademode.strict'),
+                    value: CrossFadeMode.STRICT,
+                  },
+                  {
+                    title: $t('crossfademode.smart'),
+                    value: CrossFadeMode.SMART,
+                  },
+                  {
+                    title: $t('crossfademode.always'),
+                    value: CrossFadeMode.ALWAYS,
+                  },
                 ]"
                 @update:model-value="
                   api.playerQueueSettings(store.activePlayerQueue?.queue_id, {
@@ -346,9 +368,12 @@
                 "
                 color="primary"
                 :label="$t('crossfade_duration')"
-                :min="0"
+                :min="1"
                 :max="10"
-                v-model="store.activePlayerQueue.settings.crossfade_duration"
+                :step="1"
+                :model-value="
+                  store.activePlayerQueue.settings.crossfade_duration
+                "
                 @update:model-value="
                   api.playerQueueSettings(store.activePlayerQueue?.queue_id, {
                     crossfade_duration: $event,
@@ -372,7 +397,9 @@
               <v-btn
                 :disabled="items.length == 0"
                 width="100%"
-                @click="api.queueCommandClear(store.activePlayerQueue?.queue_id)"
+                @click="
+                  api.queueCommandClear(store.activePlayerQueue?.queue_id)
+                "
                 >{{ $t("queue_clear") }}</v-btn
               >
             </v-list-item>
@@ -400,7 +427,12 @@ import { ref } from "@vue/reactivity";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import type { QueueItem, MassEvent } from "../plugins/api";
-import { RepeatMode, CrossFadeMode, MassEventType, MediaType } from "../plugins/api";
+import {
+  RepeatMode,
+  CrossFadeMode,
+  MassEventType,
+  MediaType,
+} from "../plugins/api";
 import api from "../plugins/api";
 import { computed, onBeforeUnmount, watchEffect } from "vue";
 import { store } from "../plugins/store";
@@ -438,12 +470,18 @@ const tabItems = computed(() => {
 });
 
 // listen for item updates to refresh items when that happens
-const unsub = api.subscribe(MassEventType.QUEUE_ITEMS_UPDATED, (evt: MassEvent) => {
-  if (evt.object_id == store.activePlayerQueue?.queue_id) {
-    loadItems();
+const unsub = api.subscribe(
+  MassEventType.QUEUE_ITEMS_UPDATED,
+  (evt: MassEvent) => {
+    if (evt.object_id == store.activePlayerQueue?.queue_id) {
+      loadItems();
+    }
   }
-});
+);
 onBeforeUnmount(unsub);
+onBeforeUnmount(() => {
+  store.customContextMenuCallback = undefined;
+});
 
 // methods
 const loadItems = async function () {
@@ -454,7 +492,9 @@ const loadItems = async function () {
       selectedItem.value = undefined;
       showContextMenu.value = true;
     };
-    items.value = await api.getPlayerQueueItems(store.activePlayerQueue.queue_id);
+    items.value = await api.getPlayerQueueItems(
+      store.activePlayerQueue.queue_id
+    );
   } else {
     store.topBarTitle = t("queue");
     items.value = [];
