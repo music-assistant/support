@@ -44,7 +44,7 @@ export default defineConfig({
           },
         ],
       },
-    }),
+    })
   ],
   define: { "process.env": {} },
   resolve: {

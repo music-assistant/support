@@ -64,11 +64,11 @@ class CrossfadeDurationEntity(MassBaseEntity, NumberEntity):
     @property
     def value(self) -> bool:
         """Return current value."""
-        return self.queue.crossfade_duration
+        return self.queue.settings.crossfade_duration
 
     async def async_set_value(self, value: float) -> None:
         """Set new value."""
-        await self.queue.set_crossfade_duration(int(value))
+        self.queue.settings.crossfade_duration = int(value)
 
 
 class VolumeNormalizationTargetEntity(MassBaseEntity, NumberEntity):
@@ -88,8 +88,8 @@ class VolumeNormalizationTargetEntity(MassBaseEntity, NumberEntity):
     @property
     def value(self) -> bool:
         """Return current value."""
-        return self.queue.volume_normalization_target
+        return self.queue.settings.volume_normalization_target
 
     async def async_set_value(self, value: float) -> None:
         """Set new value."""
-        await self.queue.set_volume_normalization_target(value)
+        self.queue.settings.volume_normalization_target = value

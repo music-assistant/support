@@ -36,7 +36,6 @@ async def async_setup_entry(
         async_add_entities(
             [
                 ShuffleEnabledEntity(mass, event.data),
-                RepeatEnabledEntity(mass, event.data),
                 NormalizeEnabledEntity(mass, event.data),
             ]
         )
@@ -67,40 +66,15 @@ class ShuffleEnabledEntity(MassBaseEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return true if the switch is on."""
-        return self.queue.shuffle_enabled
+        return self.queue.settings.shuffle_enabled
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        await self.queue.set_shuffle_enabled(True)
+        self.queue.settings.shuffle_enabled = True
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        await self.queue.set_shuffle_enabled(False)
-
-
-class RepeatEnabledEntity(MassBaseEntity, SwitchEntity):
-    """Representation of a Switch entity to set repeat enabled."""
-
-    entity_description = SwitchEntityDescription(
-        key="repeat_enabled",
-        device_class=SwitchDeviceClass.SWITCH,
-        icon="mdi:repeat",
-        entity_category=EntityCategory.CONFIG,
-        name="Repeat enabled",
-    )
-
-    @property
-    def is_on(self) -> bool:
-        """Return true if the switch is on."""
-        return self.queue.repeat_enabled
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the entity on."""
-        await self.queue.set_repeat_enabled(True)
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the entity on."""
-        await self.queue.set_repeat_enabled(False)
+        self.queue.settings.shuffle_enabled = False
 
 
 class NormalizeEnabledEntity(MassBaseEntity, SwitchEntity):
@@ -117,12 +91,12 @@ class NormalizeEnabledEntity(MassBaseEntity, SwitchEntity):
     @property
     def is_on(self) -> bool:
         """Return true if the switch is on."""
-        return self.queue.volume_normalization_enabled
+        return self.queue.settings.volume_normalization_enabled
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        await self.queue.set_volume_normalization_enabled(True)
+        self.queue.settings.volume_normalization_enabled = True
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        await self.queue.set_volume_normalization_enabled(False)
+        self.queue.settings.volume_normalization_enabled = False

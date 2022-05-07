@@ -40,15 +40,11 @@
               :icon="api.players[queue.player].is_group ? mdiSpeakerMultiple : mdiSpeaker"
               color="accent"
             />
-            <div>
-              <v-list-item-title class="text-subtitle-1" style="margin-left: 10px"
+            <div style="margin-left: 10px; text-align: left">
+              <v-list-item-title class="text-subtitle-1"
                 ><b>{{ queue.name.substring(0, 25) }}</b></v-list-item-title
               >
-              <v-list-item-subtitle
-                :key="queue.state"
-                class="text-body-2"
-                style="margin-left: 10px; text-align: left; width: 100%"
-              >
+              <v-list-item-subtitle :key="queue.state" class="text-body-2">
                 {{ $t("state." + queue.state) }}
               </v-list-item-subtitle>
             </div>

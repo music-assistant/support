@@ -271,8 +271,7 @@ import {
   mdiPlay,
   mdiPause,
 } from "@mdi/js";
-const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
-const iconLevel = new URL("../assets/level.png", import.meta.url).href;
+
 import { watchEffect, ref, computed } from "vue";
 import { useDisplay } from "vuetify";
 import type {
@@ -292,6 +291,9 @@ import MediaItemThumb from "./MediaItemThumb.vue";
 import { formatDuration, truncateString } from "../utils";
 import { useRouter } from "vue-router";
 import { getContentTypeIcon, iconHiRes, getProviderIcon } from "./ProviderIcons.vue";
+
+const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
+const iconLevel = new URL("../assets/level.png", import.meta.url).href;
 
 const router = useRouter();
 const display = useDisplay();

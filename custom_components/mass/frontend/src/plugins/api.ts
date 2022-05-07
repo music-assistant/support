@@ -238,6 +238,30 @@ export interface QueueItem {
   is_media_item: boolean;
 }
 
+export enum CrossFadeMode {
+  DISABLED = "disabled", // no crossfading at all
+  STRICT = "strict", // do not crossfade tracks of same album
+  SMART = "smart", // crossfade if possible (do not crossfade different sample rates)
+  ALWAYS = "always" // all tracks - resample to fixed sample rate
+}
+
+export enum RepeatMode {
+  OFF = "off", // no repeat at all
+  ONE = "one", // repeat current/single track
+  ALL = "all" // repeat entire queue
+}
+
+export interface QueueSettings {
+  repeat_mode: RepeatMode;
+  shuffle_enabled: boolean;
+  crossfade_mode: CrossFadeMode;
+  crossfade_duration: number;
+  volume_normalization_enabled: boolean;
+  volume_normalization_target: number;
+}
+
+export type QueueSettingsUpdate = Partial<QueueSettings>;
+
 export interface PlayerQueue {
   queue_id: string;
   player: string;
@@ -250,10 +274,7 @@ export interface PlayerQueue {
   current_item?: QueueItem;
   next_item?: QueueItem;
   shuffle_enabled: boolean;
-  repeat_enabled: boolean;
-  volume_normalization_enabled: boolean;
-  volume_normalization_target: number;
-  crossfade_duration: number;
+  settings: QueueSettings;
 }
 
 export enum QueueCommand {
@@ -276,8 +297,8 @@ export enum QueueCommand {
   MOVE_DOWN = "move_down",
   MOVE_NEXT = "move_next",
   VOLUME_NORMALIZATION_ENABLED = "volume_normalization_enabled",
-    VOLUME_NORMALIZATION_TARGET = "volume_normalization_target",
-    CROSSFADE_DURATION = "crossfade_duration",
+  VOLUME_NORMALIZATION_TARGET = "volume_normalization_target",
+  CROSSFADE_DURATION = "crossfade_duration"
 }
 
 export enum MassEventType {
@@ -394,20 +415,8 @@ export class MusicAssistantApi {
     return removeCallback;
   }
 
-  public async getPlayers(): Promise<Player[]> {
-    return this.getData("players");
-  }
-
-  public async getPlayerQueues(): Promise<PlayerQueue[]> {
-    return this.getData("playerqueues");
-  }
-
   public getLibraryTracks(): Promise<Track[]> {
     return this.getData("tracks");
-  }
-
-  public async getPlayerQueueItems(queue_id: string): Promise<QueueItem[]> {
-    return this.getData("playerqueues/items", { queue_id });
   }
 
   public getTrack(
@@ -559,6 +568,18 @@ export class MusicAssistantApi {
     return await this.addToLibrary([item]);
   }
 
+  public async getPlayers(): Promise<Player[]> {
+    return this.getData("players");
+  }
+
+  public async getPlayerQueues(): Promise<PlayerQueue[]> {
+    return this.getData("playerqueues");
+  }
+
+  public async getPlayerQueueItems(queue_id: string): Promise<QueueItem[]> {
+    return this.getData("playerqueue/items", { queue_id });
+  }
+
   public queueCommandPlay(queueId: string) {
     this.playerQueueCommand(queueId, QueueCommand.PLAY);
   }
@@ -611,22 +632,18 @@ export class MusicAssistantApi {
   public queueCommandMoveNext(queueId: string, itemId: string) {
     this.playerQueueCommand(queueId, QueueCommand.MOVE_NEXT, itemId);
   }
-  public queueCommandSetVolumeNormalizationEnabled(queueId: string, enabled: boolean) {
-    this.playerQueueCommand(queueId, QueueCommand.VOLUME_NORMALIZATION_ENABLED, enabled);
-  }
-  public queueCommandSetVolumeNormalizationTarget(queueId: string, target: number) {
-    this.playerQueueCommand(queueId, QueueCommand.VOLUME_NORMALIZATION_TARGET, target);
-  }
-  public queueCommandSetCrossfadeDuration(queueId: string, duration: number) {
-    this.playerQueueCommand(queueId, QueueCommand.CROSSFADE_DURATION, duration);
-  }
 
   public playerQueueCommand(
     queue_id: string,
     command: QueueCommand,
     command_arg?: boolean | number | string
   ) {
-    this.executeCmd("queue_command", { queue_id, command, command_arg });
+    this.executeCmd("playerqueue/command", { queue_id, command, command_arg });
+  }
+
+  public playerQueueSettings(queueId: string, settings: QueueSettingsUpdate) {
+    this.executeCmd("playerqueue/settings", { queue_id: queueId, settings });
+    console.log('playerQueueSettings', queueId)
   }
 
   public playMedia(
@@ -783,6 +800,7 @@ export class MusicAssistantApi {
       type: `mass/${endpoint}`,
       ...args
     });
+    console.log(args);
   }
 }
 

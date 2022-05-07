@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "scripts": {
     "serve": "vite preview",
-    "build": "vite build",
+    "build": "vite build && npm run build:finish",
+    "build:finish": "replace-in-file '/src/main.ts' '/mass.iife.js' 'dist/index.html'",
     "https-preview": "serve dist",
     "test:unit": "vitest --environment jsdom",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
@@ -39,6 +40,7 @@
     "https-localhost": "^4.7.1",
     "jsdom": "^19.0.0",
     "prettier": "^2.5.1",
+    "replace-in-file": "^6.3.2",
     "sass": "^1.51.0",
     "sass-loader": "^12.6.0",
     "typescript": "~4.6.4",

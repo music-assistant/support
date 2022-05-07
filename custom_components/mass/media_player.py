@@ -36,7 +36,7 @@ from music_assistant.constants import EventType, MassEvent
 from music_assistant.helpers.images import get_image_url
 from music_assistant.models.media_items import MediaType
 from music_assistant.models.player import Player, PlayerState
-from music_assistant.models.player_queue import QueueOption
+from music_assistant.models.player_queue import QueueOption, RepeatMode
 
 from .const import (
     ATTR_ACTIVE_QUEUE,
@@ -154,12 +154,12 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     @property
     def shuffle(self) -> bool:
         """Return if shuffle is enabled."""
-        return self.player.active_queue.shuffle_enabled
+        return self.player.active_queue.settings.shuffle_enabled
 
     @property
-    def repeat(self) -> bool:
-        """Return if repeat is enabled."""
-        return self.player.active_queue.repeat_enabled
+    def repeat(self) -> str:
+        """Return current repeat mode."""
+        return self.player.active_queue.settings.repeat_mode.value
 
     @property
     def media_duration(self) -> int | None:
@@ -260,11 +260,11 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
         """Set shuffle state."""
-        await self.player.active_queue.set_shuffle_enabled(shuffle)
+        self.player.active_queue.settings.shuffle_enabled = shuffle
 
     async def async_set_repeat(self, repeat: str) -> None:
         """Set repeat state."""
-        await self.player.active_queue.set_repeat_enabled(repeat != "off")
+        self.player.active_queue.settings.repeat_mode = RepeatMode(repeat)
 
     async def async_clear_playlist(self) -> None:
         """Clear players playlist."""
