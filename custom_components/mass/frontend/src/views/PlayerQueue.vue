@@ -19,8 +19,14 @@
         padding-bottom: 20px;
       "
     >
-      <v-list>
-        <div v-for="item of tabItems" :key="item.item_id">
+      <RecycleScroller
+        v-slot="{ item }"
+        :items="tabItems"
+        :item-size="66"
+        key-field="item_id"
+        page-mode
+      >
+        <div>
           <v-list-item
             ripple
             @click.stop="onClick(item)"
@@ -103,10 +109,10 @@
           </v-list-item>
           <v-divider></v-divider>
         </div>
-        <v-alert type="info" v-if="!loading && items.length == 0" style="margin: 20px">{{
-          $t("no_content")
-        }}</v-alert>
-      </v-list>
+      </RecycleScroller>
+      <v-alert type="info" v-if="!loading && items.length == 0" style="margin: 20px">{{
+        $t("no_content")
+      }}</v-alert>
     </div>
 
     <!-- contextmenu -->
@@ -391,6 +397,8 @@ import {
   mdiCameraTimer,
 } from "@mdi/js";
 import { ref } from "@vue/reactivity";
+import { RecycleScroller } from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import type { QueueItem, MassEvent } from "../plugins/api";
 import { RepeatMode, CrossFadeMode, MassEventType, MediaType } from "../plugins/api";
 import api from "../plugins/api";
