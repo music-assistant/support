@@ -355,6 +355,15 @@ export type BackgroundJob = {
   status: JobStatus;
 };
 
+export interface Stats {
+  providers: string[];
+  library_artists: number;
+  library_albums: number;
+  library_tracks: number;
+  library_playlists: number;
+  library_radios: number;
+}
+
 export class MusicAssistantApi {
   // eslint-disable-next-line prettier/prettier
   private _conn?: Connection;
@@ -362,6 +371,14 @@ export class MusicAssistantApi {
   private _initialized: boolean;
   public players = reactive<{ [player_id: string]: Player }>({});
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
+  public stats = reactive<Stats>({
+    providers: [],
+    library_artists: 0,
+    library_albums: 0,
+    library_tracks: 0,
+    library_playlists: 0,
+    library_radios: 0
+  });
   public jobs = ref<BackgroundJob[]>([]);
   private _wsEventCallbacks: Array<[string, CallableFunction]>;
 
@@ -389,6 +406,7 @@ export class MusicAssistantApi {
     for (const queue of await this.getPlayerQueues()) {
       this.queues[queue.queue_id] = queue;
     }
+    this._updateStats();
     this.jobs.value = await this.getData("jobs");
     // subscribe to mass events
     this._conn?.subscribeMessage(
@@ -413,6 +431,16 @@ export class MusicAssistantApi {
       }
     };
     return removeCallback;
+  }
+
+  private async _updateStats() {
+    const stats = await this.getData<Stats>("stats");
+    this.stats.library_albums = stats.library_albums;
+    this.stats.library_artists = stats.library_artists;
+    this.stats.library_playlists = stats.library_playlists;
+    this.stats.library_radios = stats.library_radios;
+    this.stats.library_tracks = stats.library_tracks;
+    this.stats.providers = stats.providers;
   }
 
   public getLibraryTracks(): Promise<Track[]> {
@@ -755,7 +783,9 @@ export class MusicAssistantApi {
       this.queues[queue.queue_id] = queue;
     } else if (msg.event == MassEventType.QUEUE_UPDATED) {
       const queue = msg.data as PlayerQueue;
-      Object.assign(this.queues[queue.queue_id], queue);
+      if (queue.queue_id in this.queues)
+        Object.assign(this.queues[queue.queue_id], queue);
+      else this.queues[queue.queue_id] = queue;
     } else if (msg.event == MassEventType.QUEUE_TIME_UPDATED) {
       const queueId = msg.object_id as string;
       this.queues[queueId].elapsed_time = msg.data as unknown as number;
@@ -764,12 +794,25 @@ export class MusicAssistantApi {
       this.players[player.player_id] = player;
     } else if (msg.event == MassEventType.PLAYER_UPDATED) {
       const player = msg.data as Player;
-      Object.assign(this.players[player.player_id], player);
+      if (player.player_id in this.players)
+        Object.assign(this.players[player.player_id], player);
+      else this.players[player.player_id] = player;
     } else if (msg.event == MassEventType.BACKGROUND_JOB_UPDATED) {
       this.jobs.value = this.jobs.value.filter(
         (x) => x.id !== msg.data?.id && x.status !== JobStatus.FINISHED
       );
       this.jobs.value.push(msg.data as BackgroundJob);
+    }
+
+    // update stats if needed
+    if (msg.event == MassEventType.PROVIDER_REGISTERED) {
+      this._updateStats();
+    }
+    if (msg.event.includes("added")) {
+      const item = msg.data as MediaItemType;
+      if (item.in_library) {
+        this._updateStats();
+      }
     }
     this.signalEvent(msg);
     if (msg.event !== MassEventType.QUEUE_TIME_UPDATED) {

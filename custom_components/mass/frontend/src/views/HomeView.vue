@@ -16,18 +16,20 @@
           min-width="120"
           align="center"
           justify="center"
+          :disabled="api.stats[card.stats] == 0"
         >
           <v-icon
             variant="plain"
             :icon="card.icon"
             size="70"
-            style="align: center;padding: 10px"
+            style="align: center; padding: 10px"
           >
           </v-icon>
           <v-divider />
-          <div class="text-center text-subtitle-1" style="padding: 10px">
+          <span class="text-center text-subtitle-1" style="padding: 10px">
             {{ $t(card.key) }}
-          </div>
+          <span class="text-caption" v-if="api.stats[card.stats] > 0">({{ api.stats[card.stats] }})</span>
+          </span>
         </v-card>
       </v-col>
     </v-row>
@@ -45,14 +47,25 @@ import {
   mdiPlaylistMusic,
   mdiRadio,
 } from "@mdi/js";
+import api from "@/plugins/api";
 
 store.topBarTitle = store.defaultTopBarTitle;
 
 const cards = ref([
-  { key: "artists", icon: mdiAccountMusic, path: "/artists" },
-  { key: "albums", icon: mdiAlbum, path: "/albums" },
-  { key: "tracks", icon: mdiFileMusic, path: "/tracks" },
-  { key: "playlists", icon: mdiPlaylistMusic, path: "/playlists" },
-  { key: "radios", icon: mdiRadio, path: "/radios" },
+  {
+    key: "artists",
+    icon: mdiAccountMusic,
+    path: "/artists",
+    stats: "library_artists",
+  },
+  { key: "albums", icon: mdiAlbum, path: "/albums", stats: "library_albums" },
+  { key: "tracks", icon: mdiFileMusic, path: "/tracks", stats: "library_tracks" },
+  {
+    key: "playlists",
+    icon: mdiPlaylistMusic,
+    path: "/playlists",
+    stats: "library_playlists",
+  },
+  { key: "radios", icon: mdiRadio, path: "/radios", stats: "library_radios" },
 ]);
 </script>

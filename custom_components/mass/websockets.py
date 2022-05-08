@@ -991,11 +991,11 @@ async def websocket_stats(
     """Return stats."""
     result = {
         "providers": [x.id for x in mass.music.providers],
-        "library_artists": mass.music.artists.count,
-        "library_albums": mass.music.albums.count,
-        "library_tracks": mass.music.tracks.count,
-        "library_playlists": mass.music.playlists.count,
-        "library_radios": mass.music.radio.count,
+        "library_artists": await mass.music.artists.count(),
+        "library_albums": await mass.music.albums.count(),
+        "library_tracks": await mass.music.tracks.count(),
+        "library_playlists": await mass.music.playlists.count(),
+        "library_radios": await mass.music.radio.count(),
     }
     connection.send_result(
         msg[ID],
