@@ -68,6 +68,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_artist_tracks)
     websocket_api.async_register_command(hass, websocket_artist_albums)
     websocket_api.async_register_command(hass, websocket_jobs)
+    websocket_api.async_register_command(hass, websocket_stats)
     websocket_api.async_register_command(hass, websocket_subscribe_events)
 
 
@@ -970,6 +971,35 @@ async def websocket_jobs(
     connection.send_result(
         msg[ID],
         [x.to_dict() for x in mass.jobs],
+    )
+
+
+# generic stats endpoint
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/stats",
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_stats(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return stats."""
+    result = {
+        "providers": [x.id for x in mass.music.providers],
+        "library_artists": mass.music.artists.count,
+        "library_albums": mass.music.albums.count,
+        "library_tracks": mass.music.tracks.count,
+        "library_playlists": mass.music.playlists.count,
+        "library_radios": mass.music.radio.count,
+    }
+    connection.send_result(
+        msg[ID],
+        result,
     )
 
 
