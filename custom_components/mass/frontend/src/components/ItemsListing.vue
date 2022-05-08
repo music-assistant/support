@@ -76,17 +76,8 @@
     >
       <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
       <!-- panel view -->
-      <v-row
-        dense
-        align-content="stretch"
-        align="stretch"
-        v-if="viewMode == 'panel'"
-      >
-        <v-col
-          v-for="item in filteredItems"
-          :key="item.uri"
-          align-self="stretch"
-        >
+      <v-row dense align-content="stretch" align="stretch" v-if="viewMode == 'panel'">
+        <v-col v-for="item in filteredItems" :key="item.uri" align-self="stretch">
           <PanelviewItem
             :item="item"
             :size="thumbSize"
@@ -121,9 +112,7 @@
 
       <!-- show alert if no items found -->
       <v-alert type="info" v-if="!loading && items.length == 0">{{
-        api.jobs.value.length > 0
-          ? $t("no_content_sync_running")
-          : $t("no_content")
+        $t("no_content")
       }}</v-alert>
     </div>
   </section>
@@ -141,14 +130,7 @@ import {
   mdiCheck,
 } from "@mdi/js";
 
-import {
-  watchEffect,
-  ref,
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  nextTick,
-} from "vue";
+import { watchEffect, ref, computed, onBeforeUnmount, onMounted, nextTick } from "vue";
 import { useDisplay } from "vuetify";
 import type {
   Album,
@@ -212,15 +194,9 @@ const filteredItems = computed(() => {
     for (const item of props.items) {
       if (item.name.toLowerCase().includes(searchStr)) {
         result.push(item);
-      } else if (
-        "artist" in item &&
-        item.artist.name.toLowerCase().includes(searchStr)
-      ) {
+      } else if ("artist" in item && item.artist.name.toLowerCase().includes(searchStr)) {
         result.push(item);
-      } else if (
-        "album" in item &&
-        item.album?.name.toLowerCase().includes(searchStr)
-      ) {
+      } else if ("album" in item && item.album?.name.toLowerCase().includes(searchStr)) {
         result.push(item);
       } else if (
         "artists" in item &&
@@ -234,9 +210,7 @@ const filteredItems = computed(() => {
   }
   // sort
   if (sortBy.value == "name") {
-    result.sort((a, b) =>
-      (a.sort_name || a.name).localeCompare(b.sort_name || b.name)
-    );
+    result.sort((a, b) => (a.sort_name || a.name).localeCompare(b.sort_name || b.name));
   }
   if (sortBy.value == "album.name") {
     result.sort((a, b) =>
@@ -255,18 +229,14 @@ const filteredItems = computed(() => {
   }
   if (sortBy.value == "track_number") {
     result.sort(
-      (a, b) =>
-        ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
+      (a, b) => ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
     );
     result.sort(
-      (a, b) =>
-        ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
+      (a, b) => ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
     );
   }
   if (sortBy.value == "position") {
-    result.sort(
-      (a, b) => ((a as Track).position || 0) - ((b as Track).position || 0)
-    );
+    result.sort((a, b) => ((a as Track).position || 0) - ((b as Track).position || 0));
   }
   if (sortBy.value == "year") {
     result.sort((a, b) => ((a as Album).year || 0) - ((b as Album).year || 0));

@@ -173,7 +173,7 @@
           small
           icon
           variant="plain"
-          :disabled="!activePlayerQueue"
+          :disabled="!activePlayerQueue || !activePlayerQueue.current_item"
           @click="api.queueCommandPrevious(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipPrevious" />
@@ -182,7 +182,7 @@
           icon
           x-large
           variant="plain"
-          :disabled="!activePlayerQueue"
+          :disabled="!activePlayerQueue || !activePlayerQueue.current_item"
           @click="api.queueCommandPlayPause(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">{{
@@ -193,7 +193,7 @@
           icon
           small
           variant="plain"
-          :disabled="!activePlayerQueue"
+          :disabled="!activePlayerQueue || !activePlayerQueue.next_item"
           @click="api.queueCommandNext(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipNext" />
