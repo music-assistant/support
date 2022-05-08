@@ -2,7 +2,6 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configuração do Music Assistant",
         "description": "Por favor, configure quais provedores de música você deseja habilitar. Para cada provedor de música habilitado, insira suas credenciais abaixo.",
         "data": {
           "spotify_enabled": "Ativar o Spotify",
@@ -26,7 +25,6 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configuração do Music Assistant",
         "description": "Configure quais media players do Home Assistant você gostaria de usar com o Music Assistant.",
         "data": {
           "player_entities": "Entidades media player",
@@ -35,7 +33,6 @@
         }
       },
       "music": {
-        "title": "Configuração do Music Assistant",
         "description": "Configure quais provedores de música você deseja habilitar. Para cada provedor de música habilitado, insira suas credenciais abaixo.",
         "data": {
           "spotify_enabled": "Ativar o Spotify",
@@ -55,7 +52,6 @@
         }
       },
       "adv": {
-        "title": "Configuração do Music Assistant",
         "description": "Configure as opções avançadas para o Music Assistant.",
         "data": {
           "mute_power_players": "Use mute como controle de energia para esses media players."
