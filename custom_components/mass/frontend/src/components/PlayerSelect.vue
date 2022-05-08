@@ -15,44 +15,44 @@
     <v-divider></v-divider>
     <v-expansion-panels v-model="panelItem" focusable accordion flat>
       <v-expansion-panel
-        v-for="queue in availablePlayerQueues"
-        :id="queue.queue_id"
-        :key="queue.queue_id"
+        v-for="player in availablePlayers"
+        :id="player.player_id"
+        :key="player.player_id"
         flat
       >
         <v-expansion-panel-title
           class="playerrow"
           :style="
-            store.activePlayerQueue?.queue_id == queue.queue_id
+            store.selectedPlayer?.player_id == player.player_id
               ? 'padding:0;background-color:rgba(50, 115, 220, 0.2);'
               : 'padding:0'
           "
           :expand-icon="mdiChevronDown"
           :collapse-icon="mdiChevronUp"
           @click="
-            store.activePlayerQueue = queue;
-            scrollToTop(queue.queue_id);
+            store.selectedPlayer = player;
+            scrollToTop(player.player_id);
           "
         >
           <v-list-item dense two-line style="padding: 0; margin-left: 9px">
             <v-icon
               size="45"
-              :icon="api.players[queue.player].is_group ? mdiSpeakerMultiple : mdiSpeaker"
+              :icon="player.is_group ? mdiSpeakerMultiple : mdiSpeaker"
               color="accent"
             />
             <div style="margin-left: 10px; text-align: left">
               <v-list-item-title class="text-subtitle-1"
-                ><b>{{ queue.name.substring(0, 25) }}</b></v-list-item-title
+                ><b>{{ player.name.substring(0, 25) }}</b></v-list-item-title
               >
-              <v-list-item-subtitle :key="queue.state" class="text-body-2">
-                {{ $t("state." + queue.state) }}
+              <v-list-item-subtitle :key="player.state" class="text-body-2">
+                {{ $t("state." + player.state) }}
               </v-list-item-subtitle>
             </div>
           </v-list-item>
         </v-expansion-panel-title>
         <v-expansion-panel-text variant="contain">
           <div
-            v-for="childPlayer in getVolumePlayers(queue.player)"
+            v-for="childPlayer in getVolumePlayers(player.player_id)"
             :key="childPlayer.player_id"
             class="volumerow"
             :style="childPlayer.powered ? 'opacity: 0.75' : 'opacity: 0.5'"
@@ -110,17 +110,17 @@ import {
   mdiChevronUp,
   mdiChevronDown,
 } from "@mdi/js";
-import type { Player, PlayerQueue } from "../plugins/api";
+import type { Player } from "../plugins/api";
 import { store } from "../plugins/store";
 
 const panelItem = ref<number | undefined>(undefined);
 
 // computed properties
-const availablePlayerQueues = computed(() => {
-  const res: PlayerQueue[] = [];
-  for (const queue_id in api?.queues) {
-    const queue = api?.queues[queue_id];
-    if (queue?.available) res.push(queue);
+const availablePlayers = computed(() => {
+  const res: Player[] = [];
+  for (const player_id in api?.players) {
+    const player = api?.players[player_id];
+    if (player?.available) res.push(player);
   }
   return res
     .slice()
@@ -142,11 +142,11 @@ const lastClicked = ref();
 onMounted(() => {
   shadowRoot.value = getCurrentInstance()?.vnode?.el?.getRootNode();
 });
-const scrollToTop = function (queueId: string) {
-  if (lastClicked.value == queueId) return;
-  lastClicked.value = queueId;
+const scrollToTop = function (playerId: string) {
+  if (lastClicked.value == playerId) return;
+  lastClicked.value = playerId;
   setTimeout(() => {
-    const elmnt = shadowRoot.value?.getElementById(queueId);
+    const elmnt = shadowRoot.value?.getElementById(playerId);
     elmnt?.scrollIntoView({ behavior: "smooth" });
   }, 0);
 };

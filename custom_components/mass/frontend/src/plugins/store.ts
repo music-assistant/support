@@ -1,10 +1,10 @@
-import type { PlayerQueue } from "./api";
+import type { Player } from "./api";
 import { reactive } from "vue";
 import type { MediaItemType } from "./api";
 import type { LocationQuery, RouteParams, RouteMeta } from "vue-router";
 
 interface Store {
-  activePlayerQueue?: PlayerQueue;
+  selectedPlayer?: Player;
   isInStandaloneMode: boolean;
   showPlayersMenu: boolean;
   showContextMenu: boolean;
@@ -25,7 +25,7 @@ interface Store {
 }
 
 export const store: Store = reactive({
-  activePlayerQueue: undefined,
+  selectedPlayer: undefined,
   isInStandaloneMode: false,
   showPlayersMenu: false,
   showContextMenu: false,

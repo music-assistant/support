@@ -113,7 +113,7 @@
             <div
               style="height: 50px; display: flex; align-items: center"
               v-if="
-                store.activePlayerQueue && store.activePlayerQueue.crossfade_duration > 0
+                activePlayerQueue && activePlayerQueue.settings.crossfade_duration > 0
               "
             >
               <img
@@ -173,8 +173,8 @@
           small
           icon
           variant="plain"
-          :disabled="!store.activePlayerQueue"
-          @click="api.queueCommandPrevious(store.activePlayerQueue?.queue_id)"
+          :disabled="!activePlayerQueue"
+          @click="api.queueCommandPrevious(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipPrevious" />
         </v-btn>
@@ -182,19 +182,19 @@
           icon
           x-large
           variant="plain"
-          :disabled="!store.activePlayerQueue"
-          @click="api.queueCommandPlayPause(store.activePlayerQueue.queue_id)"
+          :disabled="!activePlayerQueue"
+          @click="api.queueCommandPlayPause(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">{{
-            store.activePlayerQueue?.state == "playing" ? mdiPause : mdiPlay
+            activePlayerQueue?.state == "playing" ? mdiPause : mdiPlay
           }}</v-icon>
         </v-btn>
         <v-btn
           icon
           small
           variant="plain"
-          :disabled="!store.activePlayerQueue"
-          @click="api.queueCommandNext(store.activePlayerQueue?.queue_id)"
+          :disabled="!activePlayerQueue"
+          @click="api.queueCommandNext(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipNext" />
         </v-btn>
@@ -211,10 +211,10 @@
         width="70"
       >
         <v-icon :icon="mdiSpeaker" />
-        <span v-if="store.activePlayerQueue">{{ store.activePlayerQueue.name }}</span>
+        <span v-if="activePlayerQueue">{{ activePlayerQueue.name }}</span>
       </v-btn>
       <!-- active player volume -->
-      <div v-if="!$vuetify.display.mobile && store.activePlayerQueue">
+      <div v-if="!$vuetify.display.mobile && activePlayerQueue">
         <v-menu anchor="bottom end">
           <template v-slot:activator="{ props }">
             <v-btn
@@ -227,11 +227,11 @@
             >
               <v-icon :icon="mdiVolumeHigh" />
               <span>{{
-                Math.round(api.players[store.activePlayerQueue?.player]?.volume_level)
+                Math.round(api.players[activePlayerQueue?.player]?.volume_level)
               }}</span>
             </v-btn>
           </template>
-          <VolumeControl :player="api.players[store.activePlayerQueue?.queue_id]" />
+          <VolumeControl :player="api.players[activePlayerQueue?.queue_id]" />
         </v-menu>
       </div>
       <!-- active player queue button -->
@@ -242,7 +242,7 @@
         height="50"
         width="70"
         @click="$router.push('/playerqueue/')"
-        v-if="store.activePlayerQueue"
+        v-if="activePlayerQueue"
         class="mediacontrols-right"
       >
         <v-icon :icon="mdiPlaylistMusic" />
@@ -296,8 +296,14 @@ const curMediaItem = ref<MediaItemType>();
 const showStreamDetails = ref(false);
 
 // computed properties
+const activePlayerQueue = computed(() => {
+  if (store.selectedPlayer) {
+    return api.queues[store.selectedPlayer.active_queue];
+  }
+  return undefined;
+});
 const curQueueItem = computed(() => {
-  if (store.activePlayerQueue) return store.activePlayerQueue.current_item;
+  if (activePlayerQueue.value) return activePlayerQueue.value.current_item;
   return undefined;
 });
 const progress = computed(() => {
@@ -319,10 +325,10 @@ const progressBarWidth = computed(() => {
   return window.innerWidth - 45;
 });
 const streamDetails = computed(() => {
-  return store.activePlayerQueue?.current_item?.streamdetails;
+  return activePlayerQueue.value?.current_item?.streamdetails;
 });
 const curQueueItemTime = computed(() => {
-  if (store.activePlayerQueue) return store.activePlayerQueue.elapsed_time;
+  if (activePlayerQueue.value) return activePlayerQueue.value.elapsed_time;
   return 0;
 });
 
@@ -348,27 +354,27 @@ watchEffect(async () => {
 });
 
 watchEffect(async () => {
-  // pick default/start queue at startup
-  if (api?.queues && !store.activePlayerQueue) {
+  // pick default/start player at startup
+  if (api?.players && !store.selectedPlayer) {
     // prefer playing player
-    for (const queue_id in api?.queues) {
-      const queue = api.queues[queue_id];
-      if (queue.current_item && queue.state == PlayerState.PLAYING) {
-        store.activePlayerQueue = queue;
+    for (const playerId in api?.players) {
+      const player = api.players[playerId];
+      if (player.state == PlayerState.PLAYING) {
+        store.selectedPlayer = player;
         return;
       }
     }
     // fallback to just a player with item in queue
-    for (const queue_id in api?.queues) {
-      const queue = api.queues[queue_id];
-      if (queue.current_item) {
-        store.activePlayerQueue = queue;
+    for (const playerId in api?.queues) {
+      const player = api.players[playerId];
+      if (player.elapsed_time) {
+        store.selectedPlayer = player;
         return;
       }
     }
     // last resort: just the first queue
-    for (const queue_id in api?.queues) {
-      store.activePlayerQueue = api.queues[queue_id];
+    for (const playerId in api?.queues) {
+      store.selectedPlayer = api.players[playerId];
       return;
     }
   }
