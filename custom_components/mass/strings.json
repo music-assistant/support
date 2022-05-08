@@ -4,15 +4,6 @@
     "step": {
       "user": {
         "title": "Set-up Music Assistant",
-        "description": "Please configure which Home Assistant media players you would like to use with Music Assistant.",
-        "data": {
-          "player_entities": "Player entities",
-          "hide_source_players": "Hide source players in the Home Assistant UI.",
-          "create_mass_players": "Create mediaplayers for Music Assistant players in Home Assistant."
-        }
-      },
-      "music": {
-        "title": "Set-up Music Assistant",
         "description": "Please configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
         "data": {
           "spotify_enabled": "Enable Spotify music provider",
@@ -29,16 +20,6 @@
         },
         "data_description": {
           "filesystem_directory": "Specify the full path on disk where your media files are stored (e.g. /media). Note that Home Assistant must have access to this location."
-        }
-      },
-      "adv": {
-        "title": "Configure Music Assistant",
-        "description": "Configure advanced options for Music Assistant.",
-        "data": {
-          "mute_power_players": "Use mute as power control for these players."
-        },
-        "data_description": {
-          "mute_power_players": "Some players do not have a good/real power on/off or this disturbs with grouped playback (e.g. cast). With this option you can use the mute control as power for these players."
         }
       }
     },

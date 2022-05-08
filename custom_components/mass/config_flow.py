@@ -6,6 +6,13 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
+from homeassistant.components.media_player import (
+    SUPPORT_PAUSE,
+    SUPPORT_PLAY,
+    SUPPORT_PLAY_MEDIA,
+    SUPPORT_VOLUME_SET,
+)
+from homeassistant.const import ATTR_SUPPORTED_FEATURES
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
@@ -30,9 +37,18 @@ from .const import (
     DOMAIN,
 )
 
+# Note that volume_set is not strictly needed but the backend needs some adjustments
+# to support a player without volumer support so exclude them for now.
+REQUIRED_FEATURES = (
+    SUPPORT_PLAY_MEDIA,
+    SUPPORT_PLAY,
+    SUPPORT_PAUSE,
+    SUPPORT_VOLUME_SET,
+)
+
 
 @callback
-def async_get_mass_entities(hass: HomeAssistant):
+def async_get_mass_entities(hass: HomeAssistant) -> List[str]:
     """Return all media_player entities created by the Music Assistant integration."""
     ent_reg = er.async_get(hass)
     return [
@@ -40,6 +56,27 @@ def async_get_mass_entities(hass: HomeAssistant):
         for x in ent_reg.entities.values()
         if x.domain == MP_DOMAIN and x.platform == DOMAIN
     ]
+
+
+@callback
+def async_get_control_entities(hass: HomeAssistant) -> List[str]:
+    """Return all media_player entities that can be used as source."""
+    exclude_entities = async_get_mass_entities(hass)
+    result = []
+    for state in hass.states.async_all(MP_DOMAIN):
+        # exclude MA entities
+        if state.entity_id in exclude_entities:
+            continue
+        # we only want entities that support some features
+        sup_features = state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
+        supported = 0
+        for req in REQUIRED_FEATURES:
+            if bool(sup_features & req):
+                supported += 1
+        if supported != len(REQUIRED_FEATURES):
+            continue
+        result.append(state.entity_id)
+    return result
 
 
 @callback
@@ -83,62 +120,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            self.data.update(user_input)
-            return await self.async_step_music()
-
-        control_entities = [x.entity_id for x in self.hass.states.async_all(MP_DOMAIN)]
-        exclude_entities = async_get_mass_entities(self.hass)
+            return self.async_create_entry(
+                title=DEFAULT_NAME, data={}, options=user_input
+            )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_PLAYER_ENTITIES,
-                        default=control_entities,
-                    ): selector.selector(
-                        {
-                            "entity": {
-                                "domain": "media_player",
-                                "multiple": True,
-                                "exclude_entities": exclude_entities,
-                            }
-                        }
-                    ),
-                    vol.Required(
-                        CONF_HIDE_SOURCE_PLAYERS, default=False
-                    ): selector.selector({"boolean": {}}),
-                    vol.Required(
-                        CONF_CREATE_MASS_PLAYERS, default=True
-                    ): selector.selector({"boolean": {}}),
-                }
-            ),
-            last_step=False,
-        )
-
-    async def async_step_music(self, user_input=None):
-        """Handle getting music provider config from the user."""
-
-        if user_input is not None:
-            self.data.update(user_input)
-            return await self.async_step_adv()
-
-        if self.data is None and user_input:
-            self.data = user_input
-        elif user_input:
-            # config complete, store entry
-            self.data.update(user_input)
-            hide_player_entities(
-                self.hass,
-                self.data[CONF_PLAYER_ENTITIES],
-                self.data[CONF_HIDE_SOURCE_PLAYERS],
-            )
-            return self.async_create_entry(
-                title=DEFAULT_NAME, data={}, options=self.data
-            )
-
-        return self.async_show_form(
-            step_id="music",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_SPOTIFY_ENABLED, default=False): bool,
@@ -154,34 +141,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_PLAYLISTS_DIRECTORY): str,
                 }
             ),
-            last_step=False,
-        )
-
-    async def async_step_adv(self, user_input=None):
-        """Handle getting advanced config options from the user."""
-
-        if user_input is not None:
-            # config complete, store entry
-            self.data.update(user_input)
-            hide_player_entities(
-                self.hass,
-                self.data[CONF_PLAYER_ENTITIES],
-                self.data[CONF_HIDE_SOURCE_PLAYERS],
-            )
-            return self.async_create_entry(
-                title=DEFAULT_NAME, data={}, options={**self.data}
-            )
-
-        return self.async_show_form(
-            step_id="adv",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_MUTE_POWER_PLAYERS, default=[]): cv.multi_select(
-                        self.data.get(CONF_PLAYER_ENTITIES, [])
-                    )
-                }
-            ),
-            last_step=True,
         )
 
 
@@ -201,13 +160,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_music()
 
         conf = self.config_entry.options
-        control_entities = [x.entity_id for x in self.hass.states.async_all(MP_DOMAIN)]
-        exclude_entities = async_get_mass_entities(self.hass)
 
         # filter any non existing device id's from the list
+        control_entities = async_get_control_entities(self.hass)
         cur_ids = [
             item
-            for item in conf.get(CONF_PLAYER_ENTITIES, [])
+            for item in conf.get(CONF_PLAYER_ENTITIES, control_entities)
             if item in control_entities
         ]
 
@@ -223,7 +181,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             "entity": {
                                 "domain": "media_player",
                                 "multiple": True,
-                                "exclude_entities": exclude_entities,
+                                "exclude_entities": async_get_mass_entities(self.hass),
                             }
                         }
                     ),

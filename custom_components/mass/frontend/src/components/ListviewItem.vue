@@ -13,10 +13,7 @@
           @click.stop="emit('select', item, !isSelected)"
         >
           <MediaItemThumb :item="item" :size="50" />
-          <div
-            v-if="isSelected"
-            style="position: absolute; background-color: #82b1ff94"
-          >
+          <div v-if="isSelected" style="position: absolute; background-color: #82b1ff94">
             <v-icon dark size="51" :icon="mdiCheckboxMarkedOutline"></v-icon>
           </div> </v-list-item-avatar
       ></template>
@@ -71,7 +68,9 @@
         <!-- playlist owner -->
         <div v-if="'owner' in item && item.owner">{{ item.owner }}</div>
         <!-- radio description -->
-        <div v-if="item.media_type == MediaType.RADIO && item.metadata.description">{{ item.metadata.description }}</div>
+        <div v-if="item.media_type == MediaType.RADIO && item.metadata.description">
+          {{ item.metadata.description }}
+        </div>
       </template>
 
       <!-- actions -->

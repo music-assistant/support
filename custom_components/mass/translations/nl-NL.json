@@ -1,0 +1,70 @@
+{
+  "title": "Music Assistant",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configureer Music Assistant",
+        "description": "Configureer a.u.b. met welke Muziekproviders je Music Assistant wilt gebruiken. Voor elke ingeschakelde provider moet je even jouw inloggegevens opgeven.",
+        "data": {
+          "spotify_enabled": "Spotify muziekprovider",
+          "spotify_username": "Gebruikersnaam voor Spotify",
+          "spotify_password": "Wachtwoord voor Spotify",
+          "qobuz_enabled": "Qobuz muziekprovider inschakelen",
+          "qobuz_username": "Gebruikersnaam voor Qobuz",
+          "qobuz_password": "Wachtwoord voor Qobuz",
+          "tunein_enabled": "Tune-In Radio muziekprovider inschakelen",
+          "tunein_username": "Gebruikersnaam voor Tune-In Radio",
+          "filesystem_enabled": "Bestandssysteem provider inschakelen",
+          "filesystem_directory": "Bestandslocatie waar de muziekbestanden te vinden zijn.",
+          "playlists_directory": "Bestandslocatie waar playlists (.m3u) te vinden zijn (optioneel)."
+        },
+        "data_description": {
+          "filesystem_directory": "Specificeer het volledige pad op de schijf waar de mediabestanden te vinden zijn, bijvoorbeeld '/media/muziek'. Home Assistant moet toegang hebben tot deze bestandslocatie."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configureer Music Assistant",
+        "description": "Configureer welke Media spelers je wilt gebruiken met Music Assistant.",
+        "data": {
+          "player_entities": "Mediaplayer entiteiten",
+          "hide_source_players": "Verberg bronspelers in de Home Assistant interface.",
+          "create_mass_players": "Maak mediaspelers aan in Home Assistant voor Music Assistant spelers (aanbevolen)."
+        }
+      },
+      "music": {
+        "title": "Configureer Music Assistant",
+        "description": "Configureer a.u.b. met welke Muziekproviders je Music Assistant wilt gebruiken. Voor elke ingeschakelde provider moet je even jouw inloggegevens opgeven.",
+        "data": {
+          "spotify_enabled": "Spotify muziekprovider",
+          "spotify_username": "Gebruikersnaam voor Spotify",
+          "spotify_password": "Wachtwoord voor Spotify",
+          "qobuz_enabled": "Qobuz muziekprovider inschakelen",
+          "qobuz_username": "Gebruikersnaam voor Qobuz",
+          "qobuz_password": "Wachtwoord voor Qobuz",
+          "tunein_enabled": "Tune-In Radio muziekprovider inschakelen",
+          "tunein_username": "Gebruikersnaam voor Tune-In Radio",
+          "filesystem_enabled": "Bestandssysteem provider inschakelen",
+          "filesystem_directory": "Bestandslocatie waar de muziekbestanden te vinden zijn.",
+          "playlists_directory": "Bestandslocatie waar playlists (.m3u) te vinden zijn (optioneel)."
+        },
+        "data_description": {
+          "filesystem_directory": "Specificeer het volledige pad op de schijf waar de mediabestanden te vinden zijn, bijvoorbeeld '/media/muziek'. Home Assistant moet toegang hebben tot deze bestandslocatie."
+        }
+      },
+      "adv": {
+        "title": "Configureer Music Assistant",
+        "description": "Geavanceerde opties.",
+        "data": {
+          "mute_power_players": "Gebruik mute als power control voor deze spelers."
+        },
+        "data_description": {
+          "mute_power_players": "Sommige spelers hebben geen eigen aan/uit functie (b.v. Cast). In die gevallen kan het handig zijn om mute hiervoor te gebruiken."
+        }
+      }
+    }
+  }
+}

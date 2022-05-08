@@ -91,7 +91,7 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
     hass.data[DOMAIN] = mass
 
     # initialize platforms
-    if conf.get(CONF_CREATE_MASS_PLAYERS):
+    if conf.get(CONF_CREATE_MASS_PLAYERS, True):
         hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
     # register hass players with mass

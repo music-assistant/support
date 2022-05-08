@@ -395,7 +395,9 @@ class HassPlayerControls:
         self, entity_id: str, manual=False
     ) -> HassPlayer | None:
         """Register hass entitie as player controls on Music Assistant."""
-        if not manual and entity_id not in self.config.get(CONF_PLAYER_ENTITIES, []):
+        allowed_entities = self.config.get(CONF_PLAYER_ENTITIES)
+        # allowed_entities not configured = not filter (=all)
+        if not (manual or allowed_entities is None or entity_id in allowed_entities):
             return
 
         if entity_id in self._registered_players:
