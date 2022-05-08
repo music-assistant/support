@@ -14,6 +14,7 @@ from homeassistant.components.media_player.const import (
 )
 from homeassistant.components.media_player.const import DOMAIN as MEDIA_PLAYER_DOMAIN
 from homeassistant.components.media_player.const import (
+    MEDIA_TYPE_MUSIC,
     SERVICE_PLAY_MEDIA,
     SUPPORT_PLAY_MEDIA,
 )
@@ -53,7 +54,6 @@ from .const import (
     SLIMPROTO_DOMAIN,
     SLIMPROTO_EVENT,
 )
-from .media_source import MEDIA_CONTENT_TYPE_FLAC
 
 OFF_STATES = [STATE_OFF, STATE_UNAVAILABLE, STATE_UNKNOWN, STATE_STANDBY]
 UNAVAILABLE_STATES = [STATE_UNAVAILABLE, STATE_UNKNOWN]
@@ -160,7 +160,7 @@ class HassPlayer(Player):
             MP_DOMAIN,
             SERVICE_PLAY_MEDIA,
             {
-                ATTR_MEDIA_CONTENT_TYPE: MEDIA_CONTENT_TYPE_FLAC,
+                ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
                 ATTR_MEDIA_CONTENT_ID: url,
                 "entity_id": self.entity_id,
             },

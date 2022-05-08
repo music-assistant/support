@@ -11,4 +11,4 @@ updates:
   - package-ecosystem: "npm"
     directory: "/custom_components/mass/frontend/"
     schedule:
-      interval: daily
+      interval: weekly
