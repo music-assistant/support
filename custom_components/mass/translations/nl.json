@@ -2,6 +2,7 @@
   "config": {
     "step": {
       "user": {
+        "title": "Configureer Music Assistant",
         "description": "Configureer a.u.b. met welke Muziekproviders je Music Assistant wilt gebruiken. Voor elke ingeschakelde provider moet je even jouw inloggegevens opgeven.",
         "data": {
           "spotify_enabled": "Spotify muziekprovider",
@@ -25,6 +26,7 @@
   "options": {
     "step": {
       "init": {
+        "title": "Configureer Music Assistant",
         "description": "Configureer welke Media spelers je wilt gebruiken met Music Assistant.",
         "data": {
           "player_entities": "Mediaplayer entiteiten",
@@ -33,6 +35,7 @@
         }
       },
       "music": {
+        "title": "Configureer Music Assistant",
         "description": "Configureer a.u.b. met welke Muziekproviders je Music Assistant wilt gebruiken. Voor elke ingeschakelde provider moet je even jouw inloggegevens opgeven.",
         "data": {
           "spotify_enabled": "Spotify muziekprovider",
@@ -52,6 +55,7 @@
         }
       },
       "adv": {
+        "title": "Configureer Music Assistant",
         "description": "Geavanceerde opties.",
         "data": {
           "mute_power_players": "Gebruik mute als power control voor deze spelers."
