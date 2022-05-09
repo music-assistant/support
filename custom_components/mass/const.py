@@ -5,9 +5,6 @@ DOMAIN = "mass"
 
 DEFAULT_NAME = "Music Assistant"
 
-DATA_KEY_MASS = "mass"
-DATA_KEY_CONTROLS = "controls"
-
 CONF_PLAYER_ENTITIES = "player_entities"
 CONF_HIDE_SOURCE_PLAYERS = "hide_source_players"
 CONF_CREATE_MASS_PLAYERS = "create_mass_players"
