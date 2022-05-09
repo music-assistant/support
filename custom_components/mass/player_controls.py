@@ -1,8 +1,6 @@
 """Support Home Assistant media_player entities to be used as Players for Music Assistant."""
 from __future__ import annotations
 
-from typing import Dict
-
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
 from homeassistant.components.media_player.const import (
     ATTR_MEDIA_CONTENT_ID,
@@ -18,9 +16,12 @@ from homeassistant.components.media_player.const import (
     SERVICE_PLAY_MEDIA,
     SUPPORT_PLAY_MEDIA,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     ATTR_SUPPORTED_FEATURES,
+    EVENT_HOMEASSISTANT_START,
+    EVENT_STATE_CHANGED,
     SERVICE_MEDIA_PAUSE,
     SERVICE_MEDIA_PLAY,
     SERVICE_MEDIA_STOP,
@@ -37,11 +38,10 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import Event
-from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util.dt import utcnow
 from music_assistant import MusicAssistant
 from music_assistant.models.player import DeviceInfo, Player, PlayerGroup, PlayerState
@@ -80,7 +80,7 @@ class HassPlayer(Player):
     """Mapping from Home Assistant Mediaplayer to Music Assistant Player."""
 
     def __init__(
-        self, hass: HomeAssistantType, entity_id: str, mute_as_power: bool
+        self, hass: HomeAssistant, entity_id: str, mute_as_power: bool
     ) -> None:
         """Initialize player."""
         self.hass = hass
@@ -218,9 +218,7 @@ class HassPlayer(Player):
 class HassSqueezeboxPlayer(HassPlayer):
     """Representation of Hass player from Squeezebox Local integration."""
 
-    def __init__(
-        self, hass: HomeAssistantType, entity_id: str, squeeze_id: str
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, entity_id: str, squeeze_id: str) -> None:
         """Initialize player."""
         self.squeeze_id = squeeze_id
         self.slimserver = hass.data[SLIMPROTO_DOMAIN]
@@ -251,7 +249,7 @@ class HassSqueezeboxPlayer(HassPlayer):
 class HassGroupPlayer(PlayerGroup):
     """Mapping from Home Assistant Grouped Mediaplayer to Music Assistant Player."""
 
-    def __init__(self, hass: HomeAssistantType, entity_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, entity_id: str) -> None:
         """Initialize player."""
         self.hass = hass
         self.player_id = entity_id
@@ -311,7 +309,7 @@ class HassGroupPlayer(PlayerGroup):
 class HassCastGroupPlayer(PlayerGroup, HassPlayer):
     """Mapping from Google Cast GroupPlayer to Music Assistant Player."""
 
-    def __init__(self, hass: HomeAssistantType, entity_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, entity_id: str) -> None:
         """Initialize player."""
         self.ent_reg = er.async_get(hass)
         ent_entry = self.ent_reg.async_get(entity_id)
@@ -360,77 +358,83 @@ class HassCastGroupPlayer(PlayerGroup, HassPlayer):
         self._attr_group_childs = child_players
 
 
-class HassPlayerControls:
-    """Enable Home Assisant entities to be used as Players for MusicAssistant."""
+async def async_register_player_control(
+    hass: HomeAssistant, mass: MusicAssistant, entity_id: str
+) -> HassPlayer | None:
+    """Register hass entity as player controls on Music Assistant."""
 
-    def __init__(
-        self, hass: HomeAssistantType, mass: MusicAssistant, config: dict
-    ) -> None:
-        """Initialize class."""
-        self.hass = hass
-        self.mass = mass
-        self.config = config
-        self._registered_players: Dict[str, HassPlayer] = {}
+    # check for existing player first if already registered
+    if player := mass.players.get_player(entity_id, True):
+        return player
 
-    async def async_hass_state_event(self, event: Event) -> None:
+    entity = hass.states.get(entity_id)
+    if entity is None or entity.attributes is None:
+        return
+
+    if not (entity.attributes.get(ATTR_SUPPORTED_FEATURES, 0) & SUPPORT_PLAY_MEDIA):
+        return
+
+    ent_reg = er.async_get(hass)
+    dev_reg = dr.async_get(hass)
+    player = None
+    # Integration specific player controls
+    if ent_entry := ent_reg.async_get(entity_id):
+        if ent_entry.platform == DOMAIN:
+            # this is already a Music assistant player
+            return
+        if ent_entry.platform == CAST_DOMAIN:
+            if dev_entry := dev_reg.async_get(ent_entry.device_id):
+                if dev_entry.model == "Google Cast Group":
+                    player = HassCastGroupPlayer(hass, entity_id)
+        elif ent_entry.platform == SLIMPROTO_DOMAIN:
+            player = HassSqueezeboxPlayer(hass, entity_id, ent_entry.unique_id)
+        elif ent_entry.platform == GROUP_DOMAIN:
+            player = HassGroupPlayer(hass, entity_id)
+
+    # handle genric player for all other integrations
+    conf_entry: ConfigEntry = hass.config_entries.async_entries(DOMAIN)[0]
+    mute_as_power = entity_id in conf_entry.options.get(CONF_MUTE_POWER_PLAYERS, [])
+    if player is None:
+        player = HassPlayer(hass, entity_id, mute_as_power)
+    await mass.players.register_player(player)
+    return player
+
+
+async def async_register_player_controls(
+    hass: HomeAssistant, mass: MusicAssistant, entry: ConfigEntry
+):
+    """Register hass entities as player controls on Music Assistant."""
+    # allowed_entities not configured = not filter (=all)
+    allowed_entities = entry.options.get(CONF_PLAYER_ENTITIES)
+
+    async def async_hass_state_event(event: Event) -> None:
         """Handle hass state-changed events to update registered PlayerControls."""
         entity_id: str = event.data[ATTR_ENTITY_ID]
 
         if not entity_id.startswith(MP_DOMAIN):
             return
 
-        if entity_id in self._registered_players:
-            self._registered_players[entity_id].on_hass_event(event)
-        else:
-            # entity not (yet) registered
-            await self.async_register_player_control(entity_id)
-
-    async def async_register_player_controls(self):
-        """Register hass entities as player controls on Music Assistant."""
-
-        for entity in self.hass.states.async_all(MEDIA_PLAYER_DOMAIN):
-            await self.async_register_player_control(entity.entity_id)
-
-    async def async_register_player_control(
-        self, entity_id: str, manual=False
-    ) -> HassPlayer | None:
-        """Register hass entitie as player controls on Music Assistant."""
-        allowed_entities = self.config.get(CONF_PLAYER_ENTITIES)
-        # allowed_entities not configured = not filter (=all)
-        if not (manual or allowed_entities is None or entity_id in allowed_entities):
+        # handle existing source player
+        if source_player := mass.players.get_player(entity_id, True):
+            source_player.on_hass_event(event)
             return
 
-        if entity_id in self._registered_players:
-            return self._registered_players[entity_id]
+        # entity not (yet) registered
+        if allowed_entities is None or entity_id in allowed_entities:
+            await async_register_player_control(hass, mass, entity_id)
 
-        entity = self.hass.states.get(entity_id)
-        if entity is None or entity.attributes is None:
-            return
+    # register all current entities
+    async def register_all(*args, **kwargs):
+        for entity in hass.states.async_all(MEDIA_PLAYER_DOMAIN):
+            if allowed_entities is None or entity.entity_id in allowed_entities:
+                await async_register_player_control(hass, mass, entity.entity_id)
 
-        if not (entity.attributes.get(ATTR_SUPPORTED_FEATURES, 0) & SUPPORT_PLAY_MEDIA):
-            return
+    await register_all()
 
-        ent_reg = er.async_get(self.hass)
-        dev_reg = dr.async_get(self.hass)
-        player = None
-        # Integration specific player controls
-        if ent_entry := ent_reg.async_get(entity_id):
-            if ent_entry.platform == DOMAIN:
-                # this is already a Music assistant player
-                return
-            if ent_entry.platform == CAST_DOMAIN:
-                if dev_entry := dev_reg.async_get(ent_entry.device_id):
-                    if dev_entry.model == "Google Cast Group":
-                        player = HassCastGroupPlayer(self.hass, entity_id)
-            elif ent_entry.platform == SLIMPROTO_DOMAIN:
-                player = HassSqueezeboxPlayer(self.hass, entity_id, ent_entry.unique_id)
-            elif ent_entry.platform == GROUP_DOMAIN:
-                player = HassGroupPlayer(self.hass, entity_id)
-
-        # handle genric player for all other integrations
-        mute_as_power = entity_id in self.config.get(CONF_MUTE_POWER_PLAYERS, [])
-        if player is None:
-            player = HassPlayer(self.hass, entity_id, mute_as_power)
-        self._registered_players[entity_id] = player
-        await self.mass.players.register_player(player)
-        return player
+    # register event listeners
+    entry.async_on_unload(
+        hass.bus.async_listen(EVENT_STATE_CHANGED, async_hass_state_event)
+    )
+    entry.async_on_unload(
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, register_all)
+    )

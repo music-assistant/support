@@ -26,9 +26,12 @@ from homeassistant.components.media_source.models import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.service import async_get_current_entity
 from music_assistant import MusicAssistant
 from music_assistant.helpers.images import get_image_url
 from music_assistant.models.media_items import Album, Track
+
+from custom_components.mass.player_controls import async_register_player_control
 
 from .const import DOMAIN
 
@@ -98,13 +101,20 @@ class MusicAssistentSource(MediaSource):
         if mass is None:
             raise Unresolvable("MusicAssistant is not initialized")
 
-        # this part is tricky because we need to know which player is requesting the media
-        # so we can put the request on the correct queue
-        # for now we have a workaround in place that intercepts the call_service command
-        # to the media_player and find out the player from there.
-        # Hacky but it does the job and let's hope for a contextvar in the future.
+        # Get entity_id that requested the media from contextvar
+        # TODO: How to intercept a play request for the 'webbrowser' player
+        # or at least hide our source for the webbrowser player ?
+        entity_id = async_get_current_entity()
+        # create player on the fly (or get existing one)
+        player = await async_register_player_control(self.hass, mass, entity_id)
+        if not player:
+            return PlayMedia(item.identifier, MEDIA_TYPE_MUSIC)
 
-        return PlayMedia(item.identifier, MEDIA_CONTENT_TYPE_FLAC)
+        # send the mass library uri to the player(queue)
+        stream_url = await player.active_queue.play_media(item.identifier, passive=True)
+        # tell the actual player to play the stream url
+        content_type = player.active_queue.settings.stream_type.value
+        return PlayMedia(stream_url, f"audio/{content_type}")
 
     async def async_browse_media(
         self,
