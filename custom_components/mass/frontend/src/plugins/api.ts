@@ -735,11 +735,6 @@ export class MusicAssistantApi {
     if (fallbackToImage) return this.getImageUrl(mediaItem);
   }
 
-  public async getImageUrlForMediaItem(uri: string) {
-    const fullItem = await this.getItem(uri);
-    return this.getImageUrl(fullItem);
-  }
-
   private async connectHassStandalone() {
     let auth;
     const storeAuth = true;

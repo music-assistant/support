@@ -1,6 +1,6 @@
 <template>
   <v-img
-    :key="item.uri"
+    :key="item?.uri"
     cover
     :src="imgData"
     :height="height"
@@ -13,7 +13,10 @@
   >
     <template v-slot:placeholder>
       <div class="d-flex align-center justify-center fill-height">
-        <v-progress-circular indeterminate color="grey-lighten-4"></v-progress-circular>
+        <v-progress-circular
+          indeterminate
+          color="grey-lighten-4"
+        ></v-progress-circular>
       </div>
     </template>
   </v-img>
@@ -39,6 +42,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   border: true,
+  size: 200,
 });
 
 const imgData = ref<string>();
@@ -53,8 +57,7 @@ watchEffect(async () => {
   if (!props.item) return;
   const url =
     api?.getImageUrl(props.item) ||
-    api?.getImageUrl(store.contextMenuParentItem) ||
-    (await api?.getImageUrlForMediaItem(props.item.uri));
+    api?.getImageUrl(store.contextMenuParentItem);
 
   if (typeof url == "string" && (!props.size || props.size > 200)) {
     // simply use the fullsize url
