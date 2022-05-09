@@ -31,9 +31,8 @@ from music_assistant import MusicAssistant
 from music_assistant.helpers.images import get_image_url
 from music_assistant.models.media_items import Album, Track
 
-from custom_components.mass.player_controls import async_register_player_control
-
 from .const import DOMAIN
+from .player_controls import async_register_player_control
 
 MEDIA_TYPE_RADIO = "radio"
 
