@@ -52,7 +52,7 @@ Music Assistant consists of multiple building blocks:
 
 ## Installation
 
-In the HACS panel, go to integrations and click the big orange '+' button. Search for 'Alarmo' and click \'Install this repository in HACS'.
+In the HACS panel, go to integrations and click the big orange '+' button. Search for 'Music Assistant' and click \'Install this repository in HACS'.
 
 ### Using HACS
 
