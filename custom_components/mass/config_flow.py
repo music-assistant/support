@@ -1,5 +1,6 @@
 """Config flow for Music Assistant integration."""
 
+import os
 from typing import List
 
 import homeassistant.helpers.config_validation as cv
@@ -116,13 +117,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Handle getting base config from the user."""
 
+        errors = None
+
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-            return self.async_create_entry(
-                title=DEFAULT_NAME, data={}, options=user_input
-            )
+
+            # check if music directory is valid
+            music_dir = user_input.get(CONF_FILE_DIRECTORY)
+            playlists_dir = user_input.get(CONF_PLAYLISTS_DIRECTORY)
+            if music_dir and not os.path.isdir(music_dir):
+                errors = {CONF_FILE_DIRECTORY: "directory_not_exists"}
+            elif playlists_dir and not os.path.isdir(playlists_dir):
+                errors = {CONF_PLAYLISTS_DIRECTORY: "directory_not_exists"}
+            else:
+                return self.async_create_entry(
+                    title=DEFAULT_NAME, data={}, options=user_input
+                )
 
         return self.async_show_form(
             step_id="user",
@@ -141,6 +153,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_PLAYLISTS_DIRECTORY): str,
                 }
             ),
+            errors=errors,
         )
 
 
@@ -201,9 +214,20 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_music(self, user_input=None):
         """Handle getting music provider config from the user."""
 
+        errors = None
+
         if user_input is not None:
             self.data.update(user_input)
-            return await self.async_step_adv()
+
+            # check if music directory is valid
+            music_dir = user_input.get(CONF_FILE_DIRECTORY)
+            playlists_dir = user_input.get(CONF_PLAYLISTS_DIRECTORY)
+            if music_dir and not os.path.isdir(music_dir):
+                errors = {CONF_FILE_DIRECTORY: "directory_not_exists"}
+            elif playlists_dir and not os.path.isdir(playlists_dir):
+                errors = {CONF_PLAYLISTS_DIRECTORY: "directory_not_exists"}
+            else:
+                return await self.async_step_adv()
 
         conf = self.config_entry.options
         return self.async_show_form(
@@ -252,6 +276,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 }
             ),
             last_step=False,
+            errors=errors,
         )
 
     async def async_step_adv(self, user_input=None):

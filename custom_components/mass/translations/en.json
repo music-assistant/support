@@ -21,6 +21,9 @@
           "filesystem_directory": "Specify the full path on disk where your media files are stored (e.g. /media). Note that Home Assistant must have access to this location."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
     }
   },
   "options": {
@@ -64,6 +67,9 @@
           "mute_power_players": "Some players do not have a good/real power on/off or this disturbs with grouped playback (e.g. cast). With this option you can use the mute control as power for these players."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
     }
   },
   "frontend": {

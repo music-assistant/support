@@ -21,6 +21,9 @@
           "filesystem_directory": "Specificeer het volledige pad op de schijf waar de mediabestanden te vinden zijn, bijvoorbeeld '/media/muziek'. Home Assistant moet toegang hebben tot deze bestandslocatie."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
     }
   },
   "options": {
@@ -64,6 +67,9 @@
           "mute_power_players": "Sommige spelers hebben geen eigen aan/uit functie (b.v. Cast). In die gevallen kan het handig zijn om mute hiervoor te gebruiken."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Bestandslocatie bestaat niet of niet toegankelijk"
     }
   },
   "frontend": {
