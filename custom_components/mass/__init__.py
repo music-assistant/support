@@ -159,9 +159,16 @@ async def async_intercept_play_media(
         return
     if event.data["service"] != "play_media":
         return
-    entity_id = event.data["service_data"]["entity_id"]
-    media_content_id = event.data["service_data"]["media_content_id"]
 
+    service_data = event.data.get("service_data")
+    if not service_data:
+        return
+
+    entity_id = service_data.get("entity_id")
+    if not entity_id:
+        return
+
+    media_content_id = service_data.get("media_content_id", "")
     if not media_content_id.startswith(f"media-source://{DOMAIN}/"):
         return
 
