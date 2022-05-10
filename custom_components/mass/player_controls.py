@@ -1,14 +1,19 @@
 """Support Home Assistant media_player entities to be used as Players for Music Assistant."""
 from __future__ import annotations
 
+import asyncio
 from typing import Dict
 
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
+from homeassistant.components.media_player import MediaPlayerEntityFeature
 from homeassistant.components.media_player.const import (
     ATTR_MEDIA_CONTENT_ID,
     ATTR_MEDIA_CONTENT_TYPE,
+    ATTR_MEDIA_ENQUEUE,
+    ATTR_MEDIA_EXTRA,
     ATTR_MEDIA_POSITION,
     ATTR_MEDIA_POSITION_UPDATED_AT,
+    ATTR_MEDIA_REPEAT,
     ATTR_MEDIA_VOLUME_LEVEL,
     ATTR_MEDIA_VOLUME_MUTED,
 )
@@ -24,6 +29,7 @@ from homeassistant.const import (
     SERVICE_MEDIA_PAUSE,
     SERVICE_MEDIA_PLAY,
     SERVICE_MEDIA_STOP,
+    SERVICE_REPEAT_SET,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
     SERVICE_VOLUME_MUTE,
@@ -74,6 +80,9 @@ STATE_MAPPING = {
     STATE_PAUSED: PlayerState.PAUSED,
     STATE_STANDBY: PlayerState.OFF,
 }
+
+# device specific
+SUPPORTS_ENQUEUE = {"cast", "sonos", "squeezebox", "heos", "bluesound"}
 
 
 class HassPlayer(Player):
@@ -164,26 +173,58 @@ class HassPlayer(Player):
             {
                 ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
                 ATTR_MEDIA_CONTENT_ID: url,
-                "entity_id": self.entity_id,
+                ATTR_ENTITY_ID: self.entity_id,
             },
         )
+        # workaround!
+        # the below makes sure that next track button works on supported players
+        # as well as restart of stream may it drop of the network
+        # https://github.com/music-assistant/hass-music-assistant/issues/117
+        await asyncio.sleep(0.5)
+        # if media player supports enqueue, add same track multiple times
+        if self.ent_platform in SUPPORTS_ENQUEUE:
+            for _ in range(0, 25):
+                await self.hass.services.async_call(
+                    MP_DOMAIN,
+                    SERVICE_PLAY_MEDIA,
+                    {
+                        ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
+                        ATTR_MEDIA_CONTENT_ID: url,
+                        ATTR_ENTITY_ID: self.entity_id,
+                        ATTR_MEDIA_ENQUEUE: True,
+                        ATTR_MEDIA_EXTRA: {ATTR_MEDIA_ENQUEUE: True},
+                    },
+                )
+                await asyncio.sleep(0.1)
+        else:
+            # enable repeat of same track to make sure that the player
+            # reconnects to our stream URL
+            # not sure if this is actually needed but it can't harm
+            hass_state = self.hass.states.get(self.entity_id)
+            sup_features = hass_state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
+            if bool(sup_features & MediaPlayerEntityFeature.REPEAT_SET):
+                await self.hass.services.async_call(
+                    MP_DOMAIN,
+                    SERVICE_REPEAT_SET,
+                    {ATTR_ENTITY_ID: self.entity_id, ATTR_MEDIA_REPEAT: "all"},
+                )
 
     async def stop(self) -> None:
         """Send STOP command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_STOP, {"entity_id": self.entity_id}
+            MP_DOMAIN, SERVICE_MEDIA_STOP, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def play(self) -> None:
         """Send PLAY/UNPAUSE command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_PLAY, {"entity_id": self.entity_id}
+            MP_DOMAIN, SERVICE_MEDIA_PLAY, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def pause(self) -> None:
         """Send PAUSE command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_PAUSE, {"entity_id": self.entity_id}
+            MP_DOMAIN, SERVICE_MEDIA_PAUSE, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def power(self, powered: bool) -> None:
@@ -197,7 +238,7 @@ class HassPlayer(Player):
             await self.hass.services.async_call(
                 MP_DOMAIN,
                 SERVICE_VOLUME_MUTE,
-                {"entity_id": self.entity_id, ATTR_MEDIA_VOLUME_MUTED: not powered},
+                {ATTR_ENTITY_ID: self.entity_id, ATTR_MEDIA_VOLUME_MUTED: not powered},
             )
             self._is_muted = not powered
             self.update_state()
@@ -205,7 +246,7 @@ class HassPlayer(Player):
         # regular turn_on service call
         cmd = SERVICE_TURN_ON if powered else SERVICE_TURN_OFF
         await self.hass.services.async_call(
-            MP_DOMAIN, cmd, {"entity_id": self.entity_id}
+            MP_DOMAIN, cmd, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def volume_set(self, volume_level: int) -> None:
@@ -213,7 +254,10 @@ class HassPlayer(Player):
         await self.hass.services.async_call(
             MP_DOMAIN,
             SERVICE_VOLUME_SET,
-            {"entity_id": self.entity_id, ATTR_MEDIA_VOLUME_LEVEL: volume_level / 100},
+            {
+                ATTR_ENTITY_ID: self.entity_id,
+                ATTR_MEDIA_VOLUME_LEVEL: volume_level / 100,
+            },
         )
 
 
@@ -275,7 +319,7 @@ class HassGroupPlayer(PlayerGroup):
 
         cmd = SERVICE_TURN_ON if powered else SERVICE_TURN_OFF
         await self.hass.services.async_call(
-            MP_DOMAIN, cmd, {"entity_id": self.entity_id}
+            MP_DOMAIN, cmd, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     @callback
@@ -337,7 +381,7 @@ class HassCastGroupPlayer(PlayerGroup, HassPlayer):
         # cast group players do support turn off (but not on)
         if not powered and self.powered:
             await self.hass.services.async_call(
-                MP_DOMAIN, SERVICE_TURN_OFF, {"entity_id": self.entity_id}
+                MP_DOMAIN, SERVICE_TURN_OFF, {ATTR_ENTITY_ID: self.entity_id}
             )
 
     @callback
