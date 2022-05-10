@@ -17,6 +17,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import HomeAssistantType
 from music_assistant import MusicAssistant
+from music_assistant.constants import EventType, MassEvent
 from music_assistant.models.errors import MusicAssistantError
 from music_assistant.providers.filesystem import FileSystemProvider
 from music_assistant.providers.qobuz import QobuzProvider
@@ -37,6 +38,7 @@ from .const import (
     CONF_TUNEIN_ENABLED,
     CONF_TUNEIN_USERNAME,
     DOMAIN,
+    DOMAIN_EVENT,
 )
 from .panel import async_register_panel
 from .player_controls import HassPlayerControls
@@ -45,6 +47,11 @@ from .websockets import async_register_websockets
 LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ("media_player", "switch", "number")
+FORWARD_EVENTS = (
+    EventType.QUEUE_ADDED,
+    EventType.QUEUE_UPDATED,
+    EventType.QUEUE_ITEMS_UPDATED,
+)
 
 
 async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
@@ -108,6 +115,18 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
         elif event.event_type == EVENT_CALL_SERVICE:
             await async_intercept_play_media(event, controls)
 
+    async def handle_mass_event(event: MassEvent):
+        """Handle an incoming event from Music Assistant."""
+        # forward event to the HA eventbus
+        if hasattr(event.data, "to_dict"):
+            data = event.data.to_dict()
+        else:
+            data = event.data
+        hass.bus.async_fire(
+            DOMAIN_EVENT,
+            {"type": event.type.value, "object_id": event.object_id, "data": data},
+        )
+
     # setup event listeners, register their unsubscribe in the unload
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, handle_hass_event)
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, handle_hass_event)
@@ -116,6 +135,7 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
         hass.bus.async_listen(EVENT_STATE_CHANGED, controls.async_hass_state_event)
     )
     entry.async_on_unload(hass.bus.async_listen(EVENT_CALL_SERVICE, handle_hass_event))
+    entry.async_on_unload(mass.subscribe(handle_mass_event, FORWARD_EVENTS))
 
     # Websocket support and frontend (panel)
     async_register_websockets(hass)

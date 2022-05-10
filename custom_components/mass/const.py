@@ -2,6 +2,7 @@
 
 
 DOMAIN = "mass"
+DOMAIN_EVENT = f"{DOMAIN}_event"
 
 DEFAULT_NAME = "Music Assistant"
 
