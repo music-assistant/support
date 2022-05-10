@@ -8,6 +8,7 @@ import LibraryRadios from "@/views/LibraryRadios.vue";
 import ArtistDetails from "@/views/ArtistDetails.vue";
 import AlbumDetails from "@/views/AlbumDetails.vue";
 import TrackDetails from "@/views/TrackDetails.vue";
+import RadioDetails from "@/views/RadioDetails.vue";
 import PlaylistDetails from "@/views/PlaylistDetails.vue";
 import PlayerQueue from "@/views/PlayerQueue.vue";
 import { store } from "./store";
@@ -58,6 +59,7 @@ const routes = [
   },
   { name: "album", path: "/album", component: AlbumDetails, props: true },
   { name: "track", path: "/track", component: TrackDetails, props: true },
+  { name: "radio", path: "/radio", component: RadioDetails, props: true },
   {
     name: "playlist",
     path: "/playlist",
