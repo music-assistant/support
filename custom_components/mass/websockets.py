@@ -63,6 +63,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_playerqueue_settings)
     websocket_api.async_register_command(hass, websocket_play_media)
     websocket_api.async_register_command(hass, websocket_item)
+    websocket_api.async_register_command(hass, websocket_embedded_thumb)
     websocket_api.async_register_command(hass, websocket_library_add)
     websocket_api.async_register_command(hass, websocket_library_remove)
     websocket_api.async_register_command(hass, websocket_artist_tracks)
@@ -656,6 +657,32 @@ async def websocket_item(
         )
         return
     connection.send_error(msg[ID], ERR_NOT_FOUND, f"Item not found: {msg[URI]}")
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/embedded_thumb",
+        vol.Required("filename"): str,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_embedded_thumb(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return embedded thumb of filesystem item."""
+    filename = msg["filename"]
+    if file_prov := mass.music.get_provider("filesystem"):
+        if image_data := await file_prov.get_embedded_image(filename):
+            connection.send_result(
+                msg[ID],
+                image_data,
+            )
+            return
+    connection.send_error(msg[ID], ERR_NOT_FOUND, f"Image not found: {filename}")
 
 
 @websocket_api.websocket_command(

@@ -37,8 +37,8 @@
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
-import { Album, Artist, MassEvent, MassEventType, Track } from "../plugins/api";
-import api from "../plugins/api";
+import type { Album, Artist, MassEvent, Track } from "../plugins/api";
+import { api, MassEventType } from "../plugins/api";
 import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
@@ -52,7 +52,7 @@ const props = withDefaults(defineProps<Props>(), {
   lazy: true,
   refresh: false,
 });
-const activeTab = ref(0);
+const activeTab = ref("tracks");
 
 const artist = ref<Artist>();
 const artistTopTracks = ref<Track[]>([]);
@@ -69,10 +69,7 @@ watchEffect(async () => {
   artist.value = item;
   // fetch additional info once main info retrieved
   artistAlbums.value = await api.getArtistAlbums(props.provider, props.item_id);
-  artistTopTracks.value = await api.getArtistTracks(
-    props.provider,
-    props.item_id
-  );
+  artistTopTracks.value = await api.getArtistTracks(props.provider, props.item_id);
   loading.value = false;
 });
 

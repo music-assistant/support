@@ -61,6 +61,7 @@ export enum ImageType {
   CUTOUT = "cutout",
   BACK = "back",
   CDART = "cdart",
+  EMBEDDED_THUMB = "embedded_thumb",
   OTHER = "other"
 }
 
@@ -735,6 +736,22 @@ export class MusicAssistantApi {
     if (fallbackToImage) return this.getImageUrl(mediaItem);
   }
 
+  public getEmbeddedThumb(filename: string): Promise<string> {
+    return this.getData("embedded_thumb", { filename });
+  }
+
+  public async getEmbeddedThumbForItem(
+    mediaItem?: MediaItemType | ItemMapping | QueueItem
+  ): Promise<string | undefined> {
+    if (!mediaItem) return;
+    if ("metadata" in mediaItem && mediaItem.metadata.images) {
+      for (const img of mediaItem.metadata.images) {
+        if (img.type == ImageType.EMBEDDED_THUMB)
+          return await this.getEmbeddedThumb(img.url);
+      }
+    }
+  }
+
   private async connectHassStandalone() {
     let auth;
     const storeAuth = true;
@@ -811,7 +828,7 @@ export class MusicAssistantApi {
     }
     this.signalEvent(msg);
     if (msg.event !== MassEventType.QUEUE_TIME_UPDATED) {
-      console.log("received event", msg);
+      console.log("[event]", msg);
     }
   }
 
@@ -826,7 +843,7 @@ export class MusicAssistantApi {
 
   private getData<T>(endpoint: string, args?: Record<string, any>): Promise<T> {
     this._lastId++;
-    console.log(endpoint, args);
+    console.log(`[getData] ${endpoint}`, args || "");
     return (this._conn as Connection).sendMessagePromise({
       id: this._lastId,
       type: `mass/${endpoint}`,
@@ -836,7 +853,7 @@ export class MusicAssistantApi {
 
   private executeCmd(endpoint: string, args?: Record<string, any>) {
     this._lastId++;
-    console.log(endpoint, args);
+    console.log(`[executeCmd] ${endpoint}`, args || "");
     (this._conn as Connection).sendMessage({
       id: this._lastId,
       type: `mass/${endpoint}`,

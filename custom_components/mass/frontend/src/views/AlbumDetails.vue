@@ -36,8 +36,8 @@
 <script setup lang="ts">
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
-import { Album, MassEvent, MassEventType, Track } from "../plugins/api";
-import api from "../plugins/api";
+import type { Album, MassEvent, Track } from "../plugins/api";
+import { api, MassEventType } from "../plugins/api";
 import { onBeforeUnmount, watchEffect, ref } from "vue";
 import { parseBool } from "../utils";
 
@@ -51,7 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
   lazy: true,
   refresh: false,
 });
-const activeTab = ref(0);
+const activeTab = ref("tracks");
 
 const album = ref<Album>();
 const albumTracks = ref<Track[]>([]);
@@ -67,10 +67,7 @@ watchEffect(async () => {
   );
   album.value = item;
   // fetch additional info once main info retrieved
-  albumVersions.value = await api.getAlbumVersions(
-    props.provider,
-    props.item_id
-  );
+  albumVersions.value = await api.getAlbumVersions(props.provider, props.item_id);
   albumTracks.value = await api.getAlbumTracks(props.provider, props.item_id);
   loading.value = false;
 });

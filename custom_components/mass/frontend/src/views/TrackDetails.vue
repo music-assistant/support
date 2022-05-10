@@ -49,7 +49,7 @@
                 width="35px"
                 :src="getQualityIcon(item.quality)"
                 :style="
-                  $vuetify.theme.current == 'light'
+                  $vuetify.theme.current.value == 'light'
                     ? 'object-fit: contain;filter: invert(100%);'
                     : 'object-fit: contain;'
                 "
@@ -60,11 +60,7 @@
               class="details-column"
               @mouseover="fetchPreviewUrl(item.provider, item.item_id, index)"
             >
-              <audio
-                style="width: 260px"
-                controls
-                :src="previewUrls[index]"
-              ></audio>
+              <audio style="width: 260px" controls :src="previewUrls[index]"></audio>
             </td>
           </tr>
         </tbody>
@@ -79,10 +75,7 @@ import InfoHeader from "../components/InfoHeader.vue";
 import { ref, reactive } from "@vue/reactivity";
 import type { MassEvent, Track } from "../plugins/api";
 import { api, MassEventType } from "../plugins/api";
-import {
-  getProviderIcon,
-  getQualityIcon,
-} from "../components/ProviderIcons.vue";
+import { getProviderIcon, getQualityIcon } from "../components/ProviderIcons.vue";
 import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
@@ -96,7 +89,7 @@ const props = withDefaults(defineProps<Props>(), {
   lazy: true,
   refresh: false,
 });
-const activeTab = ref(0);
+const activeTab = ref("versions");
 
 const track = ref<Track>();
 const trackVersions = ref<Track[]>([]);
@@ -112,10 +105,7 @@ watchEffect(async () => {
   );
   track.value = item;
   // fetch additional info once main info retrieved
-  trackVersions.value = await api.getTrackVersions(
-    props.provider,
-    props.item_id
-  );
+  trackVersions.value = await api.getTrackVersions(props.provider, props.item_id);
   loading.value = false;
 });
 

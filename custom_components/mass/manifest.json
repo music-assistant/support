@@ -5,7 +5,7 @@
   "documentation": "https://github.com/music-assistant/hass-music-assistant",
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "requirements": [
-    "music-assistant==1.0.31"
+    "music-assistant==1.0.32"
   ],
   "codeowners": [
     "@marcelveldt"

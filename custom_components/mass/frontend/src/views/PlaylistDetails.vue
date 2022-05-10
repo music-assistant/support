@@ -24,8 +24,8 @@
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
-import { MassEvent, MassEventType, Playlist, Track } from "../plugins/api";
-import api from "../plugins/api";
+import type { MassEvent, Playlist, Track } from "../plugins/api";
+import { api, MassEventType } from "../plugins/api";
 import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
@@ -39,7 +39,7 @@ const props = withDefaults(defineProps<Props>(), {
   lazy: true,
   refresh: false,
 });
-const activeTab = ref(0);
+const activeTab = ref('tracks');
 
 const playlist = ref<Playlist>();
 const playlistTracks = ref<Track[]>([]);
