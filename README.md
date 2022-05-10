@@ -102,6 +102,7 @@ In some cases it just works out of the box and in some cases it will need a few 
 - Kodi
 - Slimproto Squeezebox players
 - Sonos
+- Linkplay (via [custom component](https://github.com/nagyrobi/home-assistant-custom-components-linkplay))
 
 ### Confirmed NOT working
 
