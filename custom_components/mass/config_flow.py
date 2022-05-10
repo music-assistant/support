@@ -13,7 +13,6 @@ from homeassistant.components.media_player import (
     SUPPORT_PLAY_MEDIA,
     SUPPORT_VOLUME_SET,
 )
-from homeassistant.const import ATTR_SUPPORTED_FEATURES
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
@@ -57,27 +56,6 @@ def async_get_mass_entities(hass: HomeAssistant) -> List[str]:
         for x in ent_reg.entities.values()
         if x.domain == MP_DOMAIN and x.platform == DOMAIN
     ]
-
-
-@callback
-def async_get_control_entities(hass: HomeAssistant) -> List[str]:
-    """Return all media_player entities that can be used as source."""
-    exclude_entities = async_get_mass_entities(hass)
-    result = []
-    for state in hass.states.async_all(MP_DOMAIN):
-        # exclude MA entities
-        if state.entity_id in exclude_entities:
-            continue
-        # we only want entities that support some features
-        sup_features = state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
-        supported = 0
-        for req in REQUIRED_FEATURES:
-            if bool(sup_features & req):
-                supported += 1
-        if supported != len(REQUIRED_FEATURES):
-            continue
-        result.append(state.entity_id)
-    return result
 
 
 @callback
@@ -175,7 +153,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         conf = self.config_entry.options
 
         # filter any non existing device id's from the list
-        control_entities = async_get_control_entities(self.hass)
+        control_entities = self.hass.states.async_entity_ids("media_player")
         cur_ids = [
             item
             for item in conf.get(CONF_PLAYER_ENTITIES, control_entities)
