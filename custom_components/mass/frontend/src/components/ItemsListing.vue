@@ -294,9 +294,9 @@ const onClick = function (mediaItem: MediaItemType) {
       name: "playlist",
       params: { item_id: mediaItem.item_id, provider: mediaItem.provider },
     });
-  } else {
+  } else if (store.selectedPlayer) {
     // assume track (or radio) item
-    onMenu(mediaItem);
+    api.playMedia(store.selectedPlayer?.active_queue, mediaItem.uri);
   }
 };
 
