@@ -100,8 +100,11 @@
         >
           <ListviewItem
             :item="item"
-            :show-track-number="itemtype == 'albumtracks'"
-            :show-duration="item.media_type != 'radio'"
+            :show-track-number="showTrackNumber"
+            :show-duration="showDuration"
+            :show-library="showLibrary"
+            :show-menu="showMenu"
+            :show-providers="showProviders"
             :is-selected="isSelected(item)"
             @select="onSelect"
             @menu="onMenu"
@@ -158,12 +161,23 @@ interface Props {
   itemtype: string;
   items: MediaItemType[];
   loading?: boolean;
+  showTrackNumber?: boolean;
+  showProviders?: boolean;
+  showMenu?: boolean;
+  showLibrary?: boolean;
+  showDuration?: boolean;
 }
 interface SortKey {
   text: string;
   value: string;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  showTrackNumber: true,
+  showProviders: api.stats.providers.length > 1,
+  showMenu: true,
+  showLibrary: true,
+  showDuration: true,
+});
 
 // local refs
 const viewMode = ref("list");

@@ -1,5 +1,10 @@
 <template>
-  <ItemsListing itemtype="albums" :items="items" :loading="loading" />
+  <ItemsListing
+    itemtype="albums"
+    :items="items"
+    :loading="loading"
+    :show-library="false"
+  />
 </template>
 
 <script setup lang="ts">

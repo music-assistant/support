@@ -90,10 +90,12 @@ class HassPlayer(Player):
         self._mute_as_power = mute_as_power
         self._is_muted = False
         self.ent_reg = er.async_get(hass)
+        self.ent_platform = None
 
         manufacturer = "Home Assistant"
         model = entity_id
         if entry := self.ent_reg.async_get(entity_id):
+            self.ent_platform = entry.platform
             if entry.device_id:
                 dev_reg = dr.async_get(hass)
                 device = dev_reg.async_get(entry.device_id)
