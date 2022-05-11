@@ -118,7 +118,10 @@ class HassPlayer(Player):
         """Return elapsed time of current playing media in seconds."""
         # we need to return the corrected time here
         if state := self.hass.states.get(self.entity_id):
-            elapsed_time = state.attributes.get(ATTR_MEDIA_POSITION, 0)
+            attr = state.attributes
+            elapsed_time = (
+                attr.get("media_position_mass", attr.get(ATTR_MEDIA_POSITION)) or 0
+            )
             last_upd = state.attributes.get(ATTR_MEDIA_POSITION_UPDATED_AT, utcnow())
             diff = (utcnow() - last_upd).seconds
             return elapsed_time + diff
