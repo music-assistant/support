@@ -51,6 +51,7 @@ FORWARD_EVENTS = (
     EventType.QUEUE_ADDED,
     EventType.QUEUE_UPDATED,
     EventType.QUEUE_ITEMS_UPDATED,
+    EventType.QUEUE_TIME_UPDATED,
 )
 
 
