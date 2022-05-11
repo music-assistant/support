@@ -233,7 +233,7 @@ const { t } = useI18n();
 const router = useRouter();
 
 // properties
-interface Props {
+export interface Props {
   item?: MediaItemType;
 }
 const props = defineProps<Props>();

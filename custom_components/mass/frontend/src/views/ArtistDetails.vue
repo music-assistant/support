@@ -42,7 +42,7 @@ import { api, MassEventType } from "../plugins/api";
 import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
-interface Props {
+export interface Props {
   item_id: string;
   provider: string;
   lazy?: boolean | string;

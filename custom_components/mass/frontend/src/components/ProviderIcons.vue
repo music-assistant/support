@@ -17,7 +17,7 @@ import type { MediaItemProviderId } from "../plugins/api";
 import { MediaQuality } from "../plugins/api";
 import { computed } from "vue";
 
-interface Props {
+export interface Props {
   providerIds: MediaItemProviderId[];
   height: number;
   enableLink?: boolean;

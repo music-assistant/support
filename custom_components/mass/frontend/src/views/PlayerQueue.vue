@@ -59,12 +59,11 @@
             <!-- actions -->
             <template v-slot:append>
               <div class="listitem-actions">
-
-              <!-- item duration -->
+                <!-- item duration -->
                 <div class="listitem-action">
                   <span>{{ formatDuration(item.duration) }}</span>
                 </div>
-                
+
                 <!-- move up -->
                 <div class="listitem-action" v-if="!$vuetify.display.mobile">
                   <v-tooltip anchor="bottom">
@@ -112,17 +111,18 @@
                     <span>{{ $t("queue_move_down") }}</span>
                   </v-tooltip>
                 </div>
-
-                
               </div>
             </template>
           </v-list-item>
           <v-divider></v-divider>
         </div>
       </RecycleScroller>
-      <v-alert type="info" v-if="!loading && items.length == 0" style="margin: 20px">{{
-        $t("no_content")
-      }}</v-alert>
+      <v-alert
+        type="info"
+        v-if="!loading && items.length == 0"
+        style="margin: 20px"
+        >{{ $t("no_content") }}</v-alert
+      >
     </div>
 
     <!-- contextmenu -->
@@ -141,7 +141,8 @@
             ><b>{{ selectedItem?.name }}</b></v-toolbar-title
           >
           <v-toolbar-title v-else style="padding-left: 10px"
-            ><b>{{ $t("settings") }}</b> | {{ activePlayerQueue?.name }}</v-toolbar-title
+            ><b>{{ $t("settings") }}</b> |
+            {{ activePlayerQueue?.name }}</v-toolbar-title
           >
           <v-btn :icon="mdiClose" dark text @click="closeContextMenu()">{{
             $t("close")
@@ -155,7 +156,7 @@
               @click="
                 api.queueCommandPlayIndex(
                   activePlayerQueue?.queue_id,
-                  selectedItem?.item_id
+                  (selectedItem as QueueItem).item_id
                 )
               "
             >
@@ -171,7 +172,7 @@
               @click="
                 api.queueCommandMoveNext(
                   activePlayerQueue?.queue_id,
-                  selectedItem?.item_id
+                  (selectedItem as QueueItem).item_id
                 )
               "
             >
@@ -185,7 +186,7 @@
             <!-- move up -->
             <v-list-item
               @click="
-                api.queueCommandMoveUp(activePlayerQueue?.queue_id, selectedItem?.item_id)
+                api.queueCommandMoveUp(activePlayerQueue?.queue_id, (selectedItem as QueueItem).item_id)
               "
             >
               <v-list-item-avatar style="padding-right: 10px">
@@ -200,7 +201,7 @@
               @click="
                 api.queueCommandMoveDown(
                   activePlayerQueue?.queue_id,
-                  selectedItem?.item_id
+                  (selectedItem as QueueItem).item_id
                 )
               "
             >
@@ -213,7 +214,7 @@
 
             <!-- show info (track only) -->
             <v-list-item
-              @click="gotoTrack(selectedItem?.uri)"
+              @click="gotoTrack((selectedItem as QueueItem).uri)"
               v-if="selectedItem?.media_type == MediaType.TRACK"
             >
               <v-list-item-avatar style="padding-right: 10px">
@@ -232,7 +233,9 @@
               <v-select
                 :label="$t('shuffle')"
                 :prepend-icon="mdiShuffle"
-                :model-value="activePlayerQueue?.settings.shuffle_enabled.toString()"
+                :model-value="
+                  activePlayerQueue?.settings.shuffle_enabled.toString()
+                "
                 :items="[
                   { title: $t('on'), value: 'true' },
                   { title: $t('off'), value: 'false' },
@@ -293,12 +296,16 @@
                   padding-bottom: 0;
                   margin-top: -40px;
                 "
-                :disabled="!activePlayerQueue?.settings.volume_normalization_enabled"
+                :disabled="
+                  !activePlayerQueue?.settings.volume_normalization_enabled
+                "
                 color="primary"
                 :min="-50"
                 :max="10"
                 :step="0.5"
-                :model-value="activePlayerQueue?.settings.volume_normalization_target"
+                :model-value="
+                  activePlayerQueue?.settings.volume_normalization_target
+                "
                 @update:model-value="
                   api.playerQueueSettings(activePlayerQueue?.queue_id, {
                     volume_normalization_target: $event,
@@ -359,7 +366,8 @@
                   margin-top: -40px;
                 "
                 :disabled="
-                  activePlayerQueue?.settings.crossfade_mode == CrossFadeMode.DISABLED
+                  activePlayerQueue?.settings.crossfade_mode ==
+                  CrossFadeMode.DISABLED
                 "
                 color="primary"
                 :label="$t('crossfade_duration')"
@@ -418,7 +426,12 @@ import { ref } from "@vue/reactivity";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import type { QueueItem, MassEvent } from "../plugins/api";
-import { RepeatMode, CrossFadeMode, MassEventType, MediaType } from "../plugins/api";
+import {
+  RepeatMode,
+  CrossFadeMode,
+  MassEventType,
+  MediaType,
+} from "../plugins/api";
 import api from "../plugins/api";
 import { computed, onBeforeUnmount, watchEffect } from "vue";
 import { store } from "../plugins/store";
@@ -462,11 +475,14 @@ const tabItems = computed(() => {
 });
 
 // listen for item updates to refresh items when that happens
-const unsub = api.subscribe(MassEventType.QUEUE_ITEMS_UPDATED, (evt: MassEvent) => {
-  if (evt.object_id == activePlayerQueue.value?.queue_id) {
-    loadItems();
+const unsub = api.subscribe(
+  MassEventType.QUEUE_ITEMS_UPDATED,
+  (evt: MassEvent) => {
+    if (evt.object_id == activePlayerQueue.value?.queue_id) {
+      loadItems();
+    }
   }
-});
+);
 onBeforeUnmount(unsub);
 onBeforeUnmount(() => {
   store.customContextMenuCallback = undefined;
@@ -481,7 +497,9 @@ const loadItems = async function () {
       selectedItem.value = undefined;
       showContextMenu.value = true;
     };
-    items.value = await api.getPlayerQueueItems(activePlayerQueue.value.queue_id);
+    items.value = await api.getPlayerQueueItems(
+      activePlayerQueue.value.queue_id
+    );
   } else {
     store.topBarTitle = t("queue");
     items.value = [];

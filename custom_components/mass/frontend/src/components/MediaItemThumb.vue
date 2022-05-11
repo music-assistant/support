@@ -28,7 +28,7 @@ import { watchEffect, ref } from "vue";
 import type { ItemMapping, MediaItemType, QueueItem } from "../plugins/api";
 import { api } from "../plugins/api";
 
-interface Props {
+export interface Props {
   item?: MediaItemType | ItemMapping | QueueItem;
   size?: number;
   width?: string;

@@ -49,7 +49,7 @@
                 width="35px"
                 :src="getQualityIcon(item.quality)"
                 :style="
-                  $vuetify.theme.current.value == 'light'
+                  $vuetify.theme.current == 'light'
                     ? 'object-fit: contain;filter: invert(100%);'
                     : 'object-fit: contain;'
                 "
@@ -79,7 +79,7 @@ import { getProviderIcon, getQualityIcon } from "../components/ProviderIcons.vue
 import { onBeforeUnmount, watchEffect } from "vue";
 import { parseBool } from "../utils";
 
-interface Props {
+export interface Props {
   item_id: string;
   provider: string;
   lazy?: boolean | string;

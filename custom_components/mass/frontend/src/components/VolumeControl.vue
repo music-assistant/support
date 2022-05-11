@@ -77,7 +77,7 @@ import { getVolumePlayers } from "./PlayerSelect.vue";
 import { mdiSpeaker, mdiSpeakerMultiple, mdiPower } from "@mdi/js";
 import { api } from "../plugins/api";
 
-interface Props {
+export interface Props {
   player: Player;
 }
 defineProps<Props>();

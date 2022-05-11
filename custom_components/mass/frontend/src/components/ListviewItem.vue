@@ -176,7 +176,7 @@ const router = useRouter();
 const actionInProgress = ref(false);
 
 // properties
-interface Props {
+export interface Props {
   item: MediaItemType;
   showTrackNumber?: boolean;
   showProviders?: boolean;

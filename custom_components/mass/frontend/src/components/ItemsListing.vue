@@ -151,13 +151,8 @@ import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { api } from "../plugins/api";
 
-// global refs
-const router = useRouter();
-const i18n = useI18n();
-const display = useDisplay();
-
 // properties
-interface Props {
+export interface Props {
   itemtype: string;
   items: MediaItemType[];
   loading?: boolean;
@@ -178,6 +173,11 @@ const props = withDefaults(defineProps<Props>(), {
   showLibrary: true,
   showDuration: true,
 });
+
+// global refs
+const router = useRouter();
+const i18n = useI18n();
+const display = useDisplay();
 
 // local refs
 const viewMode = ref("list");
