@@ -5,7 +5,7 @@
   "documentation": "https://github.com/music-assistant/hass-music-assistant",
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "requirements": [
-    "music-assistant==1.0.33"
+    "music-assistant==1.0.34"
   ],
   "codeowners": [
     "@marcelveldt"
@@ -15,7 +15,7 @@
     "panel_custom"
   ],
   "after_dependencies": [
-    "media_source", "media_player", "group"
+    "media_source", "media_player"
   ],
   "config_flow": true,
   "iot_class": "local_push",
