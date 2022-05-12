@@ -243,10 +243,10 @@ const filteredItems = computed(() => {
   }
   if (sortBy.value == "track_number") {
     result.sort(
-      (a, b) => ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
+      (a, b) => ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
     );
     result.sort(
-      (a, b) => ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
+      (a, b) => ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
     );
   }
   if (sortBy.value == "position") {
