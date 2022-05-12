@@ -1,6 +1,7 @@
 """Music Assistant (music-assistant.github.io) integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 
@@ -12,7 +13,7 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
     EVENT_STATE_CHANGED,
 )
-from homeassistant.core import Event, HomeAssistant
+from homeassistant.core import CoreState, Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -119,8 +120,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
 
     # setup event listeners, register their unsubscribe in the unload
+    if hass.state == CoreState.running:
+        asyncio.create_task(controls.async_register_player_controls())
+        asyncio.create_task(mass.music.start_sync(3))
+    else:
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, handle_hass_event)
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, handle_hass_event)
+
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, handle_hass_event)
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, handle_hass_event)
     entry.async_on_unload(entry.add_update_listener(_update_listener))
     entry.async_on_unload(
         hass.bus.async_listen(EVENT_STATE_CHANGED, controls.async_hass_state_event)
