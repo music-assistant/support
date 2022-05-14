@@ -83,7 +83,7 @@ In the HACS panel, go to integrations and click the big orange '+' button. Searc
 - Music sources are synced at integration (re)load and every 3 hours.
 - If a song is available on multiple providers (e.g. Spotify and a flac file on disk), the file/stream with the highest quality is always preferred when starting a stream.
 - While Music Assistant is built entirely in python, it requires the SoX and/or ffmpeg binaries to be present on your OS distribution for the audio processing. If will default to SoX if present but fallback to ffmpeg (which is installed by default on Home Assistant installations).
-- Music Assistant uses a custom stream port (TCP 8095 by default) to stream audio to players. Players must be able to reach the Home Assistant instance and this port. If you're running one of the recommended Home Assistant setups, this is all handled for you, otherwise you will have to make sure you're running HA in HOST network mode. Note: If the default port 8095 is occupied, the next port will be tried, and so on.
+- Music Assistant uses a custom stream port (TCP 8095 by default) to stream audio to players. Players must be able to reach the Home Assistant instance and this port. If you're running one of the recommended Home Assistant installation methods, this is all handled for you, otherwise you will have to make sure you're running HA in HOST network mode. Note: If the default port 8095 is occupied, the next port will be tried, and so on.
 
 ## Music provider specific notes
 
@@ -95,7 +95,7 @@ In the HACS panel, go to integrations and click the big orange '+' button. Searc
 
 In theory every Home Assistant media player that accepts "play from url" should be supported.
 In reality this is a bit more difficult because not every media player integration has implemented the play_media service the same way.
-In some cases it just works out of the box and in some cases it will need a few workarounds in our code to get it going. Media players that do not support 'play by url' will not/never work. See the below table for confirmed working media player integrations. Please report if you find a player not on the list and either work with us to get it compatible or report that you've tested it and it works ;-)
+In some cases it just works out of the box and in some cases it will need a few code workarounds to get it going. Media players that do not support 'play by url' will not/never work. See the below table for confirmed working media player integrations. Please report if you find a player not on the list and either work with us to get it compatible or report that you've tested it and it works ;-)
 
 ### Confirmed working
 
@@ -112,19 +112,10 @@ In some cases it just works out of the box and in some cases it will need a few 
 
 ## I need help, I have feedback
 
-- Use the issue tracker on Github to create bug reports, please include detailed info and logfiles. Please check if your issue has already been reported.
+- Use the [issue tracker](https://github.com/music-assistant/hass-music-assistant/issues) to create bug reports, please include detailed info and logfiles. Please check if your issue has already been reported.
 - Use the issue tracker for feature requests. Use the like button to give your vote to an existing request or create a new one.
 - I've setup a discord server too: https://discord.gg/kaVm8hGpne
 - Current state of this integration is BETA, I have a few small features left (for example the search) before I consider the "MVP" done and then an announcement is made on the forums (and that can be used for discussions too).
-
-## Standalone version of the panel/web app
-
-Bonus feature ;-)
-Music Assistant can be fully controlled with Home Assistant including control from automations and script and it is integrated into the `Media` panel to easily browse your favorite media. Besides that Music Assistant has a more advanced own panel too with extended features. This panel is available in the Home Assistant sidepanel menu. It is also possible to run this 'Progressive Web App' stand-alone, you can even install it on most modern platforms.
-
-The standalone version of the Music Assistant panel can be retrieved if you navigate to http(s)://<yourhomeassistanturl>/lib/mass.
-So for example with the default local url: http://homeassistant.local:8123/lib/mass
-
 
 Thanks for testing and I hope you like my little pet project I've been working on for the last 3 years.
 

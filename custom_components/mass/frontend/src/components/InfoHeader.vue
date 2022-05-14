@@ -11,7 +11,7 @@
         height="100%"
         cover
         class="background-image"
-        :src="getFanartUrl(item, true)"
+        :src="fanartImage"
         :gradient="
           store.darkTheme
             ? 'to bottom, rgba(0,0,0,.90), rgba(0,0,0,.75)'
@@ -22,17 +22,7 @@
       <v-layout v-if="item" style="padding-left: 15px; padding-right: 15px">
         <!-- left side: cover image -->
         <div v-if="!$vuetify.display.mobile" xs5 pa-5>
-          <v-img
-            :src="getImageUrl(item)"
-            :lazy-src="imgDefaultArtist"
-            width="220px"
-            style="
-              border: 3px solid rgba(0, 0, 0, 0.33);
-              border-radius: 3px;
-              margin-top: 15px;
-              margin-bottom: 10px;
-            "
-          />
+          <MediaItemThumb :item="item" :size="180" :border="true" style="margin-top:15px" />
         </div>
 
         <div>
@@ -217,12 +207,13 @@ import {
 
 import { store } from "../plugins/store";
 import api from "../plugins/api";
+import { ImageType } from "../plugins/api";
 import type { Album, Artist, ItemMapping, MediaItemType } from "../plugins/api";
 import { onBeforeUnmount, ref, watchEffect } from "vue";
-import { getImageUrl, getFanartUrl } from "./MediaItemThumb.vue";
+import MediaItemThumb from "./MediaItemThumb.vue";
+import {getImageThumbForItem } from "./MediaItemThumb.vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
-
 
 // properties
 export interface Props {
@@ -230,6 +221,7 @@ export interface Props {
 }
 const props = defineProps<Props>();
 const showFullInfo = ref(false);
+const fanartImage = ref();
 
 const imgGradient = new URL("../assets/info_gradient.jpg", import.meta.url)
   .href;
@@ -248,6 +240,7 @@ watchEffect(async () => {
       t(props.item.media_type + "s") +
       ` | </span>${props.item.name}`;
     store.contextMenuParentItem = props.item;
+    fanartImage.value = await getImageThumbForItem(props.item, ImageType.FANART) || await getImageThumbForItem(props.item, ImageType.THUMB);
   }
 });
 

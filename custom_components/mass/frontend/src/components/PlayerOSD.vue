@@ -11,7 +11,7 @@
       class="bg-image"
       width="100%"
       cover
-      :src="getFanartUrl(curMediaItem)"
+      :src="fanartImage"
       :gradient="
         $vuetify.theme.current == 'dark'
           ? 'to bottom, rgba(0,0,0,.80), rgba(0,0,0,.75)'
@@ -211,7 +211,7 @@
           small
           icon
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue.current_item"
+          :disabled="!activePlayerQueue || !activePlayerQueue?.active"
           @click="api.queueCommandPrevious(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipPrevious" />
@@ -220,7 +220,7 @@
           icon
           x-large
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue.current_item"
+          :disabled="!activePlayerQueue || !activePlayerQueue?.active"
           @click="api.queueCommandPlayPause(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">{{
@@ -231,7 +231,7 @@
           icon
           small
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue.next_item"
+          :disabled="!activePlayerQueue || !activePlayerQueue?.active"
           @click="api.queueCommandNext(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipNext" />
@@ -301,26 +301,27 @@ import {
   mdiPlaylistMusic,
   mdiPlay,
   mdiPause,
+  mdiStop
 } from "@mdi/js";
 
 import { watchEffect, ref, computed } from "vue";
 import { useDisplay } from "vuetify";
-import type {
-  Artist,
-  PlayerQueue,
-  QueueItem,
-  StreamDetails,
-  MediaItemType,
-  MusicAssistantApi,
-  ItemMapping,
-  Track,
-  Radio,
+import {
+  type Artist,
+  type PlayerQueue,
+  type QueueItem,
+  type StreamDetails,
+  type MediaItemType,
+  type MusicAssistantApi,
+  type ItemMapping,
+  type Track,
+  type Radio,
+ImageType,
 } from "../plugins/api";
 import { api, PlayerState, ContentType } from "../plugins/api";
 import { store } from "../plugins/store";
 import VolumeControl from "./VolumeControl.vue";
-import MediaItemThumb from "./MediaItemThumb.vue";
-import { getImageUrl, getFanartUrl } from "./MediaItemThumb.vue";
+import MediaItemThumb, { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { formatDuration, truncateString } from "../utils";
 import { useRouter } from "vue-router";
 import {
@@ -338,6 +339,7 @@ const display = useDisplay();
 // local refs
 const showStreamDetails = ref(false);
 const curMediaItem = ref<Track | Radio>();
+const fanartImage = ref();
 
 // computed properties
 const activePlayerQueue = computed(() => {
@@ -399,6 +401,9 @@ watchEffect(async () => {
     curMediaItem.value = await api?.getItem(curQueueItem.value.uri);
   } else {
     curMediaItem.value = curQueueItem.value.media_item;
+  }
+  if (curMediaItem.value) {
+    fanartImage.value = await getImageThumbForItem(curMediaItem.value, ImageType.FANART) || await getImageThumbForItem(curMediaItem.value, ImageType.THUMB);
   }
 });
 

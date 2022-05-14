@@ -12,6 +12,8 @@
         :key="item?.uri"
         cover
         :src="imgData"
+        :lazy-src="fallbackImage"
+        :width="size"
         :style="border ? 'border: 1px solid rgba(0, 0, 0, 0.22)' : ''"
       >
         <template v-slot:placeholder>
@@ -28,8 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { store } from "@/plugins/store";
-import { watchEffect, ref } from "vue";
+import { watchEffect, ref, computed } from "vue";
 import type { ItemMapping, MediaItemType, QueueItem } from "../plugins/api";
 import { api, ImageType } from "../plugins/api";
 
@@ -43,6 +44,7 @@ export interface Props {
   maxWidth?: string;
   maxHeight?: string;
   border?: boolean;
+  fallback?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -52,9 +54,16 @@ const props = withDefaults(defineProps<Props>(), {
 
 const imgData = ref<string>();
 
+const fallbackImage = computed(() => {
+  if (props.fallback) return props.fallback;
+  return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}}`;
+});
+
 watchEffect(async () => {
   if (!props.item) return;
-  imgData.value = await getImageThumbForItem(props.item, ImageType.THUMB, props.size) || `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}}`;
+  imgData.value =
+    (await getImageThumbForItem(props.item, ImageType.THUMB, props.size)) ||
+    `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}}`;
 });
 </script>
 
@@ -85,6 +94,7 @@ export const getImageUrl = function (
     mediaItem.album.metadata.images
   ) {
     for (const img of mediaItem.album.metadata.images) {
+      if (img.is_file && !includeFileBased) continue;
       if (img.type == type) return img.url;
     }
   }
@@ -96,6 +106,7 @@ export const getImageUrl = function (
     mediaItem.artist.metadata.images
   ) {
     for (const img of mediaItem.artist.metadata.images) {
+      if (img.is_file && !includeFileBased) continue;
       if (img.type == type) return img.url;
     }
   }
@@ -104,6 +115,7 @@ export const getImageUrl = function (
     for (const artist of mediaItem.artists) {
       if ("metadata" in artist && artist.metadata.images) {
         for (const img of artist.metadata.images) {
+          if (img.is_file && !includeFileBased) continue;
           if (img.type == type) return img.url;
         }
       }
@@ -111,11 +123,6 @@ export const getImageUrl = function (
   }
 };
 
-export const getFanartUrl = function (mediaItem?: MediaItemType, fallbackToImage = true) {
-  const fanartImage = getImageUrl(mediaItem, ImageType.FANART);
-  if (fanartImage) return fanartImage;
-  if (fallbackToImage) return getImageUrl(mediaItem);
-};
 
 export const getImageThumbForItem = async function (
   mediaItem?: MediaItemType | ItemMapping | QueueItem,
@@ -130,6 +137,7 @@ export const getImageThumbForItem = async function (
   } else if (imgPath) {
     return imgPath;
   }
+  // try to grab the path/url again, this time allowing local paths
   imgPath = getImageUrl(mediaItem, type, true);
   if (imgPath) {
     return await api.getLocalThumb(imgPath, size);
