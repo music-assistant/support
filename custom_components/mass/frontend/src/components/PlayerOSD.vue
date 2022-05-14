@@ -11,7 +11,7 @@
       class="bg-image"
       width="100%"
       cover
-      :src="api.getFanartUrl(curMediaItem)"
+      :src="getFanartUrl(curMediaItem)"
       :gradient="
         $vuetify.theme.current == 'dark'
           ? 'to bottom, rgba(0,0,0,.80), rgba(0,0,0,.75)'
@@ -320,6 +320,7 @@ import { api, PlayerState, ContentType } from "../plugins/api";
 import { store } from "../plugins/store";
 import VolumeControl from "./VolumeControl.vue";
 import MediaItemThumb from "./MediaItemThumb.vue";
+import { getImageUrl, getFanartUrl } from "./MediaItemThumb.vue";
 import { formatDuration, truncateString } from "../utils";
 import { useRouter } from "vue-router";
 import {

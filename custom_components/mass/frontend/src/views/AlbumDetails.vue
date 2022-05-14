@@ -78,7 +78,7 @@ const unsub = api.subscribe(MassEventType.ALBUM_ADDED, (evt: MassEvent) => {
   if (
     (props.provider == "database" && newItem.item_id == props.item_id) ||
     newItem.provider_ids.filter(
-      (x) => x.provider == props.provider && x.item_id == props.item_id
+      (x) => x.prov_type == props.provider && x.item_id == props.item_id
     ).length > 0
   ) {
     // got update for current item

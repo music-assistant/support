@@ -28,13 +28,24 @@ export enum MediaQuality {
   FLAC_LOSSLESS_HI_RES_4 = 23 // above 192khz 24 bits HI-RES
 }
 
+export enum ProviderType {
+  FILESYSTEM_LOCAL = "file",
+  FILESYSTEM_SMB = "smb",
+  FILESYSTEM_GOOGLE_DRIVE = "gdrive",
+  FILESYSTEM_ONEDRIVE = "onedrive",
+  SPOTIFY = "spotify",
+  QOBUZ = "qobuz",
+  TUNEIN = "tunein",
+  DATABASE = "database",
+  URL = "url"
+}
 export interface MediaItemProviderId {
-  provider: string;
   item_id: string;
+  prov_type: ProviderType;
+  prov_id: string;
+  available: boolean;
   quality?: MediaQuality;
   details?: string;
-  url?: string;
-  available: boolean;
 }
 
 export enum LinkType {
@@ -73,6 +84,7 @@ export interface MediaItemLink {
 export interface MediaItemImage {
   type: ImageType;
   url: string;
+  is_file: boolean;
 }
 
 export interface MediaItemMetadata {
@@ -685,74 +697,8 @@ export class MusicAssistantApi {
     this.executeCmd("play_media", { queue_id, command, uri });
   }
 
-  public getImageUrl(
-    mediaItem?: MediaItemType | ItemMapping | QueueItem,
-    type: ImageType = ImageType.THUMB
-  ) {
-    // get imageurl for mediaItem
-    if (!mediaItem) return;
-    if ("image" in mediaItem) return mediaItem.image; // queueItem
-    if (!mediaItem || !mediaItem.media_type) return "";
-    if ("metadata" in mediaItem && mediaItem.metadata.images) {
-      for (const img of mediaItem.metadata.images) {
-        if (img.type == type) return img.url;
-      }
-    }
-    // retry with album of track
-    if (
-      "album" in mediaItem &&
-      mediaItem.album &&
-      "metadata" in mediaItem.album &&
-      mediaItem.album.metadata &&
-      mediaItem.album.metadata.images
-    ) {
-      for (const img of mediaItem.album.metadata.images) {
-        if (img.type == type) return img.url;
-      }
-    }
-    // retry with album artist
-    if (
-      "artist" in mediaItem &&
-      "metadata" in mediaItem.artist &&
-      mediaItem.artist.metadata &&
-      mediaItem.artist.metadata.images
-    ) {
-      for (const img of mediaItem.artist.metadata.images) {
-        if (img.type == type) return img.url;
-      }
-    }
-    // retry with track artist
-    if ("artists" in mediaItem && mediaItem.artists) {
-      for (const artist of mediaItem.artists) {
-        if ("metadata" in artist && artist.metadata.images) {
-          for (const img of artist.metadata.images) {
-            if (img.type == type) return img.url;
-          }
-        }
-      }
-    }
-  }
-
-  public getFanartUrl(mediaItem?: MediaItemType, fallbackToImage = true) {
-    const fanartImage = this.getImageUrl(mediaItem, ImageType.FANART);
-    if (fanartImage) return fanartImage;
-    if (fallbackToImage) return this.getImageUrl(mediaItem);
-  }
-
-  public getEmbeddedThumb(filename: string): Promise<string> {
-    return this.getData("embedded_thumb", { filename });
-  }
-
-  public async getEmbeddedThumbForItem(
-    mediaItem?: MediaItemType | ItemMapping | QueueItem
-  ): Promise<string | undefined> {
-    if (!mediaItem) return;
-    if ("metadata" in mediaItem && mediaItem.metadata.images) {
-      for (const img of mediaItem.metadata.images) {
-        if (img.type == ImageType.EMBEDDED_THUMB)
-          return await this.getEmbeddedThumb(img.url);
-      }
-    }
+  public getLocalThumb(path: string, size?: number): Promise<string> {
+    return this.getData("thumb", { path, size });
   }
 
   private async connectHassStandalone() {

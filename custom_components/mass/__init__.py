@@ -16,8 +16,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.start import async_at_start
 from music_assistant import MusicAssistant
-from music_assistant.models.config import MassConfig
-from music_assistant.models.enums import EventType
+from music_assistant.models.config import MassConfig, MusicProviderConfig
+from music_assistant.models.enums import EventType, ProviderType
 from music_assistant.models.errors import MusicAssistantError
 from music_assistant.models.event import MassEvent
 
@@ -25,7 +25,6 @@ from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
     CONF_FILE_ENABLED,
-    CONF_PLAYLISTS_DIRECTORY,
     CONF_QOBUZ_ENABLED,
     CONF_QOBUZ_PASSWORD,
     CONF_QOBUZ_USERNAME,
@@ -58,20 +57,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     db_file = hass.config.path("music_assistant.db")
 
     conf = entry.options
-    mass_conf = MassConfig(
-        database_url=f"sqlite:///{db_file}",
-        spotify_enabled=conf.get(CONF_SPOTIFY_ENABLED),
-        spotify_username=conf.get(CONF_SPOTIFY_USERNAME),
-        spotify_password=conf.get(CONF_SPOTIFY_PASSWORD),
-        qobuz_enabled=conf.get(CONF_QOBUZ_ENABLED),
-        qobuz_username=conf.get(CONF_QOBUZ_USERNAME),
-        qobuz_password=conf.get(CONF_QOBUZ_PASSWORD),
-        tunein_enabled=conf.get(CONF_TUNEIN_ENABLED),
-        tunein_username=conf.get(CONF_TUNEIN_USERNAME),
-        filesystem_enabled=conf.get(CONF_FILE_ENABLED),
-        filesystem_music_dir=conf.get(CONF_FILE_DIRECTORY),
-        filesystem_playlists_dir=conf.get(CONF_PLAYLISTS_DIRECTORY),
-    )
+
+    # TODO: adjust config flow to support creating multiple provider entries
+    providers = []
+
+    if conf.get(CONF_SPOTIFY_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.SPOTIFY,
+                username=conf.get(CONF_SPOTIFY_USERNAME),
+                password=conf.get(CONF_SPOTIFY_PASSWORD),
+            )
+        )
+
+    if conf.get(CONF_QOBUZ_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.QOBUZ,
+                username=conf.get(CONF_QOBUZ_USERNAME),
+                password=conf.get(CONF_QOBUZ_PASSWORD),
+            )
+        )
+
+    if conf.get(CONF_TUNEIN_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.TUNEIN,
+                username=conf.get(CONF_TUNEIN_USERNAME),
+            )
+        )
+    if conf.get(CONF_FILE_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.FILESYSTEM_LOCAL,
+                path=conf.get(CONF_FILE_DIRECTORY),
+            )
+        )
+    mass_conf = MassConfig(database_url=f"sqlite:///{db_file}", providers=providers)
+
     mass = MusicAssistant(mass_conf, session=http_session)
 
     try:

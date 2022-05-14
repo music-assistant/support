@@ -11,7 +11,12 @@ from homeassistant.components.websocket_api.connection import ActiveConnection
 from homeassistant.components.websocket_api.const import ERR_NOT_FOUND
 from homeassistant.core import HomeAssistant, callback
 from music_assistant import MusicAssistant
-from music_assistant.models.enums import CrossFadeMode, QueueOption, RepeatMode
+from music_assistant.models.enums import (
+    CrossFadeMode,
+    ProviderType,
+    QueueOption,
+    RepeatMode,
+)
 from music_assistant.models.event import MassEvent
 
 from .const import DOMAIN
@@ -63,7 +68,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_playerqueue_settings)
     websocket_api.async_register_command(hass, websocket_play_media)
     websocket_api.async_register_command(hass, websocket_item)
-    websocket_api.async_register_command(hass, websocket_embedded_thumb)
+    websocket_api.async_register_command(hass, websocket_thumb)
     websocket_api.async_register_command(hass, websocket_library_add)
     websocket_api.async_register_command(hass, websocket_library_remove)
     websocket_api.async_register_command(hass, websocket_artist_tracks)
@@ -121,7 +126,7 @@ async def websocket_artists(
     {
         vol.Required(TYPE): f"{DOMAIN}/artist",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -156,7 +161,7 @@ async def websocket_artist(
     {
         vol.Required(TYPE): f"{DOMAIN}/artist/tracks",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -183,7 +188,7 @@ async def websocket_artist_tracks(
     {
         vol.Required(TYPE): f"{DOMAIN}/artist/albums",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -234,7 +239,7 @@ async def websocket_albums(
     {
         vol.Required(TYPE): f"{DOMAIN}/album",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -269,7 +274,7 @@ async def websocket_album(
     {
         vol.Required(TYPE): f"{DOMAIN}/album/tracks",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -296,7 +301,7 @@ async def websocket_album_tracks(
     {
         vol.Required(TYPE): f"{DOMAIN}/album/versions",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -347,7 +352,7 @@ async def websocket_tracks(
     {
         vol.Required(TYPE): f"{DOMAIN}/track/versions",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -374,7 +379,7 @@ async def websocket_track_versions(
     {
         vol.Required(TYPE): f"{DOMAIN}/track",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -409,7 +414,7 @@ async def websocket_track(
     {
         vol.Required(TYPE): f"{DOMAIN}/track/preview",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
     }
 )
 @websocket_api.async_response
@@ -457,7 +462,7 @@ async def websocket_playlists(
     {
         vol.Required(TYPE): f"{DOMAIN}/playlist",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -491,7 +496,7 @@ async def websocket_playlist(
     {
         vol.Required(TYPE): f"{DOMAIN}/playlist/tracks",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -597,7 +602,7 @@ async def websocket_radios(
     {
         vol.Required(TYPE): f"{DOMAIN}/radio",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -661,28 +666,25 @@ async def websocket_item(
 
 @websocket_api.websocket_command(
     {
-        vol.Required(TYPE): f"{DOMAIN}/embedded_thumb",
-        vol.Required("filename"): str,
+        vol.Required(TYPE): f"{DOMAIN}/thumb",
+        vol.Required("path"): str,
+        vol.Optional("size"): int,
     }
 )
 @websocket_api.async_response
 @async_get_mass
-async def websocket_embedded_thumb(
+async def websocket_thumb(
     hass: HomeAssistant,
     connection: ActiveConnection,
     msg: dict,
     mass: MusicAssistant,
 ) -> None:
-    """Return embedded thumb of filesystem item."""
-    filename = msg["filename"]
-    if file_prov := mass.music.get_provider("filesystem"):
-        if image_data := await file_prov.get_embedded_image(filename):
-            connection.send_result(
-                msg[ID],
-                image_data,
-            )
-            return
-    connection.send_error(msg[ID], ERR_NOT_FOUND, f"Image not found: {filename}")
+    """Return (resized) image thumb from url or local image."""
+    res = await mass.metadata.get_thumbnail(msg["path"], msg.get("size"), True)
+    connection.send_result(
+        msg[ID],
+        res,
+    )
 
 
 @websocket_api.websocket_command(
@@ -1017,7 +1019,7 @@ async def websocket_stats(
 ) -> None:
     """Return stats."""
     result = {
-        "providers": [x.id for x in mass.music.providers],
+        "providers": [x.type.value for x in mass.music.providers],
         "library_artists": await mass.music.artists.count(),
         "library_albums": await mass.music.albums.count(),
         "library_tracks": await mass.music.tracks.count(),

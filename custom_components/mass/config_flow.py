@@ -24,7 +24,6 @@ from .const import (
     CONF_HIDE_SOURCE_PLAYERS,
     CONF_MUTE_POWER_PLAYERS,
     CONF_PLAYER_ENTITIES,
-    CONF_PLAYLISTS_DIRECTORY,
     CONF_QOBUZ_ENABLED,
     CONF_QOBUZ_PASSWORD,
     CONF_QOBUZ_USERNAME,
@@ -104,11 +103,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # check if music directory is valid
             music_dir = user_input.get(CONF_FILE_DIRECTORY)
-            playlists_dir = user_input.get(CONF_PLAYLISTS_DIRECTORY)
             if music_dir and not os.path.isdir(music_dir):
                 errors = {CONF_FILE_DIRECTORY: "directory_not_exists"}
-            elif playlists_dir and not os.path.isdir(playlists_dir):
-                errors = {CONF_PLAYLISTS_DIRECTORY: "directory_not_exists"}
             else:
                 return self.async_create_entry(
                     title=DEFAULT_NAME, data={}, options=user_input
@@ -128,7 +124,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_TUNEIN_USERNAME): str,
                     vol.Required(CONF_FILE_ENABLED, default=False): bool,
                     vol.Optional(CONF_FILE_DIRECTORY): str,
-                    vol.Optional(CONF_PLAYLISTS_DIRECTORY): str,
                 }
             ),
             errors=errors,
@@ -199,11 +194,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
             # check if music directory is valid
             music_dir = user_input.get(CONF_FILE_DIRECTORY)
-            playlists_dir = user_input.get(CONF_PLAYLISTS_DIRECTORY)
             if music_dir and not os.path.isdir(music_dir):
                 errors = {CONF_FILE_DIRECTORY: "directory_not_exists"}
-            elif playlists_dir and not os.path.isdir(playlists_dir):
-                errors = {CONF_PLAYLISTS_DIRECTORY: "directory_not_exists"}
             else:
                 return await self.async_step_adv()
 
@@ -246,10 +238,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     ): bool,
                     vol.Optional(
                         CONF_FILE_DIRECTORY, default=conf.get(CONF_FILE_DIRECTORY, "")
-                    ): str,
-                    vol.Optional(
-                        CONF_PLAYLISTS_DIRECTORY,
-                        default=conf.get(CONF_PLAYLISTS_DIRECTORY, ""),
                     ): str,
                 }
             ),

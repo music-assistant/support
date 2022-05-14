@@ -11,7 +11,7 @@
         height="100%"
         cover
         class="background-image"
-        :src="api.getFanartUrl(item, true)"
+        :src="getFanartUrl(item, true)"
         :gradient="
           store.darkTheme
             ? 'to bottom, rgba(0,0,0,.90), rgba(0,0,0,.75)'
@@ -23,7 +23,7 @@
         <!-- left side: cover image -->
         <div v-if="!$vuetify.display.mobile" xs5 pa-5>
           <v-img
-            :src="api.getImageUrl(item)"
+            :src="getImageUrl(item) || `https://ui-avatars.com/api/?name=${item.name}&size=200}`"
             :lazy-src="imgDefaultArtist"
             width="220px"
             style="
@@ -219,8 +219,17 @@ import { store } from "../plugins/store";
 import api from "../plugins/api";
 import type { Album, Artist, ItemMapping, MediaItemType } from "../plugins/api";
 import { onBeforeUnmount, ref, watchEffect } from "vue";
+import { getImageUrl, getFanartUrl } from "./MediaItemThumb.vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+
+
+// properties
+export interface Props {
+  item?: MediaItemType;
+}
+const props = defineProps<Props>();
+const showFullInfo = ref(false);
 
 const imgGradient = new URL("../assets/info_gradient.jpg", import.meta.url)
   .href;
@@ -231,13 +240,6 @@ const imgDefaultArtist = new URL(
 
 const { t } = useI18n();
 const router = useRouter();
-
-// properties
-export interface Props {
-  item?: MediaItemType;
-}
-const props = defineProps<Props>();
-const showFullInfo = ref(false);
 
 watchEffect(async () => {
   if (props.item) {
@@ -278,14 +280,12 @@ const getDescription = function () {
   if (!props.item) return "";
   if (props.item.metadata && props.item.metadata.description) {
     return props.item.metadata.description;
-  } else if (props.item.metadata && props.item.metadata.biography) {
-    return props.item.metadata.biography;
   } else if (props.item.metadata && props.item.metadata.copyright) {
     return props.item.metadata.copyright;
   } else if ("artists" in props.item) {
     props.item.artists.forEach(function (artist: Artist | ItemMapping) {
-      if ("metadata" in artist && artist.metadata.biography) {
-        desc = artist.metadata.biography;
+      if ("metadata" in artist && artist.metadata.description) {
+        desc = artist.metadata.description;
       }
     });
   }

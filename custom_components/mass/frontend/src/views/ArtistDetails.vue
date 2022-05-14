@@ -60,16 +60,26 @@ const artistAlbums = ref<Album[]>([]);
 const loading = ref(true);
 
 watchEffect(async () => {
-  const item = await api.getArtist(
-    props.provider,
-    props.item_id,
-    parseBool(props.lazy),
-    parseBool(props.refresh)
-  );
-  artist.value = item;
-  // fetch additional info once main info retrieved
-  artistAlbums.value = await api.getArtistAlbums(props.provider, props.item_id);
-  artistTopTracks.value = await api.getArtistTracks(props.provider, props.item_id);
+  api
+    .getArtist(
+      props.provider,
+      props.item_id,
+      parseBool(props.lazy),
+      parseBool(props.refresh)
+    )
+    .then(async (item) => {
+      artist.value = item;
+      // fetch additional info once main info retrieved
+      artistAlbums.value = await api.getArtistAlbums(
+        props.provider,
+        props.item_id
+      );
+      artistTopTracks.value = await api.getArtistTracks(
+        props.provider,
+        props.item_id
+      );
+    });
+
   loading.value = false;
 });
 
@@ -79,7 +89,7 @@ const unsub = api.subscribe(MassEventType.ARTIST_ADDED, (evt: MassEvent) => {
   if (
     (props.provider == "database" && newItem.item_id == props.item_id) ||
     newItem.provider_ids.filter(
-      (x) => x.provider == props.provider && x.item_id == props.item_id
+      (x) => x.prov_type == props.provider && x.item_id == props.item_id
     ).length > 0
   ) {
     // got update for current item

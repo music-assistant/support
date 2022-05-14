@@ -7,15 +7,14 @@
       style="padding-right: 0px"
     >
       <template v-slot:prepend
-        ><v-list-item-avatar
-          rounded="0"
+        ><div
           class="listitem-thumb"
           @click.stop="emit('select', item, !isSelected)"
         >
           <MediaItemThumb :item="item" :size="50" />
           <div v-if="isSelected" style="position: absolute; background-color: #82b1ff94">
             <v-icon dark size="51" :icon="mdiCheckboxMarkedOutline"></v-icon>
-          </div> </v-list-item-avatar
+          </div> </div
       ></template>
 
       <!-- title -->
@@ -252,7 +251,7 @@ const artistClick = function (item: Artist | ItemMapping) {
 const itemIsAvailable = function (item: MediaItem) {
   if (!props.item.provider_ids) return true;
   for (const x of item.provider_ids) {
-    if (x.available && api.stats.providers.includes(x.provider)) return true;
+    if (x.available && api.stats.providers.includes(x.prov_type)) return true;
   }
   return false;
 };
