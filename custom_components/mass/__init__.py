@@ -93,7 +93,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 path=conf.get(CONF_FILE_DIRECTORY),
             )
         )
-    mass_conf = MassConfig(database_url=f"sqlite:///{db_file}", providers=providers)
+    stream_ip = hass.config.api.local_ip
+    mass_conf = MassConfig(
+        database_url=f"sqlite:///{db_file}", providers=providers, stream_ip=stream_ip
+    )
 
     mass = MusicAssistant(mass_conf, session=http_session)
 
