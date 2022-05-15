@@ -26,8 +26,10 @@ from homeassistant.components.media_player.const import (
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     ATTR_SUPPORTED_FEATURES,
+    SERVICE_MEDIA_NEXT_TRACK,
     SERVICE_MEDIA_PAUSE,
     SERVICE_MEDIA_PLAY,
+    SERVICE_MEDIA_PREVIOUS_TRACK,
     SERVICE_MEDIA_STOP,
     SERVICE_REPEAT_SET,
     SERVICE_TURN_OFF,
@@ -261,6 +263,18 @@ class HassPlayer(Player):
                 ATTR_ENTITY_ID: self.entity_id,
                 ATTR_MEDIA_VOLUME_LEVEL: volume_level / 100,
             },
+        )
+
+    async def next_track(self) -> None:
+        """Send next_track command to player."""
+        await self.hass.services.async_call(
+            MP_DOMAIN, SERVICE_MEDIA_NEXT_TRACK, {ATTR_ENTITY_ID: self.entity_id}
+        )
+
+    async def previous_track(self) -> None:
+        """Send previous_track command to player."""
+        await self.hass.services.async_call(
+            MP_DOMAIN, SERVICE_MEDIA_PREVIOUS_TRACK, {ATTR_ENTITY_ID: self.entity_id}
         )
 
 
