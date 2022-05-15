@@ -235,7 +235,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
                 if media_item.album:
                     media_album_name = media_item.album.name
                     media_album_artist = media_item.album.artist.name
-        # Music Assistant is NOt the active source
+        # Music Assistant is NOT the active source
         elif not self.player.active_queue.active:
             # grab details from 'origin' media player
             source_entity = self.hass.states.get(self.player.player_id)
