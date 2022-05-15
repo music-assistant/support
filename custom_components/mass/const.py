@@ -37,4 +37,4 @@ ATTR_QUEUE_ITEMS = "items_in_queue"
 
 
 SLIMPROTO_DOMAIN = "slimproto"
-SLIMPROTO_EVENT = "slimproto_player_event"
+SLIMPROTO_EVENT = "slimproto_event"
