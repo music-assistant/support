@@ -35,7 +35,8 @@
 
       <v-list-item two-line class="mediadetails-title" v-if="curMediaItem">
         <div>
-          <v-list-item-title> {{ curMediaItem.name }}</v-list-item-title>
+          <v-list-item-title v-if="$vuetify.display.mobile"> {{ truncateString(curMediaItem.name, 35) }}</v-list-item-title>
+          <v-list-item-title v-else> {{ curMediaItem.name }}</v-list-item-title>
           <v-list-item-subtitle
             v-if="curMediaItem && 'artists' in curMediaItem"
             style="margin-top: 5px; text-overflow: ellipsis; height: 30px"

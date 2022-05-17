@@ -22,7 +22,12 @@
       <v-layout v-if="item" style="padding-left: 15px; padding-right: 15px">
         <!-- left side: cover image -->
         <div v-if="!$vuetify.display.mobile" xs5 pa-5>
-          <MediaItemThumb :item="item" :size="180" :border="true" style="margin-top:15px;margin-bottom:15px" />
+          <MediaItemThumb
+            :item="item"
+            :size="180"
+            :border="true"
+            style="margin-top: 15px; margin-bottom: 15px"
+          />
         </div>
 
         <div>
@@ -34,10 +39,7 @@
           <!-- other details -->
           <div style="padding-bottom: 10px">
             <!-- version -->
-            <v-card-subtitle
-              v-if="'version' in item && item.version"
-              class="caption"
-            >
+            <v-card-subtitle v-if="'version' in item && item.version" class="caption">
               {{ item.version }}
             </v-card-subtitle>
 
@@ -52,10 +54,7 @@
                 color="primary"
                 :icon="mdiAccountMusic"
               ></v-icon>
-              <span
-                v-for="(artist, artistindex) in item.artists"
-                :key="artist.item_id"
-              >
+              <span v-for="(artist, artistindex) in item.artists" :key="artist.item_id">
                 <a style="color: accent" @click="artistClick(artist)">{{
                   artist.name
                 }}</a>
@@ -69,10 +68,7 @@
             </v-card-subtitle>
 
             <!-- album artist -->
-            <v-card-subtitle
-              v-if="'artist' in item && item.artist"
-              class="title"
-            >
+            <v-card-subtitle v-if="'artist' in item && item.artist" class="title">
               <v-icon
                 style="margin-left: -3px; margin-right: 3px"
                 small
@@ -124,7 +120,7 @@
               style="margin-left: 10px"
               color="primary"
               tile
-               :prepend-icon="mdiHeartOutline"
+              :prepend-icon="mdiHeartOutline"
               @click="api.addToLibrary([item])"
             >
               {{ $t("add_library") }}
@@ -153,10 +149,7 @@
                 v-html="
                   showFullInfo
                     ? getDescription()
-                    : truncateText(
-                        getDescription(),
-                        $vuetify.display.mobile ? 160 : 380
-                      )
+                    : truncateText(getDescription(), $vuetify.display.mobile ? 160 : 380)
                 "
               >
               </span>
@@ -186,7 +179,11 @@
         </div>
         <!-- provider icons -->
         <div style="position: absolute; float: right; right: 15px; top: 15px">
-          <ProviderIcons :provider-ids="item.provider_ids" :height="25" :enable-link="true"  />
+          <ProviderIcons
+            :provider-ids="item.provider_ids"
+            :height="25"
+            :enable-link="true"
+          />
         </div>
       </v-layout>
     </v-card>
@@ -206,14 +203,16 @@ import {
 } from "@mdi/js";
 
 import { store } from "../plugins/store";
+import { useDisplay } from "vuetify";
 import api from "../plugins/api";
 import { ImageType } from "../plugins/api";
 import type { Album, Artist, ItemMapping, MediaItemType } from "../plugins/api";
 import { onBeforeUnmount, ref, watchEffect } from "vue";
 import MediaItemThumb from "./MediaItemThumb.vue";
-import {getImageThumbForItem } from "./MediaItemThumb.vue";
+import { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { truncateString } from "@/utils";
 
 // properties
 export interface Props {
@@ -222,25 +221,29 @@ export interface Props {
 const props = defineProps<Props>();
 const showFullInfo = ref(false);
 const fanartImage = ref();
+const display = useDisplay();
 
-const imgGradient = new URL("../assets/info_gradient.jpg", import.meta.url)
-  .href;
-const imgDefaultArtist = new URL(
-  "../assets/default_artist.png",
-  import.meta.url
-).href;
+const imgGradient = new URL("../assets/info_gradient.jpg", import.meta.url).href;
+const imgDefaultArtist = new URL("../assets/default_artist.png", import.meta.url).href;
 
 const { t } = useI18n();
 const router = useRouter();
 
 watchEffect(async () => {
   if (props.item) {
-    store.topBarTitle =
-      '<span style="opacity:0.5">' +
-      t(props.item.media_type + "s") +
-      ` | </span>${props.item.name}`;
+    if (display.mobile) {
+      store.topBarTitle = truncateString(props.item.name, 30);
+    } else {
+      store.topBarTitle =
+        '<span style="opacity:0.5">' +
+        t(props.item.media_type + "s") +
+        ` | </span>${props.item.name}`;
+    }
+
     store.contextMenuParentItem = props.item;
-    fanartImage.value = await getImageThumbForItem(props.item, ImageType.FANART) || await getImageThumbForItem(props.item, ImageType.THUMB);
+    fanartImage.value =
+      (await getImageThumbForItem(props.item, ImageType.FANART)) ||
+      (await getImageThumbForItem(props.item, ImageType.THUMB));
   }
 });
 
