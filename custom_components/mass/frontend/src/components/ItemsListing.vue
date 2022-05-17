@@ -44,27 +44,27 @@
       </v-btn>
       <v-menu anchor="bottom end" :close-on-content-click="false">
         <template v-slot:activator="{ props }">
-          <v-btn icon v-bind="props">
+          <v-btn icon @click="showSearch = !showSearch">
             <v-icon :icon="mdiSearchWeb"></v-icon>
           </v-btn>
         </template>
-        <v-card min-width="350">
-          <v-text-field
-            v-model="search"
-            clearable
-            :prepend-inner-icon="mdiSearchWeb"
-            :label="$t('search')"
-            hide-details
-            solo
-            dense
-          ></v-text-field>
-        </v-card>
       </v-menu>
       <v-btn icon style="margin-right: -15px" @click="toggleViewMode()">
         <v-icon v-if="viewMode == 'panel'" :icon="mdiViewList"></v-icon>
         <v-icon v-if="viewMode == 'list'" :icon="mdiGrid"></v-icon>
       </v-btn>
     </v-toolbar>
+    <v-text-field
+      v-model="search"
+      clearable
+      :prepend-inner-icon="mdiSearchWeb"
+      :label="$t('search')"
+      hide-details
+      autofocus
+      variant="filled"
+      style="width: auto;margin-left:15px;margin-right:15px;margin-top:10px"
+      v-if="showSearch"
+    ></v-text-field>
 
     <div
       style="
@@ -179,6 +179,7 @@ const router = useRouter();
 const i18n = useI18n();
 const display = useDisplay();
 
+
 // local refs
 const viewMode = ref("list");
 const search = ref("");
@@ -188,6 +189,7 @@ const sortKeys = ref<SortKey[]>([]);
 const selectedItems = ref<MediaItemType[]>([]);
 const sorting = ref(false);
 const showSortMenu = ref(false);
+const showSearch = ref(false);
 
 // computed properties
 const thumbSize = computed(() => {
@@ -208,12 +210,16 @@ const filteredItems = computed(() => {
     for (const item of props.items) {
       if (item.name.toLowerCase().includes(searchStr)) {
         result.push(item);
-      } else if ("artist" in item && item.artist?.name.toLowerCase().includes(searchStr)) {
+      } else if (
+        "artist" in item &&
+        item.artist?.name.toLowerCase().includes(searchStr)
+      ) {
         result.push(item);
       } else if ("album" in item && item.album?.name.toLowerCase().includes(searchStr)) {
         result.push(item);
       } else if (
-        "artists" in item && item.artists &&
+        "artists" in item &&
+        item.artists &&
         item.artists[0].name.toLowerCase().includes(searchStr)
       ) {
         result.push(item);
