@@ -1,10 +1,16 @@
 """Host Music Assistant frontend in custom panel."""
 import logging
 import os
+from http import HTTPStatus
 from typing import Callable
 
+from aiohttp import web
+from aiohttp.hdrs import CACHE_CONTROL
+from aiohttp.typedefs import LooseHeaders
 from homeassistant.components import frontend, panel_custom
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
+from music_assistant import MusicAssistant
 
 from .const import DOMAIN
 
@@ -34,6 +40,7 @@ async def async_register_panel(hass: HomeAssistant, title: str) -> Callable:
     index_path = os.path.join(panel_dir, "index.html")
     hass.http.register_static_path(LIB_URL_BASE, index_path)
     hass.http.register_redirect(LIB_URL_BASE[:-1], LIB_URL_BASE)
+    hass.http.register_view(MassImageView())
 
     await panel_custom.async_register_panel(
         hass,
@@ -53,3 +60,36 @@ async def async_register_panel(hass: HomeAssistant, title: str) -> Callable:
         frontend.async_remove_panel(hass, panel_url)
 
     return unregister
+
+
+class MassImageView(HomeAssistantView):
+    """Music Assistant Image proxy."""
+
+    name = "api:mass:image"
+    url = "/api/mass/image_proxy"
+    requires_auth = False
+
+    @staticmethod
+    async def get(request: web.Request) -> web.Response:
+        """Start a get request."""
+        size = int(request.query.get("size", 0))
+        # strip off authSig added by the HA frontend, yikes
+        url = request.query.get("url").split("?")[0]
+
+        hass: HomeAssistant = request.app["hass"]
+        mass: MusicAssistant = hass.data[DOMAIN]
+
+        if not url:
+            return web.Response(status=HTTPStatus.NOT_FOUND)
+
+        if not url.startswith("http") and "://" in url:
+            media_item = await mass.music.get_item_by_uri(url)
+            url = mass.metadata.get_image_url_for_item(media_item)
+
+        data = await mass.metadata.get_thumbnail(url, size=size)
+
+        if data is None:
+            return web.Response(status=HTTPStatus.SERVICE_UNAVAILABLE)
+
+        headers: LooseHeaders = {CACHE_CONTROL: "public, max-age=604800"}
+        return web.Response(body=data, content_type="image/png", headers=headers)

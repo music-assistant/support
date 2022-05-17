@@ -27,7 +27,7 @@ from homeassistant.components.media_source.models import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from music_assistant import MusicAssistant
-from music_assistant.models.media_items import Album, Track
+from music_assistant.models.media_items import MediaItemType
 
 from .const import DOMAIN
 
@@ -66,6 +66,7 @@ LIBRARY_MEDIA_CLASS_MAP = {
 }
 
 MEDIA_CONTENT_TYPE_FLAC = "audio/flac"
+THUMB_SIZE = 200
 
 
 async def async_get_media_source(hass: HomeAssistant) -> MusicAssistentSource:
@@ -164,8 +165,7 @@ class MusicAssistentSource(MediaSource):
             parent_source.children.append(child_source)
         return parent_source
 
-    @staticmethod
-    async def _build_playlists_listing(mass: MusicAssistant):
+    async def _build_playlists_listing(self, mass: MusicAssistant):
         """Build Playlists browse listing."""
         media_class = LIBRARY_MEDIA_CLASS_MAP[LIBRARY_PLAYLISTS]
         return BrowseMediaSource(
@@ -177,38 +177,23 @@ class MusicAssistentSource(MediaSource):
             can_play=False,
             can_expand=True,
             children_media_class=media_class,
-            children=[
-                BrowseMediaSource(
-                    domain=DOMAIN,
-                    identifier=playlist.uri,
-                    title=playlist.name,
-                    media_class=media_class,
-                    media_content_type=MEDIA_TYPE_PLAYLIST,
-                    can_play=True,
-                    can_expand=True,
-                    thumbnail=await mass.metadata.get_image_url_for_item(playlist),
-                )
-                for playlist in await mass.music.playlists.library()
-            ],
+            children=sorted(
+                await asyncio.gather(
+                    *[
+                        self._build_item(mass, item, can_expand=True)
+                        for item in await mass.music.playlists.library()
+                    ],
+                ),
+                key=lambda x: x.title,
+            ),
         )
 
-    @staticmethod
-    async def _build_playlist_items_listing(mass: MusicAssistant, identifier: str):
+    async def _build_playlist_items_listing(
+        self, mass: MusicAssistant, identifier: str
+    ):
         """Build Playlist items browse listing."""
         playlist = await mass.music.get_item_by_uri(identifier)
         tracks = await mass.music.playlists.tracks(playlist.item_id, playlist.provider)
-
-        async def build_item(track: Track):
-            return BrowseMediaSource(
-                domain=DOMAIN,
-                identifier=track.uri,
-                title=f"{track.artists[0].name} - {track.name}",
-                media_class=MEDIA_CLASS_TRACK,
-                media_content_type=MEDIA_CONTENT_TYPE_FLAC,
-                can_play=True,
-                can_expand=False,
-                thumbnail=await mass.metadata.get_image_url_for_item(track),
-            )
 
         return BrowseMediaSource(
             domain=DOMAIN,
@@ -220,14 +205,14 @@ class MusicAssistentSource(MediaSource):
             can_expand=True,
             children_media_class=MEDIA_CLASS_TRACK,
             children=await asyncio.gather(
-                *[build_item(track) for track in tracks],
+                *[self._build_item(mass, track, can_expand=False) for track in tracks],
             ),
         )
 
-    @staticmethod
-    async def _build_artists_listing(mass: MusicAssistant):
+    async def _build_artists_listing(self, mass: MusicAssistant):
         """Build Albums browse listing."""
         media_class = LIBRARY_MEDIA_CLASS_MAP[LIBRARY_ARTISTS]
+
         return BrowseMediaSource(
             domain=DOMAIN,
             identifier=LIBRARY_ARTISTS,
@@ -237,38 +222,21 @@ class MusicAssistentSource(MediaSource):
             can_play=False,
             can_expand=True,
             children_media_class=media_class,
-            children=[
-                BrowseMediaSource(
-                    domain=DOMAIN,
-                    identifier=artist.uri,
-                    title=artist.name,
-                    media_class=media_class,
-                    media_content_type=MEDIA_TYPE_ARTIST,
-                    can_play=True,
-                    can_expand=True,
-                    thumbnail=await mass.metadata.get_image_url_for_item(artist),
-                )
-                for artist in await mass.music.artists.library()
-            ],
+            children=sorted(
+                await asyncio.gather(
+                    *[
+                        self._build_item(mass, artist, can_expand=True)
+                        for artist in await mass.music.artists.library()
+                    ],
+                ),
+                key=lambda x: x.title,
+            ),
         )
 
-    @staticmethod
-    async def _build_artist_items_listing(mass: MusicAssistant, identifier: str):
+    async def _build_artist_items_listing(self, mass: MusicAssistant, identifier: str):
         """Build Artist items browse listing."""
         artist = await mass.music.get_item_by_uri(identifier)
         albums = await mass.music.artists.albums(artist.item_id, artist.provider)
-
-        async def build_item(album: Album):
-            return BrowseMediaSource(
-                domain=DOMAIN,
-                identifier=album.uri,
-                title=f"{album.name} ({album.artist.name})",
-                media_class=MEDIA_CLASS_ALBUM,
-                media_content_type=MEDIA_TYPE_ALBUM,
-                can_play=True,
-                can_expand=True,
-                thumbnail=await mass.metadata.get_image_url_for_item(album),
-            )
 
         return BrowseMediaSource(
             domain=DOMAIN,
@@ -280,14 +248,14 @@ class MusicAssistentSource(MediaSource):
             can_expand=True,
             children_media_class=MEDIA_CLASS_ALBUM,
             children=await asyncio.gather(
-                *[build_item(album) for album in albums],
+                *[self._build_item(mass, album, can_expand=True) for album in albums],
             ),
         )
 
-    @staticmethod
-    async def _build_albums_listing(mass: MusicAssistant):
+    async def _build_albums_listing(self, mass: MusicAssistant):
         """Build Albums browse listing."""
         media_class = LIBRARY_MEDIA_CLASS_MAP[LIBRARY_ALBUMS]
+
         return BrowseMediaSource(
             domain=DOMAIN,
             identifier=LIBRARY_ALBUMS,
@@ -297,38 +265,21 @@ class MusicAssistentSource(MediaSource):
             can_play=False,
             can_expand=True,
             children_media_class=media_class,
-            children=[
-                BrowseMediaSource(
-                    domain=DOMAIN,
-                    identifier=album.uri,
-                    title=album.name,
-                    media_class=media_class,
-                    media_content_type=MEDIA_TYPE_ALBUM,
-                    can_play=True,
-                    can_expand=True,
-                    thumbnail=await mass.metadata.get_image_url_for_item(album),
-                )
-                for album in await mass.music.albums.library()
-            ],
+            children=sorted(
+                await asyncio.gather(
+                    *[
+                        self._build_item(mass, album, can_expand=True)
+                        for album in await mass.music.albums.library()
+                    ],
+                ),
+                key=lambda x: x.title,
+            ),
         )
 
-    @staticmethod
-    async def _build_album_items_listing(mass: MusicAssistant, identifier: str):
+    async def _build_album_items_listing(self, mass: MusicAssistant, identifier: str):
         """Build Album items browse listing."""
         album = await mass.music.get_item_by_uri(identifier)
         tracks = await mass.music.albums.tracks(album.item_id, album.provider)
-
-        async def build_item(track: Track):
-            return BrowseMediaSource(
-                domain=DOMAIN,
-                identifier=track.uri,
-                title=f"{track.artists[0].name} - {track.name}",
-                media_class=MEDIA_TYPE_MUSIC,
-                media_content_type=MEDIA_CONTENT_TYPE_FLAC,
-                can_play=True,
-                can_expand=False,
-                thumbnail=await mass.metadata.get_image_url_for_item(track),
-            )
 
         return BrowseMediaSource(
             domain=DOMAIN,
@@ -340,14 +291,14 @@ class MusicAssistentSource(MediaSource):
             can_expand=True,
             children_media_class=MEDIA_CLASS_TRACK,
             children=await asyncio.gather(
-                *[build_item(track) for track in tracks],
+                *[self._build_item(mass, track, False) for track in tracks],
             ),
         )
 
-    @staticmethod
-    async def _build_tracks_listing(mass: MusicAssistant):
+    async def _build_tracks_listing(self, mass: MusicAssistant):
         """Build Tracks browse listing."""
         media_class = LIBRARY_MEDIA_CLASS_MAP[LIBRARY_TRACKS]
+
         return BrowseMediaSource(
             domain=DOMAIN,
             identifier=LIBRARY_ALBUMS,
@@ -357,23 +308,18 @@ class MusicAssistentSource(MediaSource):
             can_play=False,
             can_expand=True,
             children_media_class=media_class,
-            children=[
-                BrowseMediaSource(
-                    domain=DOMAIN,
-                    identifier=track.uri,
-                    title=track.name,
-                    media_class=media_class,
-                    media_content_type=MEDIA_CONTENT_TYPE_FLAC,
-                    can_play=True,
-                    can_expand=False,
-                    thumbnail=await mass.metadata.get_image_url_for_item(track),
-                )
-                for track in await mass.music.tracks.library()
-            ],
+            children=sorted(
+                await asyncio.gather(
+                    *[
+                        self._build_item(mass, track, can_expand=False)
+                        for track in await mass.music.tracks.library()
+                    ],
+                ),
+                key=lambda x: x.title,
+            ),
         )
 
-    @staticmethod
-    async def _build_radio_listing(mass: MusicAssistant):
+    async def _build_radio_listing(self, mass: MusicAssistant):
         """Build Radio browse listing."""
         media_class = LIBRARY_MEDIA_CLASS_MAP[LIBRARY_RADIO]
         return BrowseMediaSource(
@@ -385,17 +331,37 @@ class MusicAssistentSource(MediaSource):
             can_play=False,
             can_expand=True,
             children_media_class=media_class,
-            children=[
-                BrowseMediaSource(
-                    domain=DOMAIN,
-                    identifier=radio.uri,
-                    title=radio.name,
-                    media_class=media_class,
-                    media_content_type=MEDIA_CONTENT_TYPE_FLAC,
-                    can_play=True,
-                    can_expand=False,
-                    thumbnail=await mass.metadata.get_image_url_for_item(radio),
-                )
-                for radio in await mass.music.radio.library()
-            ],
+            children=await asyncio.gather(
+                *[
+                    self._build_item(mass, track, can_expand=False)
+                    for track in await mass.music.radio.library()
+                ],
+            ),
+        )
+
+    @staticmethod
+    async def _build_item(mass: MusicAssistant, item: MediaItemType, can_expand=True):
+        """Return BrowseMediaSource for MediaItem."""
+        if hasattr(item, "artists"):
+            title = f"{item.artists[0].name} - {item.name}"
+        else:
+            title = item.name
+        url = await mass.metadata.get_image_url_for_item(
+            item, allow_local=False, local_as_base64=False
+        )
+        if url and url.startswith("http"):
+            url = f"https://images.weserv.nl/?w={THUMB_SIZE}&url={url}"
+        # disable image proxy due to 'authSig' bug in HA frontend
+        # elif url:
+        #     url = f"/api/mass/image_proxy?size={THUMB_SIZE}&url={url}"
+
+        return BrowseMediaSource(
+            domain=DOMAIN,
+            identifier=item.uri,
+            title=title,
+            media_class=item.media_type.value,
+            media_content_type=MEDIA_CONTENT_TYPE_FLAC,
+            can_play=True,
+            can_expand=can_expand,
+            thumbnail=url,
         )
