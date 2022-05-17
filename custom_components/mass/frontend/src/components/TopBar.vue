@@ -1,9 +1,17 @@
 <template>
   <v-app-bar dense app style="height: 55px" :color="store.topBarColor">
     <v-app-bar-nav-icon
+      v-if="store.prevRoutes.length > 0"
       :icon="mdiArrowLeft"
       :color="store.topBarTextColor"
       @click="backButton"
+      style="margin-left: -15px"
+    />
+    <v-app-bar-nav-icon
+      v-if="$vuetify.display.mobile && store.prevRoutes.length === 0"
+      :icon="mdiMenu"
+      :color="store.topBarTextColor"
+      @click="toggleHAMenu"
       style="margin-left: -15px"
     />
     <v-toolbar-title
@@ -76,6 +84,7 @@ import {
   mdiAlertCircle,
   mdiReload,
   mdiClose,
+  mdiMenu
 } from "@mdi/js";
 
 import { computed, mergeProps, ref } from "vue";
@@ -93,13 +102,18 @@ const jobsInProgress = computed(() => {
   );
 });
 
+const toggleHAMenu = function () {
+    // toggle HA sidebar
+    const root = window.parent.document
+      .querySelector("home-assistant")
+      .shadowRoot.querySelector("home-assistant-main");
+    const evt = new Event("hass-toggle-menu", {});
+    root.dispatchEvent(evt);
+}
+
 const backButton = function () {
   if (store.prevRoutes.length === 0) {
-    // we can not access main/parent window
-    // to fire event to open menu
-    // send browser back instead
-    window.history.back();
-    return;
+    toggleHAMenu();
   }
 
   const prevRoute = store.prevRoutes.pop();
