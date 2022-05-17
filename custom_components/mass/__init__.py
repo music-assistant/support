@@ -21,6 +21,8 @@ from music_assistant.models.enums import EventType, ProviderType
 from music_assistant.models.errors import MusicAssistantError
 from music_assistant.models.event import MassEvent
 
+from custom_components.mass.services import register_services
+
 from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
@@ -140,6 +142,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     async def on_start(*args, **kwargs):
         """Start sync actions when Home Assistant is started."""
+        register_services(hass, mass)
         await controls.async_register_player_controls()
         await mass.music.start_sync(3)
 

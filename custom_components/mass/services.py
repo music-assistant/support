@@ -1,0 +1,84 @@
+"""Custom services for the Music Assistant integration."""
+
+import voluptuous as vol
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.service import ServiceCall
+from music_assistant import MusicAssistant
+from music_assistant.models.enums import QueueOption, RepeatMode
+
+from .const import DOMAIN
+
+CMD_PLAY = "play"
+CMD_PAUSE = "pause"
+CMD_NEXT = "next"
+CMD_PREVIOUS = "previous"
+CMD_STOP = "stop"
+CMD_CLEAR = "clear"
+CMD_PLAY_MEDIA = "play_media"
+CMD_SHUFFLE = "shuffle"
+CMD_REPEAT = "repeat"
+
+
+CMD_ARGS_MAP = {
+    "repeat_mode_one": RepeatMode.ONE,
+    "repeat_mode_all": RepeatMode.ALL,
+    "repeat_mode_off": RepeatMode.OFF,
+    "shuffle_mode_on": True,
+    "shuffle_mode_off": False,
+    "play_media_play_now": QueueOption.PLAY,
+    "play_media_play_next": QueueOption.NEXT,
+    "play_media_play_add": QueueOption.ADD,
+    "play_media_play_replace": QueueOption.REPLACE,
+}
+
+
+QueueCommandServiceSchema = vol.Schema(
+    {
+        "entity_id": list,
+        "command": str,
+        "uri": vol.Optional(str),
+        "mode": vol.Any(*CMD_ARGS_MAP.keys()),
+    }
+)
+
+
+@callback
+def register_services(hass: HomeAssistant, mass: MusicAssistant):
+    """Register custom services."""
+
+    async def handle_queue_command(call: ServiceCall) -> None:
+        """Handle queue_command service."""
+        data = call.data
+        for entity_id in data["entity_id"]:
+            entity = hass.states.get(entity_id)
+            entity_id = entity.attributes.get("source_entity_id", data["entity_id"])
+            player = mass.players.get_player(entity_id)
+            queue = player.active_queue
+            if data["command"] == CMD_PLAY:
+                await queue.play()
+            elif data["command"] == CMD_PAUSE:
+                await queue.pause()
+            elif data["command"] == CMD_NEXT:
+                await queue.next()
+            elif data["command"] == CMD_PREVIOUS:
+                await queue.previous()
+            elif data["command"] == CMD_STOP:
+                await queue.stop()
+            elif data["command"] == CMD_CLEAR:
+                await queue.clear()
+            elif data["command"] == CMD_PLAY_MEDIA:
+                await queue.play_media(
+                    data["uri"], CMD_ARGS_MAP[data.get("mode", "play_media_play_now")]
+                )
+            elif data["command"] == CMD_SHUFFLE:
+                queue.settings.shuffle_enabled = CMD_ARGS_MAP[
+                    data.get("mode", "shuffle_mode_on")
+                ]
+            elif data["command"] == CMD_REPEAT:
+                queue.settings.repeat_mode = CMD_ARGS_MAP[
+                    data.get("mode", "repeat_mode_all")
+                ]
+
+    hass.services.async_register(
+        DOMAIN, "queue_command", handle_queue_command, schema=QueueCommandServiceSchema
+    )

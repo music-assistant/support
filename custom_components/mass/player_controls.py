@@ -45,11 +45,10 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import Event
-from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.util.dt import utcnow
 from music_assistant import MusicAssistant
 from music_assistant.models.player import DeviceInfo, Player, PlayerGroup, PlayerState
@@ -91,7 +90,7 @@ class HassPlayer(Player):
     """Mapping from Home Assistant Mediaplayer to Music Assistant Player."""
 
     def __init__(
-        self, hass: HomeAssistantType, entity_id: str, mute_as_power: bool
+        self, hass: HomeAssistant, entity_id: str, mute_as_power: bool
     ) -> None:
         """Initialize player."""
         self.hass = hass
@@ -281,9 +280,7 @@ class HassPlayer(Player):
 class HassSqueezeboxPlayer(HassPlayer):
     """Representation of Hass player from Squeezebox Local integration."""
 
-    def __init__(
-        self, hass: HomeAssistantType, entity_id: str, squeeze_id: str
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, entity_id: str, squeeze_id: str) -> None:
         """Initialize player."""
         self.squeeze_id = squeeze_id
         self.slimserver = hass.data[SLIMPROTO_DOMAIN]
@@ -314,7 +311,7 @@ class HassSqueezeboxPlayer(HassPlayer):
 class HassGroupPlayer(PlayerGroup):
     """Mapping from Home Assistant Grouped Mediaplayer to Music Assistant Player."""
 
-    def __init__(self, hass: HomeAssistantType, entity_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, entity_id: str) -> None:
         """Initialize player."""
         self.hass = hass
         self.player_id = entity_id
@@ -374,7 +371,7 @@ class HassGroupPlayer(PlayerGroup):
 class HassCastGroupPlayer(PlayerGroup, HassPlayer):
     """Mapping from Google Cast GroupPlayer to Music Assistant Player."""
 
-    def __init__(self, hass: HomeAssistantType, entity_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, entity_id: str) -> None:
         """Initialize player."""
         self.ent_reg = er.async_get(hass)
         ent_entry = self.ent_reg.async_get(entity_id)
@@ -426,9 +423,7 @@ class HassCastGroupPlayer(PlayerGroup, HassPlayer):
 class HassPlayerControls:
     """Enable Home Assisant entities to be used as Players for MusicAssistant."""
 
-    def __init__(
-        self, hass: HomeAssistantType, mass: MusicAssistant, config: dict
-    ) -> None:
+    def __init__(self, hass: HomeAssistant, mass: MusicAssistant, config: dict) -> None:
         """Initialize class."""
         self.hass = hass
         self.mass = mass

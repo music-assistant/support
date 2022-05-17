@@ -1,0 +1,55 @@
+# Descriptions for Music Assistant custom services
+
+queue_command:
+  name: Queue command
+  description: Send a command directly to a Music Assistant player(queue). You may provide the origin media_player as well as the (optional) media_player entity created by MA itself.
+  target:
+    entity:
+      domain: media_player
+  fields:
+    
+    command:
+      name: Command
+      description: The command to issue on the playerqueue.
+      required: true
+      advanced: false
+      example: "play"
+      selector:
+        select:
+          options:
+            - "play"
+            - "pause"
+            - "next"
+            - "previous"
+            - "stop"
+            - "clear"
+            - "play_media"
+            - "shuffle"
+            - "repeat"
+
+    uri:
+      name: Media item to play
+      description: To be used together with play_media command, the uri to play on the queue.
+      required: false
+      advanced: false
+      example: "spotify://playlist/aabbccddeeff"
+      selector:
+        text:
+
+    mode:
+      name: Optional mode/argument for command.
+      description: Additional mode/argument used together with command, such as the repeat mode or queue mode.
+      required: false
+      advanced: true
+      selector:
+        select:
+          options:
+            - "repeat_mode_one"
+            - "repeat_mode_all"
+            - "repeat_mode_off"
+            - "shuffle_mode_on"
+            - "shuffle_mode_off"
+            - "play_media_play_now"
+            - "play_media_play_next"
+            - "play_media_play_add"
+            - "play_media_play_replace"
