@@ -12,7 +12,6 @@
         :key="item?.uri"
         cover
         :src="imgData"
-        :lazy-src="fallbackImage"
         :width="size"
         :style="border ? 'border: 1px solid rgba(0, 0, 0, 0.22)' : ''"
       >
@@ -32,7 +31,8 @@
 <script setup lang="ts">
 import { watchEffect, ref, computed } from "vue";
 import type { ItemMapping, MediaItemType, QueueItem } from "../plugins/api";
-import { api, ImageType } from "../plugins/api";
+import { ImageType } from "../plugins/api";
+import { store } from "../plugins/store";
 
 export interface Props {
   item?: MediaItemType | ItemMapping | QueueItem;
@@ -56,14 +56,17 @@ const imgData = ref<string>();
 
 const fallbackImage = computed(() => {
   if (props.fallback) return props.fallback;
-  return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}}`;
+  if (store.darkTheme)
+    return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}&bold=true&background=1d1d1d&color=383838`;
+  else
+    return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}&bold=true&background=a0a0a0&color=cccccc`;
 });
 
 watchEffect(async () => {
   if (!props.item) return;
   imgData.value =
     (await getImageThumbForItem(props.item, ImageType.THUMB, props.size)) ||
-    `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}}`;
+    fallbackImage.value
 });
 </script>
 
@@ -76,9 +79,8 @@ export const getImageUrl = function (
   includeFileBased = false
 ) {
   // get imageurl for mediaItem
-  if (!mediaItem) return;
-  if ("image" in mediaItem) return mediaItem.image; // queueItem
   if (!mediaItem || !mediaItem.media_type) return "";
+  if ("image" in mediaItem && mediaItem.image) return mediaItem.image; // queueItem
   if ("metadata" in mediaItem && mediaItem.metadata.images) {
     for (const img of mediaItem.metadata.images) {
       if (img.is_file && !includeFileBased) continue;
@@ -123,25 +125,22 @@ export const getImageUrl = function (
   }
 };
 
-
 export const getImageThumbForItem = async function (
   mediaItem?: MediaItemType | ItemMapping | QueueItem,
   type: ImageType = ImageType.THUMB,
   size?: number
 ): Promise<string | undefined> {
   if (!mediaItem) return;
-  let imgPath = getImageUrl(mediaItem, type, false);
-  if (imgPath && size) {
+  let url = getImageUrl(mediaItem, type, true);
+  if (!url) return undefined;
+  if (url.startsWith("http") && size) {
     // get url to resized image(thumb) from weserv service
-    return `https://images.weserv.nl/?url=${imgPath}&w=200`;
-  } else if (imgPath) {
-    return imgPath;
+    return `https://images.weserv.nl/?url=${url}&w=200`;
+  } else if (url.startsWith("http")) {
+    return url;
+  } else {
+    // use image proxy in HA integration to grab thumb
+    return `/api/mass/image_proxy?size=${size || 0}&url=${url}`;
   }
-  // try to grab the path/url again, this time allowing local paths
-  imgPath = getImageUrl(mediaItem, type, true);
-  if (imgPath) {
-    return await api.getLocalThumb(imgPath, size);
-  }
-  return undefined;
 };
 </script>

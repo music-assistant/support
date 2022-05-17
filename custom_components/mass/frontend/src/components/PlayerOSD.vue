@@ -314,7 +314,7 @@ import {
 } from "@mdi/js";
 
 import { watchEffect, ref, computed } from "vue";
-import { useDisplay } from "vuetify";
+import { useDisplay, useTheme } from "vuetify";
 import {
   type Artist,
   type PlayerQueue,

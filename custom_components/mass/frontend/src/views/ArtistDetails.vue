@@ -22,6 +22,7 @@
       itemtype="tracks"
       :parent-item="artist"
       :show-providers="true"
+      :show-track-number="false"
       v-if="activeTab == 'tracks'"
     />
     <ItemsListing

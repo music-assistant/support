@@ -15,6 +15,7 @@
       :loading="loading"
       itemtype="playlisttracks"
       :parent-item="playlist"
+      :show-track-number="false"
       v-if="activeTab == 'tracks'"
     />
   </section>

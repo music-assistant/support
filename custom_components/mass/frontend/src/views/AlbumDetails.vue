@@ -21,6 +21,7 @@
       :loading="loading"
       itemtype="albumtracks"
       :parent-item="album"
+      :show-providers="true"
       v-if="activeTab == 'tracks'"
     />
     <ItemsListing
@@ -28,6 +29,7 @@
       :loading="loading"
       itemtype="albums"
       :parent-item="album"
+      :show-providers="true"
       v-if="activeTab == 'versions'"
     />
   </section>
@@ -37,7 +39,7 @@
 import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import type { Album, MassEvent, Track } from "../plugins/api";
-import { api, MassEventType } from "../plugins/api";
+import { api, MassEventType, ProviderType } from "../plugins/api";
 import { onBeforeUnmount, watchEffect, ref } from "vue";
 import { parseBool } from "../utils";
 
@@ -60,15 +62,22 @@ const loading = ref(true);
 
 watchEffect(async () => {
   const item = await api.getAlbum(
-    props.provider,
+    props.provider as ProviderType,
     props.item_id,
     parseBool(props.lazy),
     parseBool(props.refresh)
   );
   album.value = item;
   // fetch additional info once main info retrieved
-  albumVersions.value = await api.getAlbumVersions(props.provider, props.item_id);
-  albumTracks.value = await api.getAlbumTracks(props.provider, props.item_id);
+  albumVersions.value = await api.getAlbumVersions(
+    props.provider as ProviderType,
+    props.item_id
+  );
+  albumTracks.value = await api.getAlbumTracks(
+    props.provider as ProviderType,
+    props.item_id
+  );
+  for (const x of albumTracks.value) console.log(x.metadata)
   loading.value = false;
 });
 
