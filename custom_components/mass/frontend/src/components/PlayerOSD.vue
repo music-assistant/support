@@ -35,7 +35,9 @@
 
       <v-list-item two-line class="mediadetails-title" v-if="curMediaItem">
         <div>
-          <v-list-item-title v-if="$vuetify.display.mobile"> {{ truncateString(curMediaItem.name, 35) }}</v-list-item-title>
+          <v-list-item-title v-if="$vuetify.display.mobile">
+            {{ truncateString(curMediaItem.name, 35) }}</v-list-item-title
+          >
           <v-list-item-title v-else> {{ curMediaItem.name }}</v-list-item-title>
           <v-list-item-subtitle
             v-if="curMediaItem && 'artists' in curMediaItem"
@@ -311,35 +313,36 @@ import {
   mdiPlaylistMusic,
   mdiPlay,
   mdiPause,
-  mdiStop
+  mdiStop,
 } from "@mdi/js";
 
-import { watchEffect, ref, computed } from "vue";
+import { watchEffect, ref, computed, watch } from "vue";
 import { useDisplay, useTheme } from "vuetify";
-import {
-  type Artist,
-  type PlayerQueue,
-  type QueueItem,
-  type StreamDetails,
-  type MediaItemType,
-  type MusicAssistantApi,
-  MediaType,
-  type ItemMapping,
-  type Track,
-  type Radio,
-ImageType,
+import type {
+  Artist,
+  PlayerQueue,
+  QueueItem,
+  StreamDetails,
+  MediaItemType,
+  MusicAssistantApi,
+  ItemMapping,
+  Track,
+  Radio,
+  Player
 } from "../plugins/api";
-import { api, PlayerState, ContentType } from "../plugins/api";
+import {
+  api,
+  PlayerState,
+  ContentType,
+  MediaType,
+  ImageType,
+} from "../plugins/api";
 import { store } from "../plugins/store";
 import VolumeControl from "./VolumeControl.vue";
 import MediaItemThumb, { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { formatDuration, truncateString } from "../utils";
 import { useRouter } from "vue-router";
-import {
-  getContentTypeIcon,
-  iconHiRes,
-  getProviderIcon,
-} from "./ProviderIcons.vue";
+import { getContentTypeIcon, iconHiRes, getProviderIcon } from "./ProviderIcons.vue";
 
 const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
 const iconLevel = new URL("../assets/level.png", import.meta.url).href;
@@ -414,12 +417,28 @@ watchEffect(async () => {
     curMediaItem.value = curQueueItem.value.media_item;
   }
   if (curMediaItem.value) {
-    fanartImage.value = await getImageThumbForItem(curMediaItem.value, ImageType.FANART) || await getImageThumbForItem(curMediaItem.value, ImageType.THUMB);
+    fanartImage.value =
+      (await getImageThumbForItem(curMediaItem.value, ImageType.FANART)) ||
+      (await getImageThumbForItem(curMediaItem.value, ImageType.THUMB));
   }
 });
 
+watch(
+  () => store.selectedPlayer,
+  (newVal) => {
+    if (newVal) localStorage.setItem("mass.LastPlayerId", newVal.player_id);
+  }
+);
+
 watchEffect(async () => {
   // pick default/start player at startup
+  const lastPlayerId = localStorage.getItem("mass.LastPlayerId");
+  if (lastPlayerId) {
+    if (lastPlayerId in api.players) {
+      store.selectedPlayer = api.players[lastPlayerId];
+      return;
+    }
+  }
   if (api?.players && !store.selectedPlayer) {
     // prefer playing player
     for (const playerId in api?.players) {
