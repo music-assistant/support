@@ -159,6 +159,12 @@
     "no_content": "Geen items gevonden.",
     "no_content_sync_running": "Items (nog) niet beschikbaar. Wacht tot de synchonisatietaken zijn voltooid.",
     "details": "Details",
-    "explicit": "Expliciet"
+    "explicit": "Expliciet",
+    "providers": {
+      "spotify": "Spotify",
+      "qobuz": "Qobuz",
+      "file": "Bestandssysteem",
+      "tunein": "Tune-in Radio"
+    }
   }
 }

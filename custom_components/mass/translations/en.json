@@ -159,6 +159,12 @@
     "no_content": "No items found.",
     "no_content_sync_running": "Items not (yet) available. Please wait for the Library synchronization to complete.",
     "details": "Details",
-    "explicit": "Explicit"
+    "explicit": "Explicit",
+    "providers": {
+      "spotify": "Spotify",
+      "qobuz": "Qobuz",
+      "file": "Filesystem",
+      "tunein": "Tune-in"
+    }
   }
 }

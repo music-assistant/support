@@ -1,14 +1,19 @@
 <template>
   <div class="provider-icons" :style="`height: ${height};`">
-    <img
-      class="provider-icon"
-      v-for="prov of uniqueProviders"
-      :key="prov.prov_type"
-      :height="height"
-      :src="getProviderIcon(prov.prov_type)"
-      @click="enableLink ? provClicked(prov) : ''"
-      :style="enableLink ? 'cursor: pointer' : ''"
-    />
+    <v-tooltip anchor="bottom" v-for="prov of uniqueProviders" v-bind:key="prov.prov_id">
+      <template #activator="{ props }">
+        <img
+          v-bind="props"
+          class="provider-icon"
+          :key="prov.prov_type"
+          :height="height"
+          :src="getProviderIcon(prov.prov_type)"
+          @click="enableLink ? provClicked(prov) : ''"
+          :style="enableLink ? 'cursor: pointer' : ''"
+        />
+      </template>
+      <span>{{ $t("providers." + prov.prov_type.toString()) }}</span>
+    </v-tooltip>
   </div>
 </template>
 
@@ -39,8 +44,8 @@ const uniqueProviders = computed(() => {
 });
 
 const provClicked = function (prov: MediaItemProviderId) {
-  if (prov.url) {
-    window.open(prov.url, "_blank");
+  if (prov.url && prov.prov_type.includes("://")) {
+    window.open("file://" + prov.url, "_blank");
   }
 };
 </script>
