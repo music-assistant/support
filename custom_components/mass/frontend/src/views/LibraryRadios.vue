@@ -4,6 +4,8 @@
     :items="items"
     :loading="loading"
     :show-library="false"
+    :show-providers="true"
+    :show-duration="false"
   />
 </template>
 

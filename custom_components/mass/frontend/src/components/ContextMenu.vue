@@ -16,7 +16,9 @@
           </span></v-toolbar-title
         >
 
-        <v-btn :icon="mdiClose" dark text @click="close()">{{ $t("close") }}</v-btn>
+        <v-btn :icon="mdiClose" dark text @click="close()">{{
+          $t("close")
+        }}</v-btn>
       </v-toolbar>
       <!-- play contextmenu items -->
       <v-card-text v-if="playlists.length === 0 && playMenuItems.length > 0">
@@ -140,7 +142,10 @@ const showContextMenu = function () {
   playMenuItems.value = [];
   actionMenuItems.value = [];
   if (store.contextMenuItems.length === 1) header.value = firstItem.name;
-  else header.value = t("items_selected", [store.contextMenuItems.length]).toString();
+  else
+    header.value = t("items_selected", [
+      store.contextMenuItems.length,
+    ]).toString();
   // Play NOW
   if (itemIsAvailable(firstItem)) {
     playMenuItems.value.push({
@@ -159,7 +164,8 @@ const showContextMenu = function () {
   // Play NEXT
   if (
     itemIsAvailable(firstItem) &&
-    (store.contextMenuItems.length === 1 || firstItem.media_type === MediaType.TRACK)
+    (store.contextMenuItems.length === 1 ||
+      firstItem.media_type === MediaType.TRACK)
   ) {
     playMenuItems.value.push({
       label: "play_next",
@@ -212,20 +218,15 @@ const showContextMenu = function () {
     });
   }
   // refresh item
-  if (store.contextMenuItems.length === 1 && firstItem == store.contextMenuParentItem) {
+  if (
+    store.contextMenuItems.length === 1 &&
+    firstItem == store.contextMenuParentItem
+  ) {
     actionMenuItems.value.push({
       label: "refresh_item",
       action: () => {
         close();
-        router.push({
-          name: firstItem.media_type,
-          params: {
-            item_id: firstItem.item_id,
-            provider: firstItem.provider,
-            refresh: "true",
-            lazy: "false",
-          },
-        });
+        api.getItem(firstItem.uri, false, true);
       },
       icon: mdiRefresh,
     });

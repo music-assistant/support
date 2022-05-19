@@ -4,6 +4,8 @@
     :items="items"
     :loading="loading"
     :show-library="false"
+    :show-track-number="false"
+    :show-providers="true"
   />
 </template>
 

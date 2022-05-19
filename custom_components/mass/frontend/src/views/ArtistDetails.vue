@@ -30,7 +30,7 @@
       :loading="loading"
       itemtype="albums"
       :parent-item="artist"
-       :show-providers="true"
+      :show-providers="true"
       v-if="activeTab == 'albums'"
     />
   </section>
@@ -73,18 +73,21 @@ watchEffect(async () => {
     .then(async (item) => {
       artist.value = item;
       // fetch additional info once main info retrieved
-      artistAlbums.value = await api.getArtistAlbums(
-        props.provider as ProviderType,
-        props.item_id
-      );
-      artistTopTracks.value = await api.getArtistTracks(
-        props.provider as ProviderType,
-        props.item_id
-      );
+      await getExtraInfo();
+      loading.value = false;
     });
-
-  loading.value = false;
 });
+
+const getExtraInfo = async function () {
+  artistAlbums.value = await api.getArtistAlbums(
+    props.provider as ProviderType,
+    props.item_id
+  );
+  artistTopTracks.value = await api.getArtistTracks(
+    props.provider as ProviderType,
+    props.item_id
+  );
+};
 
 // listen for item updates to refresh interface when that happens
 const unsub = api.subscribe(MassEventType.ARTIST_ADDED, (evt: MassEvent) => {
@@ -97,6 +100,7 @@ const unsub = api.subscribe(MassEventType.ARTIST_ADDED, (evt: MassEvent) => {
   ) {
     // got update for current item
     artist.value = newItem;
+    getExtraInfo();
   }
 });
 onBeforeUnmount(unsub);
