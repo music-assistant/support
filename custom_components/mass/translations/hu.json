@@ -2,7 +2,6 @@
   "config": {
     "step": {
       "user": {
-        "title": "Music Assistant beállítása",
         "description": "Kérem, állítsa be mely zenei szolgáltatásokat kívánja igébyne venni. A hozzáférési adatokat az alábbiakban adhatja meg.",
         "data": {
           "spotify_enabled": "Spotify szolgáltatás",
@@ -26,7 +25,6 @@
   "options": {
     "step": {
       "init": {
-        "title": "Music Assistant beállítása",
         "description": "Állítsa be, mely médialjátszóit szeretné Music Assistanttal használni.",
         "data": {
           "player_entities": "Lejátszó entitások",
@@ -35,7 +33,6 @@
         }
       },
       "music": {
-        "title": "Music Assistant beállítása",
         "description": "Kérem, állítsa be mely zenei szolgáltatásokat kívánja igébyne venni. A hozzáférési adatokat az alábbiakban adhatja meg.",
         "data": {
           "spotify_enabled": "Spotify szolgáltatás",
@@ -55,7 +52,6 @@
         }
       },
       "adv": {
-        "title": "Music Assistant beállítása",
         "description": "Speciális beállítások Music Assistant működésével kapcsolatosan.",
         "data": {
           "mute_power_players": "Némítás használata ki/be kapcsolás helyett az alábbi lejátszók esetén."

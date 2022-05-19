@@ -3,7 +3,6 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set-up Music Assistant",
         "description": "Please configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
         "data": {
           "spotify_enabled": "Enable Spotify music provider",
@@ -33,7 +32,6 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure Music Assistant",
         "description": "Configure which Home Assistant media players you would like to use with Music Assistant.",
         "data": {
           "player_entities": "Player entities",
@@ -42,7 +40,6 @@
         }
       },
       "music": {
-        "title": "Configure Music Assistant",
         "description": "Configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
         "data": {
           "spotify_enabled": "Enable Spotify music provider",
@@ -62,7 +59,6 @@
         }
       },
       "adv": {
-        "title": "Configure Music Assistant",
         "description": "Configure advanced options for Music Assistant.",
         "data": {
           "mute_power_players": "Use mute as power control for these players."
