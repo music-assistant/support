@@ -21,8 +21,6 @@ from music_assistant.models.enums import EventType, ProviderType
 from music_assistant.models.errors import MusicAssistantError
 from music_assistant.models.event import MassEvent
 
-from custom_components.mass.services import register_services
-
 from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
@@ -40,6 +38,7 @@ from .const import (
 )
 from .panel import async_register_panel
 from .player_controls import HassPlayerControls
+from .services import register_services
 from .websockets import async_register_websockets
 
 LOGGER = logging.getLogger(__name__)
