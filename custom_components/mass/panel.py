@@ -1,6 +1,7 @@
 """Host Music Assistant frontend in custom panel."""
 import logging
 import os
+import urllib.parse
 from http import HTTPStatus
 from typing import Callable
 
@@ -75,6 +76,7 @@ class MassImageView(HomeAssistantView):
         size = int(request.query.get("size", 0))
         # strip off authSig added by the HA frontend, yikes
         url = request.query.get("url").split("?")[0]
+        url = urllib.parse.unquote(url)
 
         hass: HomeAssistant = request.app["hass"]
         mass: MusicAssistant = hass.data[DOMAIN]

@@ -140,7 +140,8 @@ export const getImageThumbForItem = async function (
     return url;
   } else {
     // use image proxy in HA integration to grab thumb
-    return `/api/mass/image_proxy?size=${size || 0}&url=${url}`;
+    const encUrl = encodeURIComponent(url);
+    return `/api/mass/image_proxy?size=${size || 0}&url=${encUrl}`;
   }
 };
 </script>
