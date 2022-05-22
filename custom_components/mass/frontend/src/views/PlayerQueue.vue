@@ -31,6 +31,7 @@
             ripple
             @click.stop="onClick(item)"
             @click.right.prevent="onClick(item)"
+            :disabled="item.item_id == curQueueItem?.item_id"
           >
             <template v-slot:prepend
               ><v-list-item-avatar rounded="0" class="listitem-thumb">
@@ -457,6 +458,11 @@ const activePlayerQueue = computed(() => {
   if (store.selectedPlayer) {
     return api.queues[store.selectedPlayer.active_queue];
   }
+  return undefined;
+});
+
+const curQueueItem = computed(() => {
+  if (activePlayerQueue.value) return activePlayerQueue.value.current_item;
   return undefined;
 });
 const nextItems = computed(() => {
