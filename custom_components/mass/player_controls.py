@@ -299,7 +299,7 @@ class HassSqueezeboxPlayer(HassPlayer):
     @callback
     def on_squeezebox_event(self, event: Event) -> None:
         """Handle special events from squeezebox players."""
-        if event.data["player_id"] != self.squeeze_id:
+        if event.data["entity_id"] != self.entity_id:
             return
         cmd = event.data["command_str"]
         if cmd == "playlist index +1":
