@@ -859,6 +859,7 @@ class QueueCommand(str, Enum):
     MOVE_UP = "move_up"
     MOVE_DOWN = "move_down"
     MOVE_NEXT = "move_next"
+    DELETE = "delete"
 
 
 @websocket_api.websocket_command(
@@ -911,6 +912,8 @@ async def websocket_playerqueue_command(
             await player_queue.move_item(msg[COMMAND_ARG], 0)
         elif msg[COMMAND] == QueueCommand.CLEAR:
             await player_queue.clear()
+        elif msg[COMMAND] == QueueCommand.DELETE:
+            await player_queue.delete_item(msg[COMMAND_ARG])
 
         connection.send_result(
             msg[ID],

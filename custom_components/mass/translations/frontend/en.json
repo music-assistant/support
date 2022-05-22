@@ -50,6 +50,7 @@
   "queue_previous_items": "Played items",
   "queue_move_up": "Move up",
   "queue_move_down": "Move down",
+  "queue_delete": "Delete item",
   "queue_options": "Queue options",
   "read_more": "read more",
   "stream_details": "Streamdetails",

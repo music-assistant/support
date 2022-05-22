@@ -50,6 +50,7 @@
   "queue_previous_items": "Reeds afgespeelde items",
   "queue_move_up": "Verplaats omhoog",
   "queue_move_down": "Verplaats omlaag",
+  "queue_delete": "Verwijder item",
   "queue_options": "Wachtrij opties",
   "read_more": "meer lezen",
   "stream_details": "Streamdetails",

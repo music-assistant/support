@@ -303,16 +303,12 @@ export enum QueueCommand {
   VOLUME = "volume",
   VOLUME_UP = "volume_up",
   VOLUME_DOWN = "volume_down",
-  SHUFFLE = "shuffle",
-  REPEAT = "repeat",
   CLEAR = "clear",
   PLAY_INDEX = "play_index",
   MOVE_UP = "move_up",
   MOVE_DOWN = "move_down",
   MOVE_NEXT = "move_next",
-  VOLUME_NORMALIZATION_ENABLED = "volume_normalization_enabled",
-  VOLUME_NORMALIZATION_TARGET = "volume_normalization_target",
-  CROSSFADE_DURATION = "crossfade_duration"
+  DELETE = "delete"
 }
 
 export enum MassEventType {
@@ -329,7 +325,7 @@ export enum MassEventType {
   MEDIA_ITEM_UPDATED = "media_item_updated",
   BACKGROUND_JOB_UPDATED = "background_job_updated",
   // special types for local subscriptions only
-  ALL = "*"
+  ALL = "*",
 }
 
 export enum QueueOption {
@@ -663,12 +659,6 @@ export class MusicAssistantApi {
   public queueCommandVolumeDown(queueId: string) {
     this.playerQueueCommand(queueId, QueueCommand.VOLUME_DOWN);
   }
-  public queueCommandRepeat(queueId: string, repeat: boolean) {
-    this.playerQueueCommand(queueId, QueueCommand.REPEAT, repeat);
-  }
-  public queueCommandShuffle(queueId: string, shuffle: boolean) {
-    this.playerQueueCommand(queueId, QueueCommand.SHUFFLE, shuffle);
-  }
   public queueCommandClear(queueId: string) {
     this.playerQueueCommand(queueId, QueueCommand.CLEAR);
   }
@@ -683,6 +673,9 @@ export class MusicAssistantApi {
   }
   public queueCommandMoveNext(queueId: string, itemId: string) {
     this.playerQueueCommand(queueId, QueueCommand.MOVE_NEXT, itemId);
+  }
+  public queueCommandDelete(queueId: string, itemId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.DELETE, itemId);
   }
 
   public playerQueueCommand(

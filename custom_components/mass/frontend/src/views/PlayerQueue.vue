@@ -213,6 +213,22 @@
             </v-list-item>
             <v-divider></v-divider>
 
+            <!-- delete -->
+            <v-list-item
+              @click="
+                api.queueCommandDelete(
+                  activePlayerQueue?.queue_id,
+                  (selectedItem as QueueItem).item_id
+                )
+              "
+            >
+              <v-list-item-avatar style="padding-right: 10px">
+                <v-icon :icon="mdiDelete"></v-icon>
+              </v-list-item-avatar>
+              <v-list-item-title>{{ $t("queue_delete") }}</v-list-item-title>
+            </v-list-item>
+            <v-divider></v-divider>
+
             <!-- show info (track only) -->
             <v-list-item
               @click="gotoTrack((selectedItem as QueueItem).uri)"
@@ -422,6 +438,7 @@ import {
   mdiRepeat,
   mdiChartBar,
   mdiCameraTimer,
+  mdiDelete
 } from "@mdi/js";
 import { ref } from "@vue/reactivity";
 import { RecycleScroller } from "vue-virtual-scroller";
