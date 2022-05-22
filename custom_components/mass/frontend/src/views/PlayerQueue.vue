@@ -1,7 +1,5 @@
 <template>
   <section>
-    <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
-
     <v-tabs v-model="activePanel" show-arrows grow>
       <v-tab :value="0">{{
         $t("queue_next_items") + " (" + nextItems.length + ")"
@@ -19,6 +17,7 @@
         padding-bottom: 20px;
       "
     >
+      <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
       <RecycleScroller
         v-slot="{ item }"
         :items="tabItems"
@@ -556,7 +555,6 @@ watchEffect(() => {
   if (activePlayerQueue.value) {
     loadItems();
   }
-  loading.value = false;
 });
 </script>
 

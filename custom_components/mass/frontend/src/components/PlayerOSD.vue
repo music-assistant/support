@@ -123,9 +123,9 @@
                 width="50"
                 center
                 :src="getProviderIcon(streamDetails.provider)"
-                style="object-fit: contain"
+                style="object-fit: contain;margin-left:-15px"
               />
-              {{ streamDetails.provider }}
+              {{ $t('providers.' + streamDetails.provider) }}
             </v-list-item>
 
             <div style="height: 50px; display: flex; align-items: center">

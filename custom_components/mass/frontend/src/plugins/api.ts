@@ -441,6 +441,10 @@ export class MusicAssistantApi {
 
   private async _fetchState() {
     // fetch full initial state
+    this.providers = await this.getData("providers");
+    this.jobs.value = await this.getData("jobs");
+
+    // initial load of library items
     this.getLibraryAlbums().then((items) => {
       this.library.albums = items;
     });
@@ -456,8 +460,6 @@ export class MusicAssistantApi {
     this.getLibraryPlaylists().then((items) => {
       this.library.playlists = items;
     });
-    this.providers = await this.getData("providers");
-    this.jobs.value = await this.getData("jobs");
   }
 
   public getLibraryTracks(): Promise<Track[]> {

@@ -60,6 +60,7 @@
   "volume_normalization_target": "{0} LUFS",
   "crossfade": "Crossfade modus",
   "crossfade_duration": "{0} seconden",
+  "crossfade_enabled": "Crossfade is ingeschakeld",
   "state": {
     "playing": "afspelen",
     "idle": "gestopt",

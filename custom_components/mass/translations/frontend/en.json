@@ -60,6 +60,7 @@
   "volume_normalization_target": "{0} LUFS",
   "crossfade": "Crossfade",
   "crossfade_duration": "{0} seconds",
+  "crossfade_enabled": "Crossfade is enabled",
   "state": {
     "playing": "playing",
     "idle": "idle",
