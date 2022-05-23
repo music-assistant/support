@@ -101,7 +101,7 @@
       <InfiniteLoading @infinite="loadData" />
 
       <!-- list view -->
-      <div v-if="viewMode == 'list'">
+      <div v-if="viewMode == 'list' && !sorting">
         <RecycleScroller
           v-slot="{ item }"
           :items="sorting ? [] : filteredItems"
@@ -351,7 +351,7 @@ const changeSort = function (sort_key?: string, sort_desc?: boolean) {
   setTimeout(() => {
     sorting.value = false;
     showSortMenu.value = false;
-  }, 500);
+  }, 150);
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
