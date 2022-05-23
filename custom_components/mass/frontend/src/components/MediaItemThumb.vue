@@ -1,19 +1,24 @@
 <template>
   <div
-    :height="size"
+    :max-height="maxHeight"
+    :max-width="maxWidth"
+    :min-height="minHeight"
+    :min-width="minWidth"
+    :height="height"
     :width="width"
-    :max-height="maxHeight || size * 1.4"
-    :max-width="maxWidth || size * 1.4"
-    :min-height="minHeight || size"
-    :min-width="minWidth || size"
   >
-    <v-avatar rounded="0" color="grey" :style="`height:${size}px;width:100%`">
+    <v-avatar rounded="0" :style="`height:${height};width:${width}`">
       <v-img
         :key="item?.uri"
-        cover
+        :cover="cover"
         :src="imgData"
-        :width="size"
         :style="border ? 'border: 1px solid rgba(0, 0, 0, 0.22)' : ''"
+        :max-height="maxHeight"
+        :max-width="maxWidth"
+        :min-height="minHeight"
+        :min-width="minWidth"
+        :height="height"
+        :width="width"
       >
         <template v-slot:placeholder>
           <div class="d-flex align-center justify-center fill-height">
@@ -37,19 +42,23 @@ import { store } from "../plugins/store";
 export interface Props {
   item?: MediaItemType | ItemMapping | QueueItem;
   size?: number;
-  width?: string;
-  height?: string;
-  minWidth?: string;
-  minHeight?: string;
-  maxWidth?: string;
-  maxHeight?: string;
+  width?: string | number;
+  height?: string | number;
+  minWidth?: string | number;
+  minHeight?: string | number;
+  maxWidth?: string | number;
+  maxHeight?: string | number;
   border?: boolean;
+  cover?: boolean;
   fallback?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   border: true,
   size: 200,
+  width: 'auto',
+  height: 'auto',
+  cover: true
 });
 
 const imgData = ref<string>();

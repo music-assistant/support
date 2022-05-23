@@ -25,6 +25,9 @@
           <MediaItemThumb
             :item="item"
             :size="180"
+            width="100%"
+            :min-width="180"
+            :min-height="180"
             :border="true"
             :fallback="imgDefaultArtist"
             style="margin-top: 15px; margin-bottom: 15px"
@@ -152,27 +155,19 @@
             class="body-2 justify-left"
             style="padding-bottom: 10px"
             @click="showFullInfo = !showFullInfo"
-            v-if="getDescription()"
+            v-if="description"
           >
             <span>
-              <span
-                v-html="
-                  showFullInfo
-                    ? getDescription()
-                    : truncateText(
-                        getDescription(),
-                        $vuetify.display.mobile ? 160 : 380
-                      )
-                "
-              >
-              </span>
+              <div v-html="description"> </div>
               <v-btn
                 variant="plain"
                 :icon="showFullInfo ? mdiChevronUp : mdiChevronDown"
                 style="padding: 0; height: 20px"
               ></v-btn>
             </span>
-          </v-card-subtitle>
+            </v-card-subtitle>
+
+
           <!-- genres/tags -->
           <div
             v-if="item && item.metadata.genres"
@@ -220,7 +215,7 @@ import { useDisplay } from "vuetify";
 import api from "../plugins/api";
 import { ImageType } from "../plugins/api";
 import type { Album, Artist, ItemMapping, MediaItemType } from "../plugins/api";
-import { onBeforeUnmount, ref, watchEffect } from "vue";
+import { computed, onBeforeUnmount, ref, watchEffect } from "vue";
 import MediaItemThumb from "./MediaItemThumb.vue";
 import { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { useI18n } from "vue-i18n";
@@ -288,13 +283,13 @@ const artistClick = function (item: Artist | ItemMapping) {
     },
   });
 };
-const getDescription = function () {
+const description = computed(() => {
   let desc = "";
   if (!props.item) return "";
   if (props.item.metadata && props.item.metadata.description) {
-    return props.item.metadata.description;
+    desc = props.item.metadata.description;
   } else if (props.item.metadata && props.item.metadata.copyright) {
-    return props.item.metadata.copyright;
+    desc = props.item.metadata.copyright;
   } else if ("artists" in props.item) {
     props.item.artists.forEach(function (artist: Artist | ItemMapping) {
       if ("metadata" in artist && artist.metadata.description) {
@@ -302,15 +297,16 @@ const getDescription = function () {
       }
     });
   }
-  return desc;
-};
-const truncateText = function (text: string, maxChars: number) {
-  let valContainer = text;
-  if (text.length > maxChars) {
-    valContainer = valContainer.substring(0, maxChars) + "...";
+  const maxChars = display.mobile ? 160 : 380;
+  desc = desc.replace("\r\n", "<br /><br /><br />");
+  desc = desc.replace("\r", "<br /><br />");
+  desc = desc.replace("\n", "<br /><br />");
+  if (showFullInfo.value) return desc;
+  if (desc.length > maxChars) {
+    return desc.substring(0, maxChars) + "...";
   }
-  return valContainer;
-};
+  return desc;
+});
 </script>
 
 <style>

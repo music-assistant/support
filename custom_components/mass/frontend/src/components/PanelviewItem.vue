@@ -3,15 +3,26 @@
     @click="emit('click', item)"
     :min-height="
       [MediaType.ARTIST, MediaType.RADIO].includes(item.media_type)
-        ? size * 1.7
+        ? size * 1.9
         : size * 2.2
     "
     :min-width="size"
+    :max-width="size * 1.5"
     hover
     border
     @click.right.prevent="emit('select', item, !isSelected)"
   >
-    <MediaItemThumb :item="item" :size="size" :border="false" />
+    <MediaItemThumb
+      :item="item"
+      :size="size"
+      :min-height="size"
+      :max-height="size * 1.2"
+      :max-width="size * 1.5"
+      :min-width="size"
+      width="100%"
+      :border="false"
+      :cover="true"
+    />
     <div
       v-if="isSelected"
       style="position: absolute; top: 0; background-color: #82b1ff94"

@@ -11,7 +11,7 @@
           class="listitem-thumb"
           @click.stop="emit('select', item, !isSelected)"
         >
-          <MediaItemThumb :item="item" :size="50" />
+          <MediaItemThumb :item="item" :size="50" width="50px" height="50px" />
           <div
             v-if="isSelected"
             style="

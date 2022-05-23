@@ -34,6 +34,7 @@
         :key="curMediaItem.item_id"
         :item="curMediaItem"
         :size="50"
+        :width="50"
         v-if="curMediaItem"
         style="width: 50px; border: 1px solid rgba(0, 0, 0, 0.54)"
       />

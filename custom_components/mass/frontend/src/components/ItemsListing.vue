@@ -58,7 +58,12 @@
       hide-details
       autofocus
       variant="filled"
-      style="width: auto; margin-left: 15px; margin-right: 15px; margin-top: 10px"
+      style="
+        width: auto;
+        margin-left: 15px;
+        margin-right: 15px;
+        margin-top: 10px;
+      "
       v-if="showSearch"
     ></v-text-field>
 
@@ -72,8 +77,17 @@
     >
       <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
       <!-- panel view -->
-      <v-row dense align-content="stretch" align="stretch" v-if="viewMode == 'panel'">
-        <v-col v-for="item in filteredItems" :key="item.uri" align-self="stretch">
+      <v-row
+        dense
+        align-content="start"
+        align="start"
+        v-if="viewMode == 'panel'"
+      >
+        <v-col
+          v-for="item in filteredItems.slice(0, limit)"
+          :key="item.uri"
+          align-self="start"
+        >
           <PanelviewItem
             :item="item"
             :size="thumbSize"
@@ -84,6 +98,7 @@
           />
         </v-col>
       </v-row>
+      <InfiniteLoading @infinite="loadData" />
 
       <!-- list view -->
       <div v-if="viewMode == 'list'">
@@ -129,7 +144,14 @@ import {
   mdiCheck,
 } from "@mdi/js";
 
-import { watchEffect, ref, computed, onBeforeUnmount, onMounted, nextTick } from "vue";
+import {
+  watchEffect,
+  ref,
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  nextTick,
+} from "vue";
 import { useDisplay } from "vuetify";
 import type {
   Album,
@@ -146,6 +168,8 @@ import PanelviewItem from "./PanelviewItem.vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { api } from "../plugins/api";
+import InfiniteLoading from "v3-infinite-loading";
+import "v3-infinite-loading/lib/style.css";
 
 // properties
 export interface Props {
@@ -170,6 +194,8 @@ const props = withDefaults(defineProps<Props>(), {
   showDuration: true,
 });
 
+const defaultLimit = 100;
+
 // global refs
 const router = useRouter();
 const i18n = useI18n();
@@ -185,6 +211,7 @@ const selectedItems = ref<MediaItemType[]>([]);
 const sorting = ref(false);
 const showSortMenu = ref(false);
 const showSearch = ref(false);
+const limit = ref(defaultLimit);
 
 // computed properties
 const thumbSize = computed(() => {
@@ -193,6 +220,7 @@ const thumbSize = computed(() => {
 
 // methods
 const toggleViewMode = function () {
+  limit.value = defaultLimit;
   if (viewMode.value === "panel") viewMode.value = "list";
   else viewMode.value = "panel";
   localStorage.setItem("viewMode" + props.itemtype, viewMode.value);
@@ -210,7 +238,10 @@ const filteredItems = computed(() => {
         item.artist?.name.toLowerCase().includes(searchStr)
       ) {
         result.push(item);
-      } else if ("album" in item && item.album?.name.toLowerCase().includes(searchStr)) {
+      } else if (
+        "album" in item &&
+        item.album?.name.toLowerCase().includes(searchStr)
+      ) {
         result.push(item);
       } else if (
         "artists" in item &&
@@ -225,7 +256,9 @@ const filteredItems = computed(() => {
   }
   // sort
   if (sortBy.value == "name") {
-    result.sort((a, b) => (a.sort_name || a.name).localeCompare(b.sort_name || b.name));
+    result.sort((a, b) =>
+      (a.sort_name || a.name).localeCompare(b.sort_name || b.name)
+    );
   }
   if (sortBy.value == "album.name") {
     result.sort((a, b) =>
@@ -244,14 +277,18 @@ const filteredItems = computed(() => {
   }
   if (sortBy.value == "track_number") {
     result.sort(
-      (a, b) => ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
+      (a, b) =>
+        ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
     );
     result.sort(
-      (a, b) => ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
+      (a, b) =>
+        ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
     );
   }
   if (sortBy.value == "position") {
-    result.sort((a, b) => ((a as Track).position || 0) - ((b as Track).position || 0));
+    result.sort(
+      (a, b) => ((a as Track).position || 0) - ((b as Track).position || 0)
+    );
   }
   if (sortBy.value == "year") {
     result.sort((a, b) => ((a as Album).year || 0) - ((b as Album).year || 0));
@@ -302,6 +339,7 @@ const onClick = function (mediaItem: MediaItemType) {
 };
 
 const changeSort = function (sort_key?: string, sort_desc?: boolean) {
+  limit.value = defaultLimit;
   sorting.value = true;
   if (sort_key !== undefined) {
     sortBy.value = sort_key;
@@ -314,6 +352,12 @@ const changeSort = function (sort_key?: string, sort_desc?: boolean) {
     sorting.value = false;
     showSortMenu.value = false;
   }, 500);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const loadData = function ($state: any) {
+  limit.value += defaultLimit;
+  $state.loaded();
 };
 
 // watchers
