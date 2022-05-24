@@ -16,7 +16,7 @@
     "@mdi/font": "6.6.96",
     "home-assistant-js-websocket": "^7.0.5",
     "v3-infinite-loading": "^1.0.6",
-    "vue": "^3.2.33",
+    "vue": "^3.2.36",
     "vue-i18n": "^9.1.10",
     "vue-router": "^4.0.15",
     "vue-virtual-scroller": "^2.0.0-alpha.1",
