@@ -5,6 +5,7 @@
     :show-library="false"
     :show-providers="true"
     :show-duration="false"
+    :show-search-by-default="true"
   />
 </template>
 

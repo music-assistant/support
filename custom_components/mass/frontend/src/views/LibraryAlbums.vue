@@ -4,6 +4,7 @@
     :items="api.library.albums"
     :show-library="false"
     :show-providers="true"
+    :show-search-by-default="true"
   />
 </template>
 

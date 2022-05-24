@@ -4,6 +4,7 @@
     :items="api.library.artists"
     :show-library="false"
     :show-providers="true"
+    :show-search-by-default="true"
   />
 </template>
 

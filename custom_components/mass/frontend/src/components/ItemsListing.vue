@@ -42,7 +42,7 @@
         <v-icon v-if="!sortDesc" :icon="mdiArrowUp"></v-icon>
         <v-icon v-if="sortDesc" :icon="mdiArrowDown"></v-icon>
       </v-btn>
-      <v-btn icon @click="showSearch = !showSearch">
+      <v-btn icon @click="toggleSearch()">
         <v-icon :icon="mdiSearchWeb"></v-icon>
       </v-btn>
       <v-btn icon style="margin-right: -15px" @click="toggleViewMode()">
@@ -52,11 +52,11 @@
     </v-toolbar>
     <v-text-field
       v-model="search"
+      id="searchInput"
       clearable
       :prepend-inner-icon="mdiSearchWeb"
       :label="$t('search')"
       hide-details
-      autofocus
       variant="filled"
       style="
         width: auto;
@@ -65,6 +65,8 @@
         margin-top: 10px;
       "
       v-if="showSearch"
+      @focus="searchHasFocus = true"
+      @blur="searchHasFocus = false"
     ></v-text-field>
 
     <div
@@ -144,22 +146,9 @@ import {
   mdiCheck,
 } from "@mdi/js";
 
-import {
-  watchEffect,
-  ref,
-  computed,
-  onBeforeUnmount,
-  onMounted,
-  nextTick,
-} from "vue";
+import { watchEffect, ref, computed, onBeforeUnmount, nextTick } from "vue";
 import { useDisplay } from "vuetify";
-import type {
-  Album,
-  MediaItemType,
-  MediaType,
-  MusicAssistantApi,
-  Track,
-} from "../plugins/api";
+import type { Album, MediaItemType, Track } from "../plugins/api";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import { store } from "../plugins/store";
@@ -181,6 +170,7 @@ export interface Props {
   showMenu?: boolean;
   showLibrary?: boolean;
   showDuration?: boolean;
+  showSearchByDefault?: boolean;
 }
 interface SortKey {
   text: string;
@@ -192,6 +182,7 @@ const props = withDefaults(defineProps<Props>(), {
   showMenu: true,
   showLibrary: true,
   showDuration: true,
+  showSearchByDefault: false,
 });
 
 const defaultLimit = 100;
@@ -210,7 +201,8 @@ const sortKeys = ref<SortKey[]>([]);
 const selectedItems = ref<MediaItemType[]>([]);
 const sorting = ref(false);
 const showSortMenu = ref(false);
-const showSearch = ref(false);
+const showSearch = ref(props.showSearchByDefault);
+const searchHasFocus = ref(false);
 const limit = ref(defaultLimit);
 
 // computed properties
@@ -219,6 +211,15 @@ const thumbSize = computed(() => {
 });
 
 // methods
+const toggleSearch = function () {
+  if (showSearch.value) showSearch.value = false;
+  else {
+    showSearch.value = true;
+    nextTick(() => {
+      document.getElementById("searchInput")?.focus();
+    });
+  }
+};
 const toggleViewMode = function () {
   limit.value = defaultLimit;
   if (viewMode.value === "panel") viewMode.value = "list";
@@ -429,6 +430,11 @@ const keyListener = function (e: KeyboardEvent) {
   if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     selectedItems.value = props.items;
+  } else if (!searchHasFocus.value && e.key == "Backspace") {
+    search.value = search.value.slice(0, -1);
+  } else if (!searchHasFocus.value && e.key.length == 1) {
+    search.value += e.key;
+    showSearch.value = true;
   }
 };
 document.addEventListener("keydown", keyListener);
