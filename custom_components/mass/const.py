@@ -38,3 +38,5 @@ ATTR_QUEUE_ITEMS = "items_in_queue"
 
 SLIMPROTO_DOMAIN = "slimproto"
 SLIMPROTO_EVENT = "slimproto_event"
+
+ESPHOME_DOMAIN = "esphome"

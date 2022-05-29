@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Dict
+from typing import Dict, Tuple
 
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
 from homeassistant.components.media_player import MediaPlayerEntityFeature
@@ -51,6 +51,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import Event
 from homeassistant.util.dt import utcnow
 from music_assistant import MusicAssistant
+from music_assistant.models.enums import ContentType
 from music_assistant.models.player import DeviceInfo, Player, PlayerGroup, PlayerState
 
 from .const import (
@@ -58,6 +59,7 @@ from .const import (
     CONF_MUTE_POWER_PLAYERS,
     CONF_PLAYER_ENTITIES,
     DOMAIN,
+    ESPHOME_DOMAIN,
     SLIMPROTO_DOMAIN,
     SLIMPROTO_EVENT,
 )
@@ -308,6 +310,12 @@ class HassSqueezeboxPlayer(HassPlayer):
             self.hass.create_task(self.active_queue.previous())
 
 
+class ESPHomePlayer(HassPlayer):
+    """Representation of Hass player from ESPHome integration."""
+
+    _attr_supported_content_types: Tuple[ContentType] = (ContentType.MP3,)
+
+
 class HassGroupPlayer(PlayerGroup):
     """Mapping from Home Assistant Grouped Mediaplayer to Music Assistant Player."""
 
@@ -471,6 +479,7 @@ class HassPlayerControls:
         ent_reg = er.async_get(self.hass)
         dev_reg = dr.async_get(self.hass)
         player = None
+        mute_as_power = entity_id in self.config.get(CONF_MUTE_POWER_PLAYERS, [])
         # Integration specific player controls
         if ent_entry := ent_reg.async_get(entity_id):
             if ent_entry.platform == DOMAIN:
@@ -482,11 +491,12 @@ class HassPlayerControls:
                         player = HassCastGroupPlayer(self.hass, entity_id)
             elif ent_entry.platform == SLIMPROTO_DOMAIN:
                 player = HassSqueezeboxPlayer(self.hass, entity_id, ent_entry.unique_id)
+            elif ent_entry.platform == ESPHOME_DOMAIN:
+                player = ESPHomePlayer(self.hass, entity_id, mute_as_power)
             elif ent_entry.platform == GROUP_DOMAIN:
                 player = HassGroupPlayer(self.hass, entity_id)
 
         # handle genric player for all other integrations
-        mute_as_power = entity_id in self.config.get(CONF_MUTE_POWER_PLAYERS, [])
         if player is None:
             player = HassPlayer(self.hass, entity_id, mute_as_power)
         self._registered_players[entity_id] = player
