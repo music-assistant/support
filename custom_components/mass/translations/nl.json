@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configureer Music Assistant",
+        "title": "Muziekproviders instellen",
         "description": "Configureer a.u.b. met welke Muziekproviders je Music Assistant wilt gebruiken. Voor elke ingeschakelde provider moet je even jouw inloggegevens opgeven.",
         "data": {
           "spotify_enabled": "Spotify muziekprovider",
@@ -21,12 +21,15 @@
           "filesystem_directory": "Specificeer het volledige pad op de schijf waar de mediabestanden te vinden zijn, bijvoorbeeld '/media/muziek'. Home Assistant moet toegang hebben tot deze bestandslocatie."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Configureer Music Assistant",
+        "title": "Mediaspelers",
         "description": "Configureer welke Media spelers je wilt gebruiken met Music Assistant.",
         "data": {
           "player_entities": "Mediaplayer entiteiten",
@@ -35,7 +38,7 @@
         }
       },
       "music": {
-        "title": "Configureer Music Assistant",
+        "title": "Muziekproviders",
         "description": "Configureer a.u.b. met welke Muziekproviders je Music Assistant wilt gebruiken. Voor elke ingeschakelde provider moet je even jouw inloggegevens opgeven.",
         "data": {
           "spotify_enabled": "Spotify muziekprovider",
@@ -55,7 +58,7 @@
         }
       },
       "adv": {
-        "title": "Configureer Music Assistant",
+        "title": "Geavanceerd",
         "description": "Geavanceerde opties.",
         "data": {
           "mute_power_players": "Gebruik mute als power control voor deze spelers."
@@ -64,6 +67,9 @@
           "mute_power_players": "Sommige spelers hebben geen eigen aan/uit functie (b.v. Cast). In die gevallen kan het handig zijn om mute hiervoor te gebruiken."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Bestandslocatie bestaat niet of niet toegankelijk"
     }
   }
 }

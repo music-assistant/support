@@ -2,17 +2,16 @@
   "config": {
     "step": {
       "user": {
-        "title": "Music Assistant beállítása",
         "description": "Kérem, állítsa be mely zenei szolgáltatásokat kívánja igébyne venni. A hozzáférési adatokat az alábbiakban adhatja meg.",
         "data": {
           "spotify_enabled": "Spotify szolgáltatás",
-          "spotify_username": "Felhasználónév",
-          "spotify_password": "Jelszó",
+          "spotify_username": "Spotify felhasználónév",
+          "spotify_password": "Spotify jlszó",
           "qobuz_enabled": "Qobuz szolgáltatás",
-          "qobuz_username": "Felhasználónév",
-          "qobuz_password": "Jelszó",
+          "qobuz_username": "Qobuz felhasználónév",
+          "qobuz_password": "Qobuz jelszó",
           "tunein_enabled": "Tune-In Rádió szolgáltatás",
-          "tunein_username": "Felhasználónév",
+          "tunein_username": "Tune-In felhasználónév",
           "filesystem_enabled": "Saját fájlrendszer szolgáltatás",
           "filesystem_directory": "Mappa a zenefájlokkal",
           "playlists_directory": "Mappa az m3u playlistekkel (opcionális)."
@@ -26,7 +25,6 @@
   "options": {
     "step": {
       "init": {
-        "title": "Music Assistant beállítása",
         "description": "Állítsa be, mely médialjátszóit szeretné Music Assistanttal használni.",
         "data": {
           "player_entities": "Lejátszó entitások",
@@ -35,17 +33,16 @@
         }
       },
       "music": {
-        "title": "Music Assistant beállítása",
-        "description": "Configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
+        "description": "Kérem, állítsa be mely zenei szolgáltatásokat kívánja igébyne venni. A hozzáférési adatokat az alábbiakban adhatja meg.",
         "data": {
           "spotify_enabled": "Spotify szolgáltatás",
-          "spotify_username": "Felhasználónév",
-          "spotify_password": "Jelszó",
+          "spotify_username": "Spotify felhasználónév",
+          "spotify_password": "Spotify jlszó",
           "qobuz_enabled": "Qobuz szolgáltatás",
-          "qobuz_username": "Felhasználónév",
-          "qobuz_password": "Jelszó",
+          "qobuz_username": "Qobuz felhasználónév",
+          "qobuz_password": "Qobuz jelszó",
           "tunein_enabled": "Tune-In Rádió szolgáltatás",
-          "tunein_username": "Felhasználónév",
+          "tunein_username": "Tune-In felhasználónév",
           "filesystem_enabled": "Saját fájlrendszer szolgáltatás",
           "filesystem_directory": "Mappa a zenefájlokkal",
           "playlists_directory": "Mappa az m3u playlistekkel (opcionális)."
@@ -55,7 +52,6 @@
         }
       },
       "adv": {
-        "title": "Music Assistant beállítása",
         "description": "Speciális beállítások Music Assistant működésével kapcsolatosan.",
         "data": {
           "mute_power_players": "Némítás használata ki/be kapcsolás helyett az alábbi lejátszók esetén."

@@ -1,9 +1,7 @@
 {
-  "title": "Music Assistant",
   "config": {
     "step": {
       "user": {
-        "title": "Set-up Music Assistant",
         "description": "Please configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
         "data": {
           "spotify_enabled": "Enable Spotify music provider",
@@ -23,6 +21,9 @@
         }
       }
     },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
+    },
     "abort": {
       "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]"
     }
@@ -30,7 +31,6 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure Music Assistant",
         "description": "Configure which Home Assistant media players you would like to use with Music Assistant.",
         "data": {
           "player_entities": "Player entities",
@@ -39,7 +39,6 @@
         }
       },
       "music": {
-        "title": "Configure Music Assistant",
         "description": "Configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
         "data": {
           "spotify_enabled": "Enable Spotify music provider",
@@ -59,7 +58,6 @@
         }
       },
       "adv": {
-        "title": "Configure Music Assistant",
         "description": "Configure advanced options for Music Assistant.",
         "data": {
           "mute_power_players": "Use mute as power control for these players."
@@ -68,6 +66,9 @@
           "mute_power_players": "Some players do not have a good/real power on/off or this disturbs with grouped playback (e.g. cast). With this option you can use the mute control as power for these players."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
     }
   }
 }

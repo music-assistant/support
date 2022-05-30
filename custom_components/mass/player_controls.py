@@ -1,12 +1,19 @@
 """Support Home Assistant media_player entities to be used as Players for Music Assistant."""
 from __future__ import annotations
 
+import asyncio
+from typing import Dict, Tuple
+
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
+from homeassistant.components.media_player import MediaPlayerEntityFeature
 from homeassistant.components.media_player.const import (
     ATTR_MEDIA_CONTENT_ID,
     ATTR_MEDIA_CONTENT_TYPE,
+    ATTR_MEDIA_ENQUEUE,
+    ATTR_MEDIA_EXTRA,
     ATTR_MEDIA_POSITION,
     ATTR_MEDIA_POSITION_UPDATED_AT,
+    ATTR_MEDIA_REPEAT,
     ATTR_MEDIA_VOLUME_LEVEL,
     ATTR_MEDIA_VOLUME_MUTED,
 )
@@ -22,9 +29,12 @@ from homeassistant.const import (
     ATTR_SUPPORTED_FEATURES,
     EVENT_HOMEASSISTANT_START,
     EVENT_STATE_CHANGED,
+    SERVICE_MEDIA_NEXT_TRACK,
     SERVICE_MEDIA_PAUSE,
     SERVICE_MEDIA_PLAY,
+    SERVICE_MEDIA_PREVIOUS_TRACK,
     SERVICE_MEDIA_STOP,
+    SERVICE_REPEAT_SET,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
     SERVICE_VOLUME_MUTE,
@@ -44,6 +54,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import Event
 from homeassistant.util.dt import utcnow
 from music_assistant import MusicAssistant
+from music_assistant.models.enums import ContentType
 from music_assistant.models.player import DeviceInfo, Player, PlayerGroup, PlayerState
 
 from .const import (
@@ -51,6 +62,7 @@ from .const import (
     CONF_MUTE_POWER_PLAYERS,
     CONF_PLAYER_ENTITIES,
     DOMAIN,
+    ESPHOME_DOMAIN,
     SLIMPROTO_DOMAIN,
     SLIMPROTO_EVENT,
 )
@@ -75,6 +87,9 @@ STATE_MAPPING = {
     STATE_STANDBY: PlayerState.OFF,
 }
 
+# device specific
+SUPPORTS_ENQUEUE = {"cast", "sonos", "squeezebox", "heos", "bluesound"}
+
 
 class HassPlayer(Player):
     """Mapping from Home Assistant Mediaplayer to Music Assistant Player."""
@@ -90,10 +105,12 @@ class HassPlayer(Player):
         self._mute_as_power = mute_as_power
         self._is_muted = False
         self.ent_reg = er.async_get(hass)
+        self.ent_platform = None
 
         manufacturer = "Home Assistant"
         model = entity_id
         if entry := self.ent_reg.async_get(entity_id):
+            self.ent_platform = entry.platform
             if entry.device_id:
                 dev_reg = dr.async_get(hass)
                 device = dev_reg.async_get(entry.device_id)
@@ -107,7 +124,10 @@ class HassPlayer(Player):
         """Return elapsed time of current playing media in seconds."""
         # we need to return the corrected time here
         if state := self.hass.states.get(self.entity_id):
-            elapsed_time = state.attributes.get(ATTR_MEDIA_POSITION, 0)
+            attr = state.attributes
+            elapsed_time = (
+                attr.get("media_position_mass", attr.get(ATTR_MEDIA_POSITION)) or 0
+            )
             last_upd = state.attributes.get(ATTR_MEDIA_POSITION_UPDATED_AT, utcnow())
             diff = (utcnow() - last_upd).seconds
             return elapsed_time + diff
@@ -162,26 +182,58 @@ class HassPlayer(Player):
             {
                 ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
                 ATTR_MEDIA_CONTENT_ID: url,
-                "entity_id": self.entity_id,
+                ATTR_ENTITY_ID: self.entity_id,
             },
         )
+        # workaround!
+        # the below makes sure that next track button works on supported players
+        # as well as restart of stream may it drop of the network
+        # https://github.com/music-assistant/hass-music-assistant/issues/117
+        await asyncio.sleep(0.5)
+        # if media player supports enqueue, add same track multiple times
+        if self.ent_platform in SUPPORTS_ENQUEUE:
+            for _ in range(0, 25):
+                await self.hass.services.async_call(
+                    MP_DOMAIN,
+                    SERVICE_PLAY_MEDIA,
+                    {
+                        ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
+                        ATTR_MEDIA_CONTENT_ID: url,
+                        ATTR_ENTITY_ID: self.entity_id,
+                        ATTR_MEDIA_ENQUEUE: True,
+                        ATTR_MEDIA_EXTRA: {ATTR_MEDIA_ENQUEUE: True},
+                    },
+                )
+                await asyncio.sleep(0.1)
+        else:
+            # enable repeat of same track to make sure that the player
+            # reconnects to our stream URL
+            # not sure if this is actually needed but it can't harm
+            hass_state = self.hass.states.get(self.entity_id)
+            sup_features = hass_state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
+            if bool(sup_features & MediaPlayerEntityFeature.REPEAT_SET):
+                await self.hass.services.async_call(
+                    MP_DOMAIN,
+                    SERVICE_REPEAT_SET,
+                    {ATTR_ENTITY_ID: self.entity_id, ATTR_MEDIA_REPEAT: "all"},
+                )
 
     async def stop(self) -> None:
         """Send STOP command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_STOP, {"entity_id": self.entity_id}
+            MP_DOMAIN, SERVICE_MEDIA_STOP, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def play(self) -> None:
         """Send PLAY/UNPAUSE command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_PLAY, {"entity_id": self.entity_id}
+            MP_DOMAIN, SERVICE_MEDIA_PLAY, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def pause(self) -> None:
         """Send PAUSE command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_PAUSE, {"entity_id": self.entity_id}
+            MP_DOMAIN, SERVICE_MEDIA_PAUSE, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def power(self, powered: bool) -> None:
@@ -195,7 +247,7 @@ class HassPlayer(Player):
             await self.hass.services.async_call(
                 MP_DOMAIN,
                 SERVICE_VOLUME_MUTE,
-                {"entity_id": self.entity_id, ATTR_MEDIA_VOLUME_MUTED: not powered},
+                {ATTR_ENTITY_ID: self.entity_id, ATTR_MEDIA_VOLUME_MUTED: not powered},
             )
             self._is_muted = not powered
             self.update_state()
@@ -203,7 +255,7 @@ class HassPlayer(Player):
         # regular turn_on service call
         cmd = SERVICE_TURN_ON if powered else SERVICE_TURN_OFF
         await self.hass.services.async_call(
-            MP_DOMAIN, cmd, {"entity_id": self.entity_id}
+            MP_DOMAIN, cmd, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     async def volume_set(self, volume_level: int) -> None:
@@ -211,7 +263,22 @@ class HassPlayer(Player):
         await self.hass.services.async_call(
             MP_DOMAIN,
             SERVICE_VOLUME_SET,
-            {"entity_id": self.entity_id, ATTR_MEDIA_VOLUME_LEVEL: volume_level / 100},
+            {
+                ATTR_ENTITY_ID: self.entity_id,
+                ATTR_MEDIA_VOLUME_LEVEL: volume_level / 100,
+            },
+        )
+
+    async def next_track(self) -> None:
+        """Send next_track command to player."""
+        await self.hass.services.async_call(
+            MP_DOMAIN, SERVICE_MEDIA_NEXT_TRACK, {ATTR_ENTITY_ID: self.entity_id}
+        )
+
+    async def previous_track(self) -> None:
+        """Send previous_track command to player."""
+        await self.hass.services.async_call(
+            MP_DOMAIN, SERVICE_MEDIA_PREVIOUS_TRACK, {ATTR_ENTITY_ID: self.entity_id}
         )
 
 
@@ -237,13 +304,19 @@ class HassSqueezeboxPlayer(HassPlayer):
     @callback
     def on_squeezebox_event(self, event: Event) -> None:
         """Handle special events from squeezebox players."""
-        if event.data["player_id"] != self.squeeze_id:
+        if event.data["entity_id"] != self.entity_id:
             return
         cmd = event.data["command_str"]
         if cmd == "playlist index +1":
             self.hass.create_task(self.active_queue.next())
         if cmd == "playlist index -1":
             self.hass.create_task(self.active_queue.previous())
+
+
+class ESPHomePlayer(HassPlayer):
+    """Representation of Hass player from ESPHome integration."""
+
+    _attr_supported_content_types: Tuple[ContentType] = (ContentType.MP3,)
 
 
 class HassGroupPlayer(PlayerGroup):
@@ -271,7 +344,7 @@ class HassGroupPlayer(PlayerGroup):
 
         cmd = SERVICE_TURN_ON if powered else SERVICE_TURN_OFF
         await self.hass.services.async_call(
-            MP_DOMAIN, cmd, {"entity_id": self.entity_id}
+            MP_DOMAIN, cmd, {ATTR_ENTITY_ID: self.entity_id}
         )
 
     @callback
@@ -333,7 +406,7 @@ class HassCastGroupPlayer(PlayerGroup, HassPlayer):
         # cast group players do support turn off (but not on)
         if not powered and self.powered:
             await self.hass.services.async_call(
-                MP_DOMAIN, SERVICE_TURN_OFF, {"entity_id": self.entity_id}
+                MP_DOMAIN, SERVICE_TURN_OFF, {ATTR_ENTITY_ID: self.entity_id}
             )
 
     @callback
@@ -366,6 +439,13 @@ async def async_register_player_control(
     # check for existing player first if already registered
     if player := mass.players.get_player(entity_id, True):
         return player
+
+    def __init__(self, hass: HomeAssistant, mass: MusicAssistant, config: dict) -> None:
+        """Initialize class."""
+        self.hass = hass
+        self.mass = mass
+        self.config = config
+        self._registered_players: Dict[str, HassPlayer] = {}
 
     entity = hass.states.get(entity_id)
     if entity is None or entity.attributes is None:
@@ -418,7 +498,6 @@ async def async_register_player_controls(
         if source_player := mass.players.get_player(entity_id, True):
             source_player.on_hass_event(event)
             return
-
         # entity not (yet) registered
         if allowed_entities is None or entity_id in allowed_entities:
             await async_register_player_control(hass, mass, entity_id)
@@ -438,3 +517,29 @@ async def async_register_player_controls(
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, register_all)
     )
+        ent_reg = er.async_get(self.hass)
+        dev_reg = dr.async_get(self.hass)
+        player = None
+        mute_as_power = entity_id in self.config.get(CONF_MUTE_POWER_PLAYERS, [])
+        # Integration specific player controls
+        if ent_entry := ent_reg.async_get(entity_id):
+            if ent_entry.platform == DOMAIN:
+                # this is already a Music assistant player
+                return
+            if ent_entry.platform == CAST_DOMAIN:
+                if dev_entry := dev_reg.async_get(ent_entry.device_id):
+                    if dev_entry.model == "Google Cast Group":
+                        player = HassCastGroupPlayer(self.hass, entity_id)
+            elif ent_entry.platform == SLIMPROTO_DOMAIN:
+                player = HassSqueezeboxPlayer(self.hass, entity_id, ent_entry.unique_id)
+            elif ent_entry.platform == ESPHOME_DOMAIN:
+                player = ESPHomePlayer(self.hass, entity_id, mute_as_power)
+            elif ent_entry.platform == GROUP_DOMAIN:
+                player = HassGroupPlayer(self.hass, entity_id)
+
+        # handle genric player for all other integrations
+        if player is None:
+            player = HassPlayer(self.hass, entity_id, mute_as_power)
+        self._registered_players[entity_id] = player
+        await self.mass.players.register_player(player)
+        return player

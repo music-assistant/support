@@ -11,8 +11,13 @@ from homeassistant.components.websocket_api.connection import ActiveConnection
 from homeassistant.components.websocket_api.const import ERR_NOT_FOUND
 from homeassistant.core import HomeAssistant, callback
 from music_assistant import MusicAssistant
-from music_assistant.constants import MassEvent
-from music_assistant.models.player_queue import CrossFadeMode, QueueOption, RepeatMode
+from music_assistant.models.enums import (
+    CrossFadeMode,
+    ProviderType,
+    QueueOption,
+    RepeatMode,
+)
+from music_assistant.models.event import MassEvent
 
 from .const import DOMAIN
 
@@ -63,12 +68,13 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_playerqueue_settings)
     websocket_api.async_register_command(hass, websocket_play_media)
     websocket_api.async_register_command(hass, websocket_item)
+    websocket_api.async_register_command(hass, websocket_thumb)
     websocket_api.async_register_command(hass, websocket_library_add)
     websocket_api.async_register_command(hass, websocket_library_remove)
     websocket_api.async_register_command(hass, websocket_artist_tracks)
     websocket_api.async_register_command(hass, websocket_artist_albums)
     websocket_api.async_register_command(hass, websocket_jobs)
-    websocket_api.async_register_command(hass, websocket_stats)
+    websocket_api.async_register_command(hass, websocket_providers)
     websocket_api.async_register_command(hass, websocket_subscribe_events)
 
 
@@ -110,7 +116,7 @@ async def websocket_artists(
 ) -> None:
     """Return artists."""
     result = [item.to_dict() for item in await mass.music.artists.library()]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -120,7 +126,7 @@ async def websocket_artists(
     {
         vol.Required(TYPE): f"{DOMAIN}/artist",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -155,7 +161,7 @@ async def websocket_artist(
     {
         vol.Required(TYPE): f"{DOMAIN}/artist/tracks",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -172,7 +178,7 @@ async def websocket_artist_tracks(
         item.to_dict()
         for item in await mass.music.artists.toptracks(msg[ITEM_ID], msg[PROVIDER])
     ]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -182,7 +188,7 @@ async def websocket_artist_tracks(
     {
         vol.Required(TYPE): f"{DOMAIN}/artist/albums",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -199,7 +205,7 @@ async def websocket_artist_albums(
         item.to_dict()
         for item in await mass.music.artists.albums(msg[ITEM_ID], msg[PROVIDER])
     ]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -223,7 +229,7 @@ async def websocket_albums(
 ) -> None:
     """Return albums."""
     result = [item.to_dict() for item in await mass.music.albums.library()]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -233,7 +239,7 @@ async def websocket_albums(
     {
         vol.Required(TYPE): f"{DOMAIN}/album",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -268,7 +274,7 @@ async def websocket_album(
     {
         vol.Required(TYPE): f"{DOMAIN}/album/tracks",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -285,7 +291,7 @@ async def websocket_album_tracks(
         item.to_dict()
         for item in await mass.music.albums.tracks(msg[ITEM_ID], msg[PROVIDER])
     ]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -295,7 +301,7 @@ async def websocket_album_tracks(
     {
         vol.Required(TYPE): f"{DOMAIN}/album/versions",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -312,7 +318,7 @@ async def websocket_album_versions(
         item.to_dict()
         for item in await mass.music.albums.versions(msg[ITEM_ID], msg[PROVIDER])
     ]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -336,7 +342,7 @@ async def websocket_tracks(
 ) -> None:
     """Return library tracks."""
     result = [item.to_dict() for item in await mass.music.tracks.library()]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -346,7 +352,7 @@ async def websocket_tracks(
     {
         vol.Required(TYPE): f"{DOMAIN}/track/versions",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -363,7 +369,7 @@ async def websocket_track_versions(
         item.to_dict()
         for item in await mass.music.tracks.versions(msg[ITEM_ID], msg[PROVIDER])
     ]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -373,7 +379,7 @@ async def websocket_track_versions(
     {
         vol.Required(TYPE): f"{DOMAIN}/track",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -408,7 +414,7 @@ async def websocket_track(
     {
         vol.Required(TYPE): f"{DOMAIN}/track/preview",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
     }
 )
 @websocket_api.async_response
@@ -456,7 +462,7 @@ async def websocket_playlists(
     {
         vol.Required(TYPE): f"{DOMAIN}/playlist",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -490,7 +496,7 @@ async def websocket_playlist(
     {
         vol.Required(TYPE): f"{DOMAIN}/playlist/tracks",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY): bool,
     }
 )
@@ -507,7 +513,7 @@ async def websocket_playlist_tracks(
         item.to_dict()
         for item in await mass.music.playlists.tracks(msg[ITEM_ID], msg[PROVIDER])
     ]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -586,7 +592,7 @@ async def websocket_radios(
 ) -> None:
     """Return radios."""
     result = [item.to_dict() for item in await mass.music.radio.library()]
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -596,7 +602,7 @@ async def websocket_radios(
     {
         vol.Required(TYPE): f"{DOMAIN}/radio",
         vol.Required(ITEM_ID): str,
-        vol.Required(PROVIDER): str,
+        vol.Required(PROVIDER): vol.Coerce(ProviderType),
         vol.Optional(LAZY, default=True): bool,
         vol.Optional(REFRESH, default=False): bool,
     }
@@ -656,6 +662,29 @@ async def websocket_item(
         )
         return
     connection.send_error(msg[ID], ERR_NOT_FOUND, f"Item not found: {msg[URI]}")
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/thumb",
+        vol.Required("path"): str,
+        vol.Optional("size"): int,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_thumb(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Return (resized) image thumb from url or local image."""
+    res = await mass.metadata.get_thumbnail(msg["path"], msg.get("size"), True)
+    connection.send_result(
+        msg[ID],
+        res,
+    )
 
 
 @websocket_api.websocket_command(
@@ -805,7 +834,7 @@ async def websocket_playerqueue_items(
         return
     result = [x.to_dict() for x in queue.items]
 
-    connection.send_result(
+    await connection.send_big_result(
         msg[ID],
         result,
     )
@@ -830,6 +859,7 @@ class QueueCommand(str, Enum):
     MOVE_UP = "move_up"
     MOVE_DOWN = "move_down"
     MOVE_NEXT = "move_next"
+    DELETE = "delete"
 
 
 @websocket_api.websocket_command(
@@ -882,6 +912,8 @@ async def websocket_playerqueue_command(
             await player_queue.move_item(msg[COMMAND_ARG], 0)
         elif msg[COMMAND] == QueueCommand.CLEAR:
             await player_queue.clear()
+        elif msg[COMMAND] == QueueCommand.DELETE:
+            await player_queue.delete_item(msg[COMMAND_ARG])
 
         connection.send_result(
             msg[ID],
@@ -974,29 +1006,22 @@ async def websocket_jobs(
     )
 
 
-# generic stats endpoint
+# generic providers endpoint
 @websocket_api.websocket_command(
     {
-        vol.Required(TYPE): f"{DOMAIN}/stats",
+        vol.Required(TYPE): f"{DOMAIN}/providers",
     }
 )
 @websocket_api.async_response
 @async_get_mass
-async def websocket_stats(
+async def websocket_providers(
     hass: HomeAssistant,
     connection: ActiveConnection,
     msg: dict,
     mass: MusicAssistant,
 ) -> None:
-    """Return stats."""
-    result = {
-        "providers": [x.id for x in mass.music.providers],
-        "library_artists": await mass.music.artists.count(),
-        "library_albums": await mass.music.albums.count(),
-        "library_tracks": await mass.music.tracks.count(),
-        "library_playlists": await mass.music.playlists.count(),
-        "library_radios": await mass.music.radio.count(),
-    }
+    """Return providers."""
+    result = {x.id: x.to_dict() for x in mass.music.providers}
     connection.send_result(
         msg[ID],
         result,

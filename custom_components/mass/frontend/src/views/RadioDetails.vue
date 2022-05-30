@@ -1,13 +1,7 @@
 <template>
   <section>
-    <InfoHeader :item="track" />
+    <InfoHeader :item="radio" />
     <v-tabs v-model="activeTab" show-arrows grow hide-slider>
-      <v-tab
-        :class="activeTab == 'versions' ? 'active-tab' : 'inactive-tab'"
-        value="versions"
-      >
-        {{ $t("track_versions") }} ({{ trackVersions.length }})</v-tab
-      >
       <v-tab
         :class="activeTab == 'details' ? 'active-tab' : 'inactive-tab'"
         value="details"
@@ -16,14 +10,6 @@
       >
     </v-tabs>
     <v-divider />
-    <ItemsListing
-      :items="trackVersions"
-      itemtype="tracks"
-      :loading="loading"
-      :parent-item="track"
-      :show-providers="true"
-      v-if="activeTab == 'versions'"
-    />
     <div v-if="activeTab == 'details'">
       <v-table style="width: 100%">
         <thead>
@@ -33,11 +19,10 @@
             <th class="text-left">Available ?</th>
             <th class="text-left">Quality</th>
             <th class="text-left">details</th>
-            <th class="text-left">preview</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) of track?.provider_ids" :key="item.item_id">
+          <tr v-for="item of radio?.provider_ids" :key="item.item_id">
             <td class="details-column">
               <v-img
                 width="25px"
@@ -60,16 +45,6 @@
               ></v-img>
             </td>
             <td class="details-column">{{ item.details }}</td>
-            <td
-              class="details-column"
-              @mouseover="fetchPreviewUrl(item.prov_type, item.item_id, index)"
-            >
-              <audio
-                style="width: 260px"
-                controls
-                :src="previewUrls[index]"
-              ></audio>
-            </td>
           </tr>
         </tbody>
       </v-table>
@@ -78,10 +53,9 @@
 </template>
 
 <script setup lang="ts">
-import ItemsListing from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
-import { ref, reactive } from "@vue/reactivity";
-import type { MassEvent, ProviderType, Track } from "../plugins/api";
+import { ref } from "@vue/reactivity";
+import type { MassEvent, ProviderType, Radio, Track } from "../plugins/api";
 import { api, MassEventType } from "../plugins/api";
 import {
   getProviderIcon,
@@ -100,41 +74,21 @@ const props = withDefaults(defineProps<Props>(), {
   lazy: true,
   refresh: false,
 });
-const activeTab = ref("versions");
+const activeTab = ref("details");
 
-const track = ref<Track>();
-const trackVersions = ref<Track[]>([]);
+const radio = ref<Radio>();
 const loading = ref(true);
-const previewUrls = reactive<Record<number, string>>({});
 
 watchEffect(async () => {
-  api
-    .getTrack(
-      props.provider as ProviderType,
-      props.item_id,
-      parseBool(props.lazy),
-      parseBool(props.refresh)
-    )
-    .then(async (item) => {
-      track.value = item;
-      // fetch additional info once main info retrieved
-      trackVersions.value = await api.getTrackVersions(
-        props.provider as ProviderType,
-        props.item_id
-      );
-      loading.value = false;
-    });
+  const item = await api.getRadio(
+    props.provider as ProviderType,
+    props.item_id,
+    parseBool(props.lazy),
+    parseBool(props.refresh)
+  );
+  radio.value = item;
+  loading.value = false;
 });
-
-const fetchPreviewUrl = async function (
-  provider: ProviderType,
-  item_id: string,
-  index: number
-) {
-  if (index in previewUrls) return;
-  const url = await api.getTrackPreviewUrl(provider, item_id);
-  previewUrls[index] = url;
-};
 
 // listen for item updates to refresh interface when that happens
 const unsub = api.subscribe(MassEventType.MEDIA_ITEM_UPDATED, (evt: MassEvent) => {
@@ -146,7 +100,7 @@ const unsub = api.subscribe(MassEventType.MEDIA_ITEM_UPDATED, (evt: MassEvent) =
     ).length > 0
   ) {
     // got update for current item
-    track.value = newItem;
+    radio.value = newItem;
   }
 });
 onBeforeUnmount(unsub);

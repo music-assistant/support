@@ -11,7 +11,7 @@
         height="100%"
         cover
         class="background-image"
-        :src="api.getFanartUrl(item, true)"
+        :src="fanartImage"
         :gradient="
           store.darkTheme
             ? 'to bottom, rgba(0,0,0,.90), rgba(0,0,0,.75)'
@@ -22,16 +22,15 @@
       <v-layout v-if="item" style="padding-left: 15px; padding-right: 15px">
         <!-- left side: cover image -->
         <div v-if="!$vuetify.display.mobile" xs5 pa-5>
-          <v-img
-            :src="api.getImageUrl(item)"
-            :lazy-src="imgDefaultArtist"
-            width="220px"
-            style="
-              border: 3px solid rgba(0, 0, 0, 0.33);
-              border-radius: 3px;
-              margin-top: 15px;
-              margin-bottom: 10px;
-            "
+          <MediaItemThumb
+            :item="item"
+            :size="180"
+            width="100%"
+            :min-width="180"
+            :min-height="180"
+            :border="true"
+            :fallback="imgDefaultArtist"
+            style="margin-top: 15px; margin-bottom: 15px"
           />
         </div>
 
@@ -134,7 +133,7 @@
               style="margin-left: 10px"
               color="primary"
               tile
-               :prepend-icon="mdiHeartOutline"
+              :prepend-icon="mdiHeartOutline"
               @click="api.addToLibrary([item])"
             >
               {{ $t("add_library") }}
@@ -156,27 +155,19 @@
             class="body-2 justify-left"
             style="padding-bottom: 10px"
             @click="showFullInfo = !showFullInfo"
-            v-if="getDescription()"
+            v-if="description"
           >
             <span>
-              <span
-                v-html="
-                  showFullInfo
-                    ? getDescription()
-                    : truncateText(
-                        getDescription(),
-                        $vuetify.display.mobile ? 160 : 380
-                      )
-                "
-              >
-              </span>
+              <div v-html="description"> </div>
               <v-btn
                 variant="plain"
                 :icon="showFullInfo ? mdiChevronUp : mdiChevronDown"
                 style="padding: 0; height: 20px"
               ></v-btn>
             </span>
-          </v-card-subtitle>
+            </v-card-subtitle>
+
+
           <!-- genres/tags -->
           <div
             v-if="item && item.metadata.genres"
@@ -196,7 +187,11 @@
         </div>
         <!-- provider icons -->
         <div style="position: absolute; float: right; right: 15px; top: 15px">
-          <ProviderIcons :provider-ids="item.provider_ids" :height="25" :enable-link="true"  />
+          <ProviderIcons
+            :provider-ids="item.provider_ids"
+            :height="25"
+            :enable-link="true"
+          />
         </div>
       </v-layout>
     </v-card>
@@ -216,11 +211,25 @@ import {
 } from "@mdi/js";
 
 import { store } from "../plugins/store";
+import { useDisplay } from "vuetify";
 import api from "../plugins/api";
+import { ImageType } from "../plugins/api";
 import type { Album, Artist, ItemMapping, MediaItemType } from "../plugins/api";
-import { onBeforeUnmount, ref, watchEffect } from "vue";
+import { computed, onBeforeUnmount, ref, watchEffect } from "vue";
+import MediaItemThumb from "./MediaItemThumb.vue";
+import { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { truncateString } from "@/utils";
+
+// properties
+export interface Props {
+  item?: MediaItemType;
+}
+const props = defineProps<Props>();
+const showFullInfo = ref(false);
+const fanartImage = ref();
+const display = useDisplay();
 
 const imgGradient = new URL("../assets/info_gradient.jpg", import.meta.url)
   .href;
@@ -232,20 +241,21 @@ const imgDefaultArtist = new URL(
 const { t } = useI18n();
 const router = useRouter();
 
-// properties
-interface Props {
-  item?: MediaItemType;
-}
-const props = defineProps<Props>();
-const showFullInfo = ref(false);
-
 watchEffect(async () => {
   if (props.item) {
-    store.topBarTitle =
-      '<span style="opacity:0.5">' +
-      t(props.item.media_type + "s") +
-      ` | </span>${props.item.name}`;
+    if (display.mobile) {
+      store.topBarTitle = truncateString(props.item.name, 30);
+    } else {
+      store.topBarTitle =
+        '<span style="opacity:0.5">' +
+        t(props.item.media_type + "s") +
+        ` | </span>${props.item.name}`;
+    }
+
     store.contextMenuParentItem = props.item;
+    fanartImage.value =
+      (await getImageThumbForItem(props.item, ImageType.FANART)) ||
+      (await getImageThumbForItem(props.item, ImageType.THUMB));
   }
 });
 
@@ -273,31 +283,30 @@ const artistClick = function (item: Artist | ItemMapping) {
     },
   });
 };
-const getDescription = function () {
+const description = computed(() => {
   let desc = "";
   if (!props.item) return "";
   if (props.item.metadata && props.item.metadata.description) {
-    return props.item.metadata.description;
-  } else if (props.item.metadata && props.item.metadata.biography) {
-    return props.item.metadata.biography;
+    desc = props.item.metadata.description;
   } else if (props.item.metadata && props.item.metadata.copyright) {
-    return props.item.metadata.copyright;
+    desc = props.item.metadata.copyright;
   } else if ("artists" in props.item) {
     props.item.artists.forEach(function (artist: Artist | ItemMapping) {
-      if ("metadata" in artist && artist.metadata.biography) {
-        desc = artist.metadata.biography;
+      if ("metadata" in artist && artist.metadata.description) {
+        desc = artist.metadata.description;
       }
     });
   }
-  return desc;
-};
-const truncateText = function (text: string, maxChars: number) {
-  let valContainer = text;
-  if (text.length > maxChars) {
-    valContainer = valContainer.substring(0, maxChars) + "...";
+  const maxChars = display.mobile ? 160 : 380;
+  desc = desc.replace("\r\n", "<br /><br /><br />");
+  desc = desc.replace("\r", "<br /><br />");
+  desc = desc.replace("\n", "<br /><br />");
+  if (showFullInfo.value) return desc;
+  if (desc.length > maxChars) {
+    return desc.substring(0, maxChars) + "...";
   }
-  return valContainer;
-};
+  return desc;
+});
 </script>
 
 <style>

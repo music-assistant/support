@@ -2,6 +2,7 @@
 
 
 DOMAIN = "mass"
+DOMAIN_EVENT = f"{DOMAIN}_event"
 
 DEFAULT_NAME = "Music Assistant"
 
@@ -36,4 +37,6 @@ ATTR_QUEUE_ITEMS = "items_in_queue"
 
 
 SLIMPROTO_DOMAIN = "slimproto"
-SLIMPROTO_EVENT = "slimproto_player_event"
+SLIMPROTO_EVENT = "slimproto_event"
+
+ESPHOME_DOMAIN = "esphome"

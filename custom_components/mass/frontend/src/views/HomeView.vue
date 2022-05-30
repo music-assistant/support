@@ -16,8 +16,8 @@
           min-width="120"
           align="center"
           justify="center"
-          :disabled="api.stats[card.stats] == 0"
-          :style="api.stats[card.stats] == 0 ? 'opacity:0.5' : ''"
+          :disabled="api.library[card.key].length == 0"
+          :style="api.library[card.key].length == 0 ? 'opacity:0.5' : ''"
         >
           <v-icon
             variant="plain"
@@ -29,8 +29,8 @@
           <v-divider />
           <span class="text-center text-subtitle-1" style="padding: 10px">
             {{ $t(card.key) }}
-            <span class="text-caption" v-if="api.stats[card.stats] > 0"
-              >({{ api.stats[card.stats] }})</span
+            <span class="text-caption" v-if="api.library[card.key].length > 0"
+              >({{ api.library[card.key].length }})</span
             >
           </span>
         </v-card>
@@ -51,24 +51,41 @@ import {
   mdiRadio,
 } from "@mdi/js";
 import api from "@/plugins/api";
+import type { Library } from "@/plugins/api";
 
 store.topBarTitle = store.defaultTopBarTitle;
 
+const artistsKey: keyof Library = "artists";
+const albumsKey: keyof Library = "albums";
+const tracksKey: keyof Library = "tracks";
+const radiosKey: keyof Library = "radios";
+const playlistsKey: keyof Library = "playlists";
+
 const cards = ref([
   {
-    key: "artists",
+    key: artistsKey,
     icon: mdiAccountMusic,
     path: "/artists",
-    stats: "library_artists",
   },
-  { key: "albums", icon: mdiAlbum, path: "/albums", stats: "library_albums" },
-  { key: "tracks", icon: mdiFileMusic, path: "/tracks", stats: "library_tracks" },
   {
-    key: "playlists",
+    key: albumsKey,
+    icon: mdiAlbum,
+    path: "/albums",
+  },
+  {
+    key: tracksKey,
+    icon: mdiFileMusic,
+    path: "/tracks",
+  },
+  {
+    key: playlistsKey,
     icon: mdiPlaylistMusic,
     path: "/playlists",
-    stats: "library_playlists",
   },
-  { key: "radios", icon: mdiRadio, path: "/radios", stats: "library_radios" },
+  {
+    key: radiosKey,
+    icon: mdiRadio,
+    path: "/radios",
+  },
 ]);
 </script>

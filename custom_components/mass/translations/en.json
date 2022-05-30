@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set-up Music Assistant",
+        "title": "Set-up Music Providers",
         "description": "Please configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
         "data": {
           "spotify_enabled": "Enable Spotify music provider",
@@ -21,12 +21,15 @@
           "filesystem_directory": "Specify the full path on disk where your media files are stored (e.g. /media). Note that Home Assistant must have access to this location."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Configure Music Assistant",
+        "title": "Media players",
         "description": "Configure which Home Assistant media players you would like to use with Music Assistant.",
         "data": {
           "player_entities": "Player entities",
@@ -35,7 +38,7 @@
         }
       },
       "music": {
-        "title": "Configure Music Assistant",
+        "title": "Music Providers",
         "description": "Configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
         "data": {
           "spotify_enabled": "Enable Spotify music provider",
@@ -55,7 +58,7 @@
         }
       },
       "adv": {
-        "title": "Configure Music Assistant",
+        "title": "Advanced",
         "description": "Configure advanced options for Music Assistant.",
         "data": {
           "mute_power_players": "Use mute as power control for these players."
@@ -64,6 +67,9 @@
           "mute_power_players": "Some players do not have a good/real power on/off or this disturbs with grouped playback (e.g. cast). With this option you can use the mute control as power for these players."
         }
       }
+    },
+    "error": {
+      "directory_not_exists": "Directory does not exist or not accessible"
     }
   }
 }

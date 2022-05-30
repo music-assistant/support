@@ -5,19 +5,25 @@
     class="d-flex flex-column"
     style="width: 100%; border-top-style: ridge"
     elevation="5"
+    app
   >
     <v-divider />
     <v-img
       class="bg-image"
       width="100%"
       cover
-      :src="api.getFanartUrl(curMediaItem)"
+      :src="fanartImage"
       :gradient="
         $vuetify.theme.current == 'dark'
           ? 'to bottom, rgba(0,0,0,.80), rgba(0,0,0,.75)'
           : 'to bottom, rgba(255,255,255,.85), rgba(255,255,255,.65)'
       "
-      style="position: absolute; background-size: 100%; padding: 0; margin-top: -10px"
+      style="
+        position: absolute;
+        background-size: 100%;
+        padding: 0;
+        margin-top: -10px;
+      "
     />
     <!-- now playing media -->
     <div
@@ -29,13 +35,17 @@
         :key="curMediaItem.item_id"
         :item="curMediaItem"
         :size="50"
+        :width="50"
         v-if="curMediaItem"
         style="width: 50px; border: 1px solid rgba(0, 0, 0, 0.54)"
       />
 
       <v-list-item two-line class="mediadetails-title" v-if="curMediaItem">
         <div>
-          <v-list-item-title> {{ curMediaItem.name }}</v-list-item-title>
+          <v-list-item-title v-if="$vuetify.display.mobile">
+            {{ truncateString(curMediaItem.name, 30) }}</v-list-item-title
+          >
+          <v-list-item-title v-else> {{ curMediaItem.name }}</v-list-item-title>
           <v-list-item-subtitle
             v-if="curMediaItem && 'artists' in curMediaItem"
             style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
@@ -86,30 +96,38 @@
               contain
               :src="iconHiRes"
               height="25"
-              :style="$vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''"
+              :style="
+                $vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''
+              "
             />
             <v-img
               v-if="streamDetails.bit_depth <= 16"
               contain
               :src="getContentTypeIcon(streamDetails.content_type)"
               height="25"
-              :style="$vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''"
+              :style="
+                $vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''
+              "
             />
           </v-btn>
         </template>
         <v-card class="mx-auto" width="300">
           <v-list style="overflow: hidden">
-            <span class="text-h5" style="padding: 10px">{{ $t("stream_details") }}</span>
+            <span class="text-h5" style="padding: 10px">{{
+              $t("stream_details")
+            }}</span>
             <v-divider></v-divider>
-            <v-list-item style="height: 50px; display: flex; align-items: center">
+            <v-list-item
+              style="height: 50px; display: flex; align-items: center"
+            >
               <img
                 height="30"
                 width="50"
                 center
                 :src="getProviderIcon(streamDetails.provider)"
-                style="object-fit: contain"
+                style="object-fit: contain;margin-left:-15px"
               />
-              {{ streamDetails.provider }}
+              {{ $t('providers.' + streamDetails.provider) }}
             </v-list-item>
 
             <div style="height: 50px; display: flex; align-items: center">
@@ -130,7 +148,8 @@
             <div
               style="height: 50px; display: flex; align-items: center"
               v-if="
-                activePlayerQueue && activePlayerQueue.settings.crossfade_duration > 0
+                activePlayerQueue &&
+                activePlayerQueue.settings.crossfade_duration > 0
               "
             >
               <img
@@ -170,7 +189,11 @@
 
       <!-- time details -->
       <div
-        v-if="!$vuetify.display.mobile && streamDetails"
+        v-if="
+          !$vuetify.display.mobile &&
+          streamDetails &&
+          curMediaItem?.media_type !== MediaType.RADIO
+        "
         class="mediadetails-time text-caption"
       >
         {{ playerCurTimeStr }} / {{ playerTotalTimeStr }}
@@ -182,38 +205,65 @@
       style="width: 100%; height: 5px"
       v-if="activePlayerQueue?.active && curQueueItem"
     >
-      <v-progress-linear v-bind:model-value="progress" height="3" color="primary" />
+      <v-progress-linear
+        v-bind:model-value="progress"
+        height="3"
+        color="primary"
+      />
     </div>
 
     <!-- Control buttons -->
     <div class="mediacontrols">
       <!-- left side: playback buttons -->
       <div class="mediacontrols-left">
+        <!-- prev track -->
         <v-btn
           small
           icon
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue.current_item"
+          :disabled="!activePlayerQueue || !activePlayerQueue?.active"
           @click="api.queueCommandPrevious(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipPrevious" />
         </v-btn>
+        <!-- play/pause button: only when MA queue is active -->
         <v-btn
           icon
           x-large
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue.current_item"
+          v-if="activePlayerQueue && activePlayerQueue?.active"
           @click="api.queueCommandPlayPause(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">{{
             activePlayerQueue?.state == "playing" ? mdiPause : mdiPlay
           }}</v-icon>
         </v-btn>
+        <!-- stop button: player is playing other source (not MA)-->
+        <v-btn
+          icon
+          x-large
+          variant="plain"
+          v-else-if="store.selectedPlayer?.state == PlayerState.PLAYING"
+          @click="api.queueCommandStop(activePlayerQueue?.queue_id)"
+        >
+          <v-icon size="50">{{ mdiStop }}</v-icon>
+        </v-btn>
+        <!-- play button: all other situations - resume the queue (disabled if queue is empty)-->
+        <v-btn
+          icon
+          x-large
+          variant="plain"
+          v-else
+          :disabled="activePlayerQueue && !activePlayerQueue?.current_item"
+          @click="api.queueCommandPlay(activePlayerQueue?.queue_id)"
+        >
+          <v-icon size="50">{{ mdiPlay }}</v-icon>
+        </v-btn>
         <v-btn
           icon
           small
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue.next_item"
+          :disabled="!activePlayerQueue || !activePlayerQueue?.active"
           @click="api.queueCommandNext(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipNext" />
@@ -283,10 +333,11 @@ import {
   mdiPlaylistMusic,
   mdiPlay,
   mdiPause,
+  mdiStop,
 } from "@mdi/js";
 
-import { watchEffect, ref, computed } from "vue";
-import { useDisplay } from "vuetify";
+import { watchEffect, ref, computed, watch } from "vue";
+import { useDisplay, useTheme } from "vuetify";
 import type {
   Artist,
   PlayerQueue,
@@ -296,14 +347,26 @@ import type {
   MusicAssistantApi,
   ItemMapping,
   Track,
+  Radio,
+  Player,
 } from "../plugins/api";
-import { api, PlayerState, ContentType } from "../plugins/api";
+import {
+  api,
+  PlayerState,
+  ContentType,
+  MediaType,
+  ImageType,
+} from "../plugins/api";
 import { store } from "../plugins/store";
 import VolumeControl from "./VolumeControl.vue";
-import MediaItemThumb from "./MediaItemThumb.vue";
+import MediaItemThumb, { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { formatDuration, truncateString } from "../utils";
 import { useRouter } from "vue-router";
-import { getContentTypeIcon, iconHiRes, getProviderIcon } from "./ProviderIcons.vue";
+import {
+  getContentTypeIcon,
+  iconHiRes,
+  getProviderIcon,
+} from "./ProviderIcons.vue";
 
 const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
 const iconLevel = new URL("../assets/level.png", import.meta.url).href;
@@ -312,8 +375,9 @@ const router = useRouter();
 const display = useDisplay();
 
 // local refs
-const curMediaItem = ref<MediaItemType>();
 const showStreamDetails = ref(false);
+const curMediaItem = ref<Track | Radio>();
+const fanartImage = ref();
 
 // computed properties
 const activePlayerQueue = computed(() => {
@@ -368,13 +432,37 @@ const getTrackArtists = function (item: Track) {
 watchEffect(async () => {
   if (curQueueItem.value == undefined) {
     curMediaItem.value = undefined;
-  } else if (curQueueItem.value.is_media_item) {
+  } else if (
+    curQueueItem.value.media_item &&
+    curQueueItem.value.media_item.provider == "database"
+  ) {
     curMediaItem.value = await api?.getItem(curQueueItem.value.uri);
+  } else {
+    curMediaItem.value = curQueueItem.value.media_item;
+  }
+  if (curMediaItem.value) {
+    fanartImage.value =
+      (await getImageThumbForItem(curMediaItem.value, ImageType.FANART)) ||
+      (await getImageThumbForItem(curMediaItem.value, ImageType.THUMB));
   }
 });
 
+watch(
+  () => store.selectedPlayer,
+  (newVal) => {
+    if (newVal) localStorage.setItem("mass.LastPlayerId", newVal.player_id);
+  }
+);
+
 watchEffect(async () => {
   // pick default/start player at startup
+  const lastPlayerId = localStorage.getItem("mass.LastPlayerId");
+  if (lastPlayerId) {
+    if (lastPlayerId in api.players) {
+      store.selectedPlayer = api.players[lastPlayerId];
+      return;
+    }
+  }
   if (api?.players && !store.selectedPlayer) {
     // prefer playing player
     for (const playerId in api?.players) {

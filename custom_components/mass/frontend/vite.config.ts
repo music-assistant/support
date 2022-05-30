@@ -3,8 +3,7 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "@vuetify/vite-plugin";
 import { VitePWA } from "vite-plugin-pwa";
-
-const path = require("path");
+import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -44,7 +43,7 @@ export default defineConfig({
           },
         ],
       },
-    })
+    }),
   ],
   define: { "process.env": {} },
   resolve: {

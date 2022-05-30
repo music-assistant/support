@@ -50,6 +50,7 @@
   "queue_previous_items": "Played items",
   "queue_move_up": "Move up",
   "queue_move_down": "Move down",
+  "queue_delete": "Delete item",
   "queue_options": "Queue options",
   "read_more": "read more",
   "stream_details": "Streamdetails",
@@ -59,6 +60,7 @@
   "volume_normalization_target": "{0} LUFS",
   "crossfade": "Crossfade",
   "crossfade_duration": "{0} seconds",
+  "crossfade_enabled": "Crossfade is enabled",
   "state": {
     "playing": "playing",
     "idle": "idle",
@@ -85,5 +87,11 @@
   "no_content": "No items found.",
   "no_content_sync_running": "Items not (yet) available. Please wait for the Library synchronization to complete.",
   "details": "Details",
-  "explicit": "Explicit"
+  "explicit": "Explicit",
+  "providers": {
+    "spotify": "Spotify",
+    "qobuz": "Qobuz",
+    "file": "Filesystem",
+    "tunein": "Tune-in"
+  }
 }

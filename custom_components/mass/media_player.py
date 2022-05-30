@@ -10,7 +10,17 @@ from homeassistant.components.media_player import (
     MediaPlayerEntity,
 )
 from homeassistant.components.media_player.const import (
+    ATTR_APP_ID,
+    ATTR_APP_NAME,
+    ATTR_MEDIA_ALBUM_ARTIST,
+    ATTR_MEDIA_ALBUM_NAME,
+    ATTR_MEDIA_ARTIST,
+    ATTR_MEDIA_CONTENT_ID,
+    ATTR_MEDIA_DURATION,
     ATTR_MEDIA_ENQUEUE,
+    ATTR_MEDIA_REPEAT,
+    ATTR_MEDIA_SHUFFLE,
+    ATTR_MEDIA_TITLE,
     SUPPORT_BROWSE_MEDIA,
     SUPPORT_CLEAR_PLAYLIST,
     SUPPORT_NEXT_TRACK,
@@ -27,13 +37,19 @@ from homeassistant.components.media_player.const import (
     SUPPORT_VOLUME_STEP,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING
+from homeassistant.const import (
+    ATTR_ENTITY_PICTURE,
+    STATE_IDLE,
+    STATE_OFF,
+    STATE_PAUSED,
+    STATE_PLAYING,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util.dt import utcnow
 from music_assistant import MusicAssistant
-from music_assistant.constants import EventType, MassEvent
-from music_assistant.helpers.images import get_image_url
+from music_assistant.models.enums import EventType
+from music_assistant.models.event import MassEvent
 from music_assistant.models.media_items import MediaType
 from music_assistant.models.player import Player, PlayerState
 from music_assistant.models.player_queue import QueueOption, RepeatMode
@@ -45,6 +61,7 @@ from .const import (
     ATTR_IS_GROUP,
     ATTR_QUEUE_ITEMS,
     ATTR_SOURCE_ENTITY_ID,
+    DEFAULT_NAME,
     DOMAIN,
 )
 from .entity import MassBaseEntity
@@ -110,16 +127,18 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         super().__init__(mass, player)
         # prefix suggested/default entity_id with 'mass'
         self.entity_id = f'media_player.mass_{player.player_id.split(".")[-1]}'
+        self._attr_media_image_remotely_accessible = True
         self._attr_supported_features = SUPPORTED_FEATURES
         self._attr_device_class = MediaPlayerDeviceClass.SPEAKER
         self._attr_media_position_updated_at = None
         self._attr_media_position = None
+        self._attr_media_duration = None
         self._attr_media_album_artist = None
         self._attr_media_artist = None
         self._attr_media_album_name = None
         self._attr_media_title = None
         self._attr_media_content_id = None
-        self._attr_media_content_type = None
+        self._attr_media_content_type = "music"
         self._attr_media_image_url = None
 
     @property
@@ -154,68 +173,104 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     @property
     def shuffle(self) -> bool:
         """Return if shuffle is enabled."""
-        return self.player.active_queue.settings.shuffle_enabled
+        if self.player.active_queue.active:
+            return self.player.active_queue.settings.shuffle_enabled
+        return self.hass.states.get(self.player.player_id).attributes.get(
+            ATTR_MEDIA_SHUFFLE, False
+        )
 
     @property
     def repeat(self) -> str:
         """Return current repeat mode."""
-        return self.player.active_queue.settings.repeat_mode.value
+        if self.player.active_queue.active:
+            return self.player.active_queue.settings.repeat_mode.value
+        return self.hass.states.get(self.player.player_id).attributes.get(
+            ATTR_MEDIA_REPEAT, False
+        )
 
     @property
-    def media_duration(self) -> int | None:
-        """Return duration of current item in queue."""
-        if self.player.active_queue.current_item is None:
-            return None
-        return self.player.active_queue.current_item.duration
+    def app_id(self) -> str:
+        """Return current app_id."""
+        if self.player.active_queue.active:
+            return DOMAIN
+        return self.hass.states.get(self.player.player_id).attributes.get(
+            ATTR_APP_ID, self.player.player_id
+        )
+
+    @property
+    def app_name(self) -> str:
+        """Return current app_name."""
+        if self.player.active_queue.active:
+            return DEFAULT_NAME
+        return self.hass.states.get(self.player.player_id).attributes.get(
+            ATTR_APP_NAME, self.player.name
+        )
 
     async def async_on_update(self) -> None:
         """Handle player updates."""
         self._attr_media_position = self.player.active_queue.elapsed_time
         self._attr_media_position_updated_at = utcnow()
         # update current media item infos
-        artist = None
-        album_artist = None
-        album_name = None
+        media_artist = None
+        media_album_artist = None
+        media_album_name = None
         media_title = None
-        content_id = None
-        content_type = None
-        image_url = None
+        media_content_id = None
+        media_image_url = None
+        media_duration = None
         current_item = self.player.active_queue.current_item
-        if (
-            self.player.active_queue.active
-            and current_item
-            and current_item.is_media_item
-        ):
-            media_item = await self.mass.music.get_item_by_uri(current_item.uri)
+        # Music Assistant is the active source and actually has a MediaItem loaded
+        if self.player.active_queue.active and current_item and current_item.media_item:
+            media_item = current_item.media_item
             media_title = media_item.name
-            content_id = current_item.uri
-            content_type = media_item.media_type.value
-            image_url = await get_image_url(self.mass, media_item)
+            media_content_id = current_item.uri
+            media_duration = current_item.duration
+            media_image_url = current_item.image
             if media_item.media_type == MediaType.TRACK:
-                artist = ", ".join([x.name for x in media_item.artists])
+                media_artist = ", ".join([x.name for x in media_item.artists])
                 if media_item.version:
                     media_title += f" ({media_item.version})"
                 if media_item.album:
-                    album_name = media_item.album.name
-                    album_artist = media_item.album.artist.name
-        elif current_item and not current_item.is_media_item:
+                    media_album_name = media_item.album.name
+                    if media_item.album.artist:
+                        media_album_artist = media_item.album.artist.name
+        # Music Assistant is NOT the active source
+        elif not self.player.active_queue.active:
+            # grab details from 'origin' media player
+            source_entity = self.hass.states.get(self.player.player_id)
+            attrs = source_entity.attributes
+            media_artist = attrs.get(ATTR_MEDIA_ARTIST)
+            media_album_artist = attrs.get(ATTR_MEDIA_ALBUM_ARTIST)
+            media_album_name = attrs.get(ATTR_MEDIA_ALBUM_NAME)
+            media_title = attrs.get(ATTR_MEDIA_TITLE)
+            media_content_id = attrs.get(ATTR_MEDIA_CONTENT_ID)
+            media_image_url = attrs.get(ATTR_ENTITY_PICTURE)
+            media_duration = attrs.get(ATTR_MEDIA_DURATION)
+        # Music Assistant is active but not playing MediaItem (e.g. manual URL/TTS etc.)
+        elif current_item and not current_item.media_item:
             media_title = current_item.name
-            content_type = "music"
-        elif (
-            not self.player.active_queue.active
-            and self.player.state in [PlayerState.PLAYING, PlayerState.PAUSED]
-            and self.player.current_url
-        ):
-            media_title = self.player.current_url
-            content_type = "music"
+            media_image_url = current_item.image
+            media_duration = current_item.duration
         # set the attributes
-        self._attr_media_artist = artist
-        self._attr_media_album_artist = album_artist
-        self._attr_media_album_name = album_name
+        self._attr_media_artist = media_artist
+        self._attr_media_album_artist = media_album_artist
+        self._attr_media_album_name = media_album_name
         self._attr_media_title = media_title
-        self._attr_media_content_id = content_id
-        self._attr_media_content_type = content_type
-        self._attr_media_image_url = image_url
+        self._attr_media_content_id = media_content_id
+        self._attr_media_image_url = media_image_url
+        self._attr_media_duration = media_duration
+
+    @property
+    def media_image_remotely_accessible(self) -> bool:
+        """If the image url is remotely accessible."""
+        return self.media_image_url is None or self.media_image_url.startswith("http")
+
+    async def async_get_media_image(self) -> tuple[bytes | None, str | None]:
+        """Fetch media image of current playing image."""
+        if not self.media_image_remotely_accessible:
+            img_data = await self.mass.metadata.get_thumbnail(self.media_image_url)
+            return (img_data, "image/png")
+        return await super().async_get_media_image()
 
     async def async_media_play(self) -> None:
         """Send play command to device."""
@@ -227,14 +282,26 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
     async def async_media_stop(self) -> None:
         """Send stop command to device."""
+        if not self.player.active_queue.active:
+            # directly control source player if queue is not loaded/active
+            await self.player.stop()
+            return
         await self.player.active_queue.stop()
 
     async def async_media_next_track(self) -> None:
         """Send next track command to device."""
+        if not self.player.active_queue.active:
+            # directly control source player if queue is not loaded/active
+            await self.player.next_track()
+            return
         await self.player.active_queue.next()
 
     async def async_media_previous_track(self) -> None:
         """Send previous track command to device."""
+        if not self.player.active_queue.active:
+            # directly control source player if queue is not loaded/active
+            await self.player.previous_track()
+            return
         await self.player.active_queue.previous()
 
     async def async_set_volume_level(self, volume: float) -> None:

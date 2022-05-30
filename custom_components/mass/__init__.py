@@ -7,22 +7,21 @@ import os
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event
+from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.helpers.start import async_at_start
 from music_assistant import MusicAssistant
+from music_assistant.models.config import MassConfig, MusicProviderConfig
+from music_assistant.models.enums import EventType, ProviderType
 from music_assistant.models.errors import MusicAssistantError
-from music_assistant.providers.filesystem import FileSystemProvider
-from music_assistant.providers.qobuz import QobuzProvider
-from music_assistant.providers.spotify import SpotifyProvider
-from music_assistant.providers.tunein import TuneInProvider
+from music_assistant.models.event import MassEvent
 
 from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
     CONF_FILE_ENABLED,
-    CONF_PLAYLISTS_DIRECTORY,
     CONF_QOBUZ_ENABLED,
     CONF_QOBUZ_PASSWORD,
     CONF_QOBUZ_USERNAME,
@@ -32,50 +31,75 @@ from .const import (
     CONF_TUNEIN_ENABLED,
     CONF_TUNEIN_USERNAME,
     DOMAIN,
+    DOMAIN_EVENT,
 )
 from .panel import async_register_panel
 from .player_controls import async_register_player_controls
+from .services import register_services
 from .websockets import async_register_websockets
 
 LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ("media_player", "switch", "number")
+FORWARD_EVENTS = (
+    EventType.QUEUE_ADDED,
+    EventType.QUEUE_UPDATED,
+    EventType.QUEUE_ITEMS_UPDATED,
+    EventType.QUEUE_TIME_UPDATED,
+)
 
 
-async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up from a config entry."""
     http_session = async_get_clientsession(hass, verify_ssl=False)
-    # TODO: optionally use mysql if mysql is detected ?
     db_file = hass.config.path("music_assistant.db")
-    mass = MusicAssistant(f"sqlite:///{db_file}", session=http_session)
+
     conf = entry.options
+
+    # TODO: adjust config flow to support creating multiple provider entries
+    providers = []
+
+    if conf.get(CONF_SPOTIFY_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.SPOTIFY,
+                username=conf.get(CONF_SPOTIFY_USERNAME),
+                password=conf.get(CONF_SPOTIFY_PASSWORD),
+            )
+        )
+
+    if conf.get(CONF_QOBUZ_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.QOBUZ,
+                username=conf.get(CONF_QOBUZ_USERNAME),
+                password=conf.get(CONF_QOBUZ_PASSWORD),
+            )
+        )
+
+    if conf.get(CONF_TUNEIN_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.TUNEIN,
+                username=conf.get(CONF_TUNEIN_USERNAME),
+            )
+        )
+    if conf.get(CONF_FILE_ENABLED):
+        providers.append(
+            MusicProviderConfig(
+                ProviderType.FILESYSTEM_LOCAL,
+                path=conf.get(CONF_FILE_DIRECTORY),
+            )
+        )
+    stream_ip = hass.config.api.local_ip
+    mass_conf = MassConfig(
+        database_url=f"sqlite:///{db_file}", providers=providers, stream_ip=stream_ip
+    )
+
+    mass = MusicAssistant(mass_conf, session=http_session)
+
     try:
         await mass.setup()
-        # register music providers
-        if conf.get(CONF_SPOTIFY_ENABLED):
-            await mass.music.register_provider(
-                SpotifyProvider(
-                    conf.get(CONF_SPOTIFY_USERNAME), conf.get(CONF_SPOTIFY_PASSWORD)
-                )
-            )
-        if conf.get(CONF_QOBUZ_ENABLED):
-            await mass.music.register_provider(
-                QobuzProvider(
-                    conf.get(CONF_QOBUZ_USERNAME), conf.get(CONF_QOBUZ_PASSWORD)
-                )
-            )
-        if conf.get(CONF_TUNEIN_ENABLED):
-            await mass.music.register_provider(
-                TuneInProvider(conf.get(CONF_TUNEIN_USERNAME))
-            )
-        if conf.get(CONF_FILE_ENABLED):
-            await mass.music.register_provider(
-                FileSystemProvider(
-                    # empty string --> None
-                    conf.get(CONF_FILE_DIRECTORY),
-                    conf.get(CONF_PLAYLISTS_DIRECTORY) or None,
-                )
-            )
     except MusicAssistantError as err:
         await mass.stop()
         LOGGER.exception(err)
@@ -97,11 +121,37 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
         """Handle an incoming stop event from Home Assistant."""
         await mass.stop()
 
+    async def handle_mass_event(event: MassEvent):
+        """Handle an incoming event from Music Assistant."""
+        # forward event to the HA eventbus
+        if hasattr(event.data, "to_dict"):
+            data = event.data.to_dict()
+        else:
+            data = event.data
+        hass.bus.async_fire(
+            DOMAIN_EVENT,
+            {"type": event.type.value, "object_id": event.object_id, "data": data},
+        )
+
+    async def on_start(*args, **kwargs):
+        """Start sync actions when Home Assistant is started."""
+        register_services(hass, mass)
+        await controls.async_register_player_controls()
+        await mass.music.start_sync(schedule=3)
+
     # setup event listeners, register their unsubscribe in the unload
+
+    entry.async_on_unload(
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, handle_hass_event)
+    )
+    entry.async_on_unload(async_at_start(hass, on_start))
+    entry.async_on_unload(entry.add_update_listener(_update_listener))
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
     )
     entry.async_on_unload(entry.add_update_listener(_update_listener))
+    entry.async_on_unload(hass.bus.async_listen(EVENT_CALL_SERVICE, handle_hass_event))
+    entry.async_on_unload(mass.subscribe(handle_mass_event, FORWARD_EVENTS))
 
     # Websocket support and frontend (panel)
     async_register_websockets(hass)
@@ -110,19 +160,19 @@ async def async_setup_entry(hass: HomeAssistantType, entry: ConfigEntry):
     return True
 
 
-async def _update_listener(hass: HomeAssistantType, entry: ConfigEntry) -> None:
+async def _update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle ConfigEntry options update."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_remove_config_entry_device(
-    hass: HomeAssistantType, config_entry: ConfigEntry, device_entry: dr.DeviceEntry
+    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: dr.DeviceEntry
 ) -> bool:
     """Remove a config entry from a device."""
     return True
 
 
-async def async_remove_entry(hass: HomeAssistantType, entry: ConfigEntry) -> None:
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Call when entry is about to be removed."""
     if mass := hass.data.pop(DOMAIN, None):
         await mass.stop()

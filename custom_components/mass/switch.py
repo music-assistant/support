@@ -13,7 +13,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from music_assistant import MusicAssistant
-from music_assistant.constants import EventType, MassEvent
+from music_assistant.models.enums import EventType
+from music_assistant.models.event import MassEvent
 
 from .const import DOMAIN
 from .entity import MassBaseEntity

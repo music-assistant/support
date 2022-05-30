@@ -1,7 +1,6 @@
 {
     "name": "Music Assistant",
-    "render_readme": "true",
-    "iot_class": ["Local Push"],
+    "render_readme": true,
     "domains": ["media_player"],
     "zip_release": true,
     "filename": "mass.zip",

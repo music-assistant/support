@@ -50,7 +50,12 @@
         </span>
         <div
           class="text-caption"
-          style="position: absolute; width: 60px; text-align: center; margin-left: 0px"
+          style="
+            position: absolute;
+            width: 60px;
+            text-align: center;
+            margin-left: 0px;
+          "
         >
           {{ childPlayer.volume_level }}
         </div>
@@ -64,7 +69,9 @@
           thumb-label
           :disabled="!childPlayer.powered"
           :model-value="Math.round(childPlayer.volume_level)"
-          @update:model-value="api.queueCommandVolume(childPlayer.player_id, $event)"
+          @update:model-value="
+            api.queueCommandVolume(childPlayer.player_id, $event)
+          "
         ></v-slider>
       </div>
     </v-list>
@@ -77,7 +84,7 @@ import { getVolumePlayers } from "./PlayerSelect.vue";
 import { mdiSpeaker, mdiSpeakerMultiple, mdiPower } from "@mdi/js";
 import { api } from "../plugins/api";
 
-interface Props {
+export interface Props {
   player: Player;
 }
 defineProps<Props>();

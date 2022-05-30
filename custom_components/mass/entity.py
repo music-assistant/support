@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from homeassistant.helpers.entity import DeviceInfo, Entity
 from music_assistant import MusicAssistant
-from music_assistant.constants import EventType, MassEvent
+from music_assistant.models.enums import EventType
+from music_assistant.models.event import MassEvent
 from music_assistant.models.player import Player
 
 from .const import DEFAULT_NAME, DOMAIN

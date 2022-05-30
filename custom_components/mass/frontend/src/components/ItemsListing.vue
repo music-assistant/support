@@ -42,29 +42,32 @@
         <v-icon v-if="!sortDesc" :icon="mdiArrowUp"></v-icon>
         <v-icon v-if="sortDesc" :icon="mdiArrowDown"></v-icon>
       </v-btn>
-      <v-menu anchor="bottom end" :close-on-content-click="false">
-        <template v-slot:activator="{ props }">
-          <v-btn icon v-bind="props">
-            <v-icon :icon="mdiSearchWeb"></v-icon>
-          </v-btn>
-        </template>
-        <v-card min-width="350">
-          <v-text-field
-            v-model="search"
-            clearable
-            :prepend-inner-icon="mdiSearchWeb"
-            :label="$t('search')"
-            hide-details
-            solo
-            dense
-          ></v-text-field>
-        </v-card>
-      </v-menu>
+      <v-btn icon @click="toggleSearch()">
+        <v-icon :icon="mdiSearchWeb"></v-icon>
+      </v-btn>
       <v-btn icon style="margin-right: -15px" @click="toggleViewMode()">
         <v-icon v-if="viewMode == 'panel'" :icon="mdiViewList"></v-icon>
         <v-icon v-if="viewMode == 'list'" :icon="mdiGrid"></v-icon>
       </v-btn>
     </v-toolbar>
+    <v-text-field
+      v-model="search"
+      id="searchInput"
+      clearable
+      :prepend-inner-icon="mdiSearchWeb"
+      :label="$t('search')"
+      hide-details
+      variant="filled"
+      style="
+        width: auto;
+        margin-left: 15px;
+        margin-right: 15px;
+        margin-top: 10px;
+      "
+      v-if="showSearch"
+      @focus="searchHasFocus = true"
+      @blur="searchHasFocus = false"
+    ></v-text-field>
 
     <div
       style="
@@ -76,8 +79,17 @@
     >
       <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
       <!-- panel view -->
-      <v-row dense align-content="stretch" align="stretch" v-if="viewMode == 'panel'">
-        <v-col v-for="item in filteredItems" :key="item.uri" align-self="stretch">
+      <v-row
+        dense
+        align-content="start"
+        align="start"
+        v-if="viewMode == 'panel'"
+      >
+        <v-col
+          v-for="item in filteredItems.slice(0, limit)"
+          :key="item.uri"
+          align-self="start"
+        >
           <PanelviewItem
             :item="item"
             :size="thumbSize"
@@ -88,9 +100,10 @@
           />
         </v-col>
       </v-row>
+      <InfiniteLoading @infinite="loadData" />
 
       <!-- list view -->
-      <div v-if="viewMode == 'list'">
+      <div v-if="viewMode == 'list' && !sorting">
         <RecycleScroller
           v-slot="{ item }"
           :items="sorting ? [] : filteredItems"
@@ -100,8 +113,11 @@
         >
           <ListviewItem
             :item="item"
-            :show-track-number="itemtype == 'albumtracks'"
-            :show-duration="item.media_type != 'radio'"
+            :show-track-number="showTrackNumber"
+            :show-duration="showDuration"
+            :show-library="showLibrary"
+            :show-menu="showMenu"
+            :show-providers="showProviders"
             :is-selected="isSelected(item)"
             @select="onSelect"
             @menu="onMenu"
@@ -130,15 +146,9 @@ import {
   mdiCheck,
 } from "@mdi/js";
 
-import { watchEffect, ref, computed, onBeforeUnmount, onMounted, nextTick } from "vue";
+import { watchEffect, ref, computed, onBeforeUnmount, nextTick } from "vue";
 import { useDisplay } from "vuetify";
-import type {
-  Album,
-  MediaItemType,
-  MediaType,
-  MusicAssistantApi,
-  Track,
-} from "../plugins/api";
+import type { Album, MediaItemType, Track } from "../plugins/api";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import { store } from "../plugins/store";
@@ -147,23 +157,40 @@ import PanelviewItem from "./PanelviewItem.vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { api } from "../plugins/api";
-
-// global refs
-const router = useRouter();
-const i18n = useI18n();
-const display = useDisplay();
+import InfiniteLoading from "v3-infinite-loading";
+import "v3-infinite-loading/lib/style.css";
 
 // properties
-interface Props {
+export interface Props {
   itemtype: string;
   items: MediaItemType[];
   loading?: boolean;
+  showTrackNumber?: boolean;
+  showProviders?: boolean;
+  showMenu?: boolean;
+  showLibrary?: boolean;
+  showDuration?: boolean;
+  showSearchByDefault?: boolean;
 }
 interface SortKey {
   text: string;
   value: string;
 }
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  showTrackNumber: true,
+  showProviders: Object.keys(api.providers).length > 1,
+  showMenu: true,
+  showLibrary: true,
+  showDuration: true,
+  showSearchByDefault: false,
+});
+
+const defaultLimit = 100;
+
+// global refs
+const router = useRouter();
+const i18n = useI18n();
+const display = useDisplay();
 
 // local refs
 const viewMode = ref("list");
@@ -174,6 +201,9 @@ const sortKeys = ref<SortKey[]>([]);
 const selectedItems = ref<MediaItemType[]>([]);
 const sorting = ref(false);
 const showSortMenu = ref(false);
+const showSearch = ref(props.showSearchByDefault);
+const searchHasFocus = ref(false);
+const limit = ref(defaultLimit);
 
 // computed properties
 const thumbSize = computed(() => {
@@ -181,7 +211,17 @@ const thumbSize = computed(() => {
 });
 
 // methods
+const toggleSearch = function () {
+  if (showSearch.value) showSearch.value = false;
+  else {
+    showSearch.value = true;
+    nextTick(() => {
+      document.getElementById("searchInput")?.focus();
+    });
+  }
+};
 const toggleViewMode = function () {
+  limit.value = defaultLimit;
   if (viewMode.value === "panel") viewMode.value = "list";
   else viewMode.value = "panel";
   localStorage.setItem("viewMode" + props.itemtype, viewMode.value);
@@ -194,12 +234,19 @@ const filteredItems = computed(() => {
     for (const item of props.items) {
       if (item.name.toLowerCase().includes(searchStr)) {
         result.push(item);
-      } else if ("artist" in item && item.artist.name.toLowerCase().includes(searchStr)) {
+      } else if (
+        "artist" in item &&
+        item.artist?.name.toLowerCase().includes(searchStr)
+      ) {
         result.push(item);
-      } else if ("album" in item && item.album?.name.toLowerCase().includes(searchStr)) {
+      } else if (
+        "album" in item &&
+        item.album?.name.toLowerCase().includes(searchStr)
+      ) {
         result.push(item);
       } else if (
         "artists" in item &&
+        item.artists &&
         item.artists[0].name.toLowerCase().includes(searchStr)
       ) {
         result.push(item);
@@ -210,7 +257,9 @@ const filteredItems = computed(() => {
   }
   // sort
   if (sortBy.value == "name") {
-    result.sort((a, b) => (a.sort_name || a.name).localeCompare(b.sort_name || b.name));
+    result.sort((a, b) =>
+      (a.sort_name || a.name).localeCompare(b.sort_name || b.name)
+    );
   }
   if (sortBy.value == "album.name") {
     result.sort((a, b) =>
@@ -229,14 +278,18 @@ const filteredItems = computed(() => {
   }
   if (sortBy.value == "track_number") {
     result.sort(
-      (a, b) => ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
+      (a, b) =>
+        ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
     );
     result.sort(
-      (a, b) => ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
+      (a, b) =>
+        ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
     );
   }
   if (sortBy.value == "position") {
-    result.sort((a, b) => ((a as Track).position || 0) - ((b as Track).position || 0));
+    result.sort(
+      (a, b) => ((a as Track).position || 0) - ((b as Track).position || 0)
+    );
   }
   if (sortBy.value == "year") {
     result.sort((a, b) => ((a as Album).year || 0) - ((b as Album).year || 0));
@@ -280,13 +333,14 @@ const onClick = function (mediaItem: MediaItemType) {
       name: "playlist",
       params: { item_id: mediaItem.item_id, provider: mediaItem.provider },
     });
-  } else {
+  } else if (store.selectedPlayer) {
     // assume track (or radio) item
-    onMenu(mediaItem);
+    api.playMedia(store.selectedPlayer?.active_queue, mediaItem.uri);
   }
 };
 
 const changeSort = function (sort_key?: string, sort_desc?: boolean) {
+  limit.value = defaultLimit;
   sorting.value = true;
   if (sort_key !== undefined) {
     sortBy.value = sort_key;
@@ -298,7 +352,13 @@ const changeSort = function (sort_key?: string, sort_desc?: boolean) {
   setTimeout(() => {
     sorting.value = false;
     showSortMenu.value = false;
-  }, 500);
+  }, 150);
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const loadData = function ($state: any) {
+  limit.value += defaultLimit;
+  $state.loaded();
 };
 
 // watchers
@@ -370,6 +430,11 @@ const keyListener = function (e: KeyboardEvent) {
   if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     selectedItems.value = props.items;
+  } else if (!searchHasFocus.value && e.key == "Backspace") {
+    search.value = search.value.slice(0, -1);
+  } else if (!searchHasFocus.value && e.key.length == 1) {
+    search.value += e.key;
+    showSearch.value = true;
   }
 };
 document.addEventListener("keydown", keyListener);

@@ -92,7 +92,9 @@
               thumb-label
               :disabled="!childPlayer.powered"
               :model-value="Math.round(childPlayer.volume_level)"
-              @update:model-value="api.queueCommandVolume(childPlayer.player_id, $event)"
+              @update:model-value="
+                api.queueCommandVolume(childPlayer.player_id, $event)
+              "
             ></v-slider>
           </div>
         </v-expansion-panel-text>
