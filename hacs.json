@@ -1,7 +1,6 @@
 {
     "name": "Music Assistant",
     "render_readme": true,
-    "domains": ["media_player"],
     "zip_release": true,
     "filename": "mass.zip",
     "hide_default_branch": true,
