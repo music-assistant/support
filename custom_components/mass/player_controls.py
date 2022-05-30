@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Dict, Tuple
+from typing import Tuple
 
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
 from homeassistant.components.media_player import MediaPlayerEntityFeature
@@ -27,7 +27,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     ATTR_SUPPORTED_FEATURES,
-    EVENT_HOMEASSISTANT_START,
     EVENT_STATE_CHANGED,
     SERVICE_MEDIA_NEXT_TRACK,
     SERVICE_MEDIA_PAUSE,
@@ -434,18 +433,11 @@ class HassCastGroupPlayer(PlayerGroup, HassPlayer):
 async def async_register_player_control(
     hass: HomeAssistant, mass: MusicAssistant, entity_id: str
 ) -> HassPlayer | None:
-    """Register hass entity as player controls on Music Assistant."""
+    """Register hass media_player entity as player control on Music Assistant."""
 
     # check for existing player first if already registered
     if player := mass.players.get_player(entity_id, True):
         return player
-
-    def __init__(self, hass: HomeAssistant, mass: MusicAssistant, config: dict) -> None:
-        """Initialize class."""
-        self.hass = hass
-        self.mass = mass
-        self.config = config
-        self._registered_players: Dict[str, HassPlayer] = {}
 
     entity = hass.states.get(entity_id)
     if entity is None or entity.attributes is None:
@@ -458,6 +450,8 @@ async def async_register_player_control(
     dev_reg = dr.async_get(hass)
     player = None
     # Integration specific player controls
+    conf_entry: ConfigEntry = hass.config_entries.async_entries(DOMAIN)[0]
+    mute_as_power = entity_id in conf_entry.options.get(CONF_MUTE_POWER_PLAYERS, [])
     if ent_entry := ent_reg.async_get(entity_id):
         if ent_entry.platform == DOMAIN:
             # this is already a Music assistant player
@@ -468,12 +462,12 @@ async def async_register_player_control(
                     player = HassCastGroupPlayer(hass, entity_id)
         elif ent_entry.platform == SLIMPROTO_DOMAIN:
             player = HassSqueezeboxPlayer(hass, entity_id, ent_entry.unique_id)
+        elif ent_entry.platform == ESPHOME_DOMAIN:
+            player = ESPHomePlayer(hass, entity_id, mute_as_power)
         elif ent_entry.platform == GROUP_DOMAIN:
             player = HassGroupPlayer(hass, entity_id)
 
     # handle genric player for all other integrations
-    conf_entry: ConfigEntry = hass.config_entries.async_entries(DOMAIN)[0]
-    mute_as_power = entity_id in conf_entry.options.get(CONF_MUTE_POWER_PLAYERS, [])
     if player is None:
         player = HassPlayer(hass, entity_id, mute_as_power)
     await mass.players.register_player(player)
@@ -502,44 +496,11 @@ async def async_register_player_controls(
         if allowed_entities is None or entity_id in allowed_entities:
             await async_register_player_control(hass, mass, entity_id)
 
-    # register all current entities
-    async def register_all(*args, **kwargs):
-        for entity in hass.states.async_all(MEDIA_PLAYER_DOMAIN):
-            if allowed_entities is None or entity.entity_id in allowed_entities:
-                await async_register_player_control(hass, mass, entity.entity_id)
-
-    await register_all()
-
-    # register event listeners
+    # register event listener
     entry.async_on_unload(
         hass.bus.async_listen(EVENT_STATE_CHANGED, async_hass_state_event)
     )
-    entry.async_on_unload(
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_START, register_all)
-    )
-        ent_reg = er.async_get(self.hass)
-        dev_reg = dr.async_get(self.hass)
-        player = None
-        mute_as_power = entity_id in self.config.get(CONF_MUTE_POWER_PLAYERS, [])
-        # Integration specific player controls
-        if ent_entry := ent_reg.async_get(entity_id):
-            if ent_entry.platform == DOMAIN:
-                # this is already a Music assistant player
-                return
-            if ent_entry.platform == CAST_DOMAIN:
-                if dev_entry := dev_reg.async_get(ent_entry.device_id):
-                    if dev_entry.model == "Google Cast Group":
-                        player = HassCastGroupPlayer(self.hass, entity_id)
-            elif ent_entry.platform == SLIMPROTO_DOMAIN:
-                player = HassSqueezeboxPlayer(self.hass, entity_id, ent_entry.unique_id)
-            elif ent_entry.platform == ESPHOME_DOMAIN:
-                player = ESPHomePlayer(self.hass, entity_id, mute_as_power)
-            elif ent_entry.platform == GROUP_DOMAIN:
-                player = HassGroupPlayer(self.hass, entity_id)
-
-        # handle genric player for all other integrations
-        if player is None:
-            player = HassPlayer(self.hass, entity_id, mute_as_power)
-        self._registered_players[entity_id] = player
-        await self.mass.players.register_player(player)
-        return player
+    # register all current entities
+    for entity in hass.states.async_all(MEDIA_PLAYER_DOMAIN):
+        if allowed_entities is None or entity.entity_id in allowed_entities:
+            await async_register_player_control(hass, mass, entity.entity_id)

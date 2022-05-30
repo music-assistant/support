@@ -26,7 +26,6 @@ from homeassistant.components.media_source.models import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.service import async_get_current_entity
 from music_assistant import MusicAssistant
 from music_assistant.models.media_items import MediaItemType
 
@@ -100,13 +99,18 @@ class MusicAssistentSource(MediaSource):
         if mass is None:
             raise Unresolvable("MusicAssistant is not initialized")
 
-        # Get entity_id that requested the media from contextvar
         # TODO: How to intercept a play request for the 'webbrowser' player
         # or at least hide our source for the webbrowser player ?
-        entity_id = async_get_current_entity()
+        if item.target_media_player is None:
+            raise Unresolvable("Not supported for browser")
         # create player on the fly (or get existing one)
-        player = await async_register_player_control(self.hass, mass, entity_id)
+        player = await async_register_player_control(
+            self.hass, mass, item.target_media_player
+        )
         if not player:
+            # mime type shoulod be set to actual mime type but is kind of a mess
+            # most media player integrations only accept play form url when
+            # the content type is set to music.
             return PlayMedia(item.identifier, MEDIA_TYPE_MUSIC)
 
         # send the mass library uri to the player(queue)

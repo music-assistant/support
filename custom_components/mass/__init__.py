@@ -6,7 +6,6 @@ import os
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
-from homeassistant.core import Event
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
@@ -114,14 +113,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if conf.get(CONF_CREATE_MASS_PLAYERS, True):
         hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
-    # register hass players with mass
-    hass.create_task(async_register_player_controls(hass, mass, entry))
+    async def on_hass_start(*args, **kwargs):
+        """Start sync actions when Home Assistant is started."""
+        register_services(hass, mass)
+        # register hass players with mass
+        await async_register_player_controls(hass, mass, entry)
+        # start and schedule sync (every 3 hours)
+        await mass.music.start_sync(schedule=3)
 
     async def on_hass_stop(event: Event):
         """Handle an incoming stop event from Home Assistant."""
         await mass.stop()
 
-    async def handle_mass_event(event: MassEvent):
+    async def on_mass_event(event: MassEvent):
         """Handle an incoming event from Music Assistant."""
         # forward event to the HA eventbus
         if hasattr(event.data, "to_dict"):
@@ -133,25 +137,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             {"type": event.type.value, "object_id": event.object_id, "data": data},
         )
 
-    async def on_start(*args, **kwargs):
-        """Start sync actions when Home Assistant is started."""
-        register_services(hass, mass)
-        await controls.async_register_player_controls()
-        await mass.music.start_sync(schedule=3)
-
     # setup event listeners, register their unsubscribe in the unload
-
     entry.async_on_unload(
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, handle_hass_event)
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
     )
-    entry.async_on_unload(async_at_start(hass, on_start))
+    entry.async_on_unload(async_at_start(hass, on_hass_start))
     entry.async_on_unload(entry.add_update_listener(_update_listener))
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
     )
     entry.async_on_unload(entry.add_update_listener(_update_listener))
-    entry.async_on_unload(hass.bus.async_listen(EVENT_CALL_SERVICE, handle_hass_event))
-    entry.async_on_unload(mass.subscribe(handle_mass_event, FORWARD_EVENTS))
+    entry.async_on_unload(mass.subscribe(on_mass_event, FORWARD_EVENTS))
 
     # Websocket support and frontend (panel)
     async_register_websockets(hass)
@@ -186,7 +182,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         os.rename(db_file, db_file_old)
 
 
-async def async_unload_entry(hass: HomeAssistantType, entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     unload_success = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if mass := hass.data.pop(DOMAIN, None):
