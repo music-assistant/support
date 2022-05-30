@@ -99,10 +99,11 @@ class MusicAssistentSource(MediaSource):
         if mass is None:
             raise Unresolvable("MusicAssistant is not initialized")
 
-        # TODO: How to intercept a play request for the 'webbrowser' player
-        # or at least hide our source for the webbrowser player ?
         if item.target_media_player is None:
-            raise Unresolvable("Not supported for browser")
+            # TODO: How to intercept a play request for the 'webbrowser' player
+            # or at least hide our source for the webbrowser player ?
+            raise Unresolvable("Playback not supported on the device.")
+
         # create player on the fly (or get existing one)
         player = await async_register_player_control(
             self.hass, mass, item.target_media_player
