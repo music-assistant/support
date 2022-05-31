@@ -109,8 +109,8 @@ class MusicAssistentSource(MediaSource):
             self.hass, mass, item.target_media_player
         )
         if not player:
-            # mime type shoulod be set to actual mime type but is kind of a mess
-            # most media player integrations only accept play form url when
+            # mime type should be set to actual mime type but is kind of a mess
+            # most media player integrations only accept play from url when
             # the content type is set to music.
             return PlayMedia(item.identifier, MEDIA_TYPE_MUSIC)
 
