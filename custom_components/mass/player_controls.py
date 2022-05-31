@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Tuple
+from typing import Dict, Tuple
 
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
 from homeassistant.components.media_player import MediaPlayerEntityFeature
@@ -155,6 +155,18 @@ class HassPlayer(Player):
         """Call on Home Assistant event."""
         self.update_attributes()
         self.update_state()
+        # handle playback started logic
+        if event.event_type != "state_changed":
+            return
+        old_state = event.data.get("old_state")
+        new_state = event.data.get("new_state")
+        if (
+            old_state
+            and new_state
+            and old_state.state != new_state.state
+            and new_state.state == STATE_PLAYING
+        ):
+            self.hass.create_task(self.on_playback_started())
 
     @callback
     def update_attributes(self) -> None:
@@ -175,6 +187,8 @@ class HassPlayer(Player):
 
     async def play_url(self, url: str) -> None:
         """Play the specified url on the player."""
+        if self._mute_as_power and not self.powered:
+            await self.power(True)
         await self.hass.services.async_call(
             MP_DOMAIN,
             SERVICE_PLAY_MEDIA,
@@ -184,26 +198,26 @@ class HassPlayer(Player):
                 ATTR_ENTITY_ID: self.entity_id,
             },
         )
+
+    async def on_playback_started(self) -> None:
+        """Execute action(s) when playback started."""
+        if not self.active_queue.active:
+            return
         # workaround!
         # the below makes sure that next track button works on supported players
-        # as well as restart of stream may it drop of the network
-        # https://github.com/music-assistant/hass-music-assistant/issues/117
-        await asyncio.sleep(0.5)
         # if media player supports enqueue, add same track multiple times
         if self.ent_platform in SUPPORTS_ENQUEUE:
-            for _ in range(0, 25):
-                await self.hass.services.async_call(
-                    MP_DOMAIN,
-                    SERVICE_PLAY_MEDIA,
-                    {
-                        ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
-                        ATTR_MEDIA_CONTENT_ID: url,
-                        ATTR_ENTITY_ID: self.entity_id,
-                        ATTR_MEDIA_ENQUEUE: True,
-                        ATTR_MEDIA_EXTRA: {ATTR_MEDIA_ENQUEUE: True},
-                    },
-                )
-                await asyncio.sleep(0.1)
+            await self.hass.services.async_call(
+                MP_DOMAIN,
+                SERVICE_PLAY_MEDIA,
+                {
+                    ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
+                    ATTR_MEDIA_CONTENT_ID: self.current_url,
+                    ATTR_ENTITY_ID: self.entity_id,
+                    ATTR_MEDIA_ENQUEUE: True,
+                    ATTR_MEDIA_EXTRA: {ATTR_MEDIA_ENQUEUE: True},
+                },
+            )
         else:
             # enable repeat of same track to make sure that the player
             # reconnects to our stream URL
