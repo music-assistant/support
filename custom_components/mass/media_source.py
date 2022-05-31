@@ -104,14 +104,11 @@ class MusicAssistentSource(MediaSource):
             # or at least hide our source for the webbrowser player ?
             raise Unresolvable("Playback not supported on the device.")
 
-        # create player on the fly (or get existing one)
+        # get/create mass player instance attached to this entity id
         player = await async_register_player_control(
             self.hass, mass, item.target_media_player
         )
         if not player:
-            # mime type should be set to actual mime type but is kind of a mess
-            # most media player integrations only accept play from url when
-            # the content type is set to music.
             return PlayMedia(item.identifier, MEDIA_TYPE_MUSIC)
 
         # send the mass library uri to the player(queue)
