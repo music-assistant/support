@@ -1,8 +1,7 @@
 """Support Home Assistant media_player entities to be used as Players for Music Assistant."""
 from __future__ import annotations
 
-import asyncio
-from typing import Dict, Tuple
+from typing import Tuple
 
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
 from homeassistant.components.media_player import MediaPlayerEntityFeature
