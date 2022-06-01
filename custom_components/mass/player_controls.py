@@ -4,7 +4,10 @@ from __future__ import annotations
 from typing import Tuple
 
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
-from homeassistant.components.media_player import MediaPlayerEntityFeature
+from homeassistant.components.media_player import (
+    MediaPlayerEnqueue,
+    MediaPlayerEntityFeature,
+)
 from homeassistant.components.media_player.const import (
     ATTR_MEDIA_CONTENT_ID,
     ATTR_MEDIA_CONTENT_TYPE,
@@ -214,7 +217,7 @@ class HassPlayer(Player):
                     ATTR_MEDIA_CONTENT_TYPE: MEDIA_TYPE_MUSIC,
                     ATTR_MEDIA_CONTENT_ID: self.current_url,
                     ATTR_ENTITY_ID: self.entity_id,
-                    ATTR_MEDIA_ENQUEUE: True,
+                    ATTR_MEDIA_ENQUEUE: MediaPlayerEnqueue.ADD,
                     ATTR_MEDIA_EXTRA: {ATTR_MEDIA_ENQUEUE: True},
                 },
                 blocking=True,
