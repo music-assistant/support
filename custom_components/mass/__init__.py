@@ -5,11 +5,7 @@ import logging
 import os
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    EVENT_CALL_SERVICE,
-    EVENT_HOMEASSISTANT_STOP,
-    EVENT_STATE_CHANGED,
-)
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
@@ -37,7 +33,7 @@ from .const import (
     DOMAIN_EVENT,
 )
 from .panel import async_register_panel
-from .player_controls import HassPlayerControls
+from .player_controls import async_register_player_controls
 from .services import register_services
 from .websockets import async_register_websockets
 
@@ -117,17 +113,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if conf.get(CONF_CREATE_MASS_PLAYERS, True):
         hass.config_entries.async_setup_platforms(entry, PLATFORMS)
 
-    # register hass players with mass
-    controls = HassPlayerControls(hass, mass, entry.options)
+    async def on_hass_start(*args, **kwargs):
+        """Start sync actions when Home Assistant is started."""
+        register_services(hass, mass)
+        # register hass players with mass
+        await async_register_player_controls(hass, mass, entry)
+        # start and schedule sync (every 3 hours)
+        await mass.music.start_sync(schedule=3)
 
-    async def handle_hass_event(event: Event):
-        """Handle an incoming event from Home Assistant."""
-        if event.event_type == EVENT_HOMEASSISTANT_STOP:
-            await mass.stop()
-        elif event.event_type == EVENT_CALL_SERVICE:
-            await async_intercept_play_media(event, controls)
+    async def on_hass_stop(event: Event):
+        """Handle an incoming stop event from Home Assistant."""
+        await mass.stop()
 
-    async def handle_mass_event(event: MassEvent):
+    async def on_mass_event(event: MassEvent):
         """Handle an incoming event from Music Assistant."""
         # forward event to the HA eventbus
         if hasattr(event.data, "to_dict"):
@@ -139,24 +137,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             {"type": event.type.value, "object_id": event.object_id, "data": data},
         )
 
-    async def on_start(*args, **kwargs):
-        """Start sync actions when Home Assistant is started."""
-        register_services(hass, mass)
-        await controls.async_register_player_controls()
-        await mass.music.start_sync(schedule=3)
-
     # setup event listeners, register their unsubscribe in the unload
-
     entry.async_on_unload(
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, handle_hass_event)
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
     )
-    entry.async_on_unload(async_at_start(hass, on_start))
+    entry.async_on_unload(async_at_start(hass, on_hass_start))
     entry.async_on_unload(entry.add_update_listener(_update_listener))
     entry.async_on_unload(
-        hass.bus.async_listen(EVENT_STATE_CHANGED, controls.async_hass_state_event)
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
     )
-    entry.async_on_unload(hass.bus.async_listen(EVENT_CALL_SERVICE, handle_hass_event))
-    entry.async_on_unload(mass.subscribe(handle_mass_event, FORWARD_EVENTS))
+    entry.async_on_unload(entry.add_update_listener(_update_listener))
+    entry.async_on_unload(mass.subscribe(on_mass_event, FORWARD_EVENTS))
 
     # Websocket support and frontend (panel)
     async_register_websockets(hass)
@@ -189,40 +180,6 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         os.remove(db_file_old)
     if os.path.isfile(db_file):
         os.rename(db_file, db_file_old)
-
-
-async def async_intercept_play_media(
-    event: Event,
-    controls: HassPlayerControls,
-):
-    """Intercept play_media service calls."""
-    if event.data["domain"] != "media_player":
-        return
-    if event.data["service"] != "play_media":
-        return
-
-    service_data = event.data.get("service_data")
-    if not service_data:
-        return
-
-    entity_id = service_data.get("entity_id")
-    if not entity_id:
-        return
-
-    media_content_id = service_data.get("media_content_id", "")
-    if not media_content_id.startswith(f"media-source://{DOMAIN}/"):
-        return
-
-    uri = media_content_id.replace(f"media-source://{DOMAIN}/", "")
-
-    # create player on the fly (or get existing one)
-    # TODO: How to intercept a play request for the 'webbrowser' player ?
-    player = await controls.async_register_player_control(entity_id, manual=True)
-    if not player:
-        return
-
-    # send the mass library uri to the player(queue)
-    await player.active_queue.play_media(uri)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

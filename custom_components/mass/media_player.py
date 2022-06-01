@@ -7,6 +7,7 @@ from homeassistant.components import media_source
 from homeassistant.components.media_player import (
     BrowseMedia,
     MediaPlayerDeviceClass,
+    MediaPlayerEnqueue,
     MediaPlayerEntity,
 )
 from homeassistant.components.media_player.const import (
@@ -88,6 +89,15 @@ STATE_MAPPING = {
     PlayerState.IDLE: STATE_IDLE,
     PlayerState.PLAYING: STATE_PLAYING,
     PlayerState.PAUSED: STATE_PAUSED,
+}
+
+QUEUE_OPTION_MAP = {
+    # map from HA enqueue options to MA enqueue options
+    # which are the same but just in case
+    MediaPlayerEnqueue.ADD: QueueOption.ADD,
+    MediaPlayerEnqueue.NEXT: QueueOption.NEXT,
+    MediaPlayerEnqueue.PLAY: QueueOption.PLAY,
+    MediaPlayerEnqueue.REPLACE: QueueOption.REPLACE,
 }
 
 
@@ -344,9 +354,10 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             sourced_media = await media_source.async_resolve_media(self.hass, media_id)
             media_id = sourced_media.url
 
-        queue_opt = (
-            QueueOption.ADD if kwargs.get(ATTR_MEDIA_ENQUEUE) else QueueOption.PLAY
-        )
+        queue_opt = QUEUE_OPTION_MAP[
+            kwargs.get(ATTR_MEDIA_ENQUEUE, MediaPlayerEnqueue.PLAY)
+        ]
+
         await self.player.active_queue.play_media(media_id, queue_opt)
 
     async def async_browse_media(
