@@ -30,10 +30,12 @@ from homeassistant.components.media_player.const import (
     SUPPORT_PLAY_MEDIA,
     SUPPORT_PREVIOUS_TRACK,
     SUPPORT_REPEAT_SET,
+    SUPPORT_SEEK,
     SUPPORT_SHUFFLE_SET,
     SUPPORT_STOP,
     SUPPORT_TURN_OFF,
     SUPPORT_TURN_ON,
+    SUPPORT_VOLUME_MUTE,
     SUPPORT_VOLUME_SET,
     SUPPORT_VOLUME_STEP,
 )
@@ -82,6 +84,8 @@ SUPPORTED_FEATURES = (
     | SUPPORT_VOLUME_STEP
     | SUPPORT_CLEAR_PLAYLIST
     | SUPPORT_BROWSE_MEDIA
+    | SUPPORT_SEEK
+    | SUPPORT_VOLUME_MUTE
 )
 
 STATE_MAPPING = {
@@ -172,6 +176,11 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     def volume_level(self) -> float:
         """Return current volume level."""
         return self.player.volume_level / 100
+
+    @property
+    def is_volume_muted(self) -> bool | None:
+        """Boolean if volume is currently muted."""
+        return self.player.volume_muted
 
     @property
     def state(self) -> str:
@@ -313,6 +322,14 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             await self.player.previous_track()
             return
         await self.player.active_queue.previous()
+
+    async def async_media_seek(self, position: int) -> None:
+        """Send seek command."""
+        await self.player.active_queue.seek(position)
+
+    async def async_mute_volume(self, mute: bool) -> None:
+        """Mute the volume."""
+        await self.player.volume_mute(mute)
 
     async def async_set_volume_level(self, volume: float) -> None:
         """Send new volume_level to device."""
