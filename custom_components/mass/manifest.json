@@ -1,7 +1,7 @@
 {
   "domain": "mass",
   "name": "Music Assistant",
-  "version": "1.1.20",
+  "version": "1.1.21",
   "documentation": "https://github.com/music-assistant/hass-music-assistant",
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "requirements": [

@@ -165,7 +165,7 @@ class HassPlayer(Player):
         if (
             old_state
             and new_state
-            and old_state.state != new_state.state
+            and old_state.state == STATE_IDLE
             and new_state.state == STATE_PLAYING
         ):
             self.hass.create_task(self.on_playback_started())
@@ -199,6 +199,7 @@ class HassPlayer(Player):
                 ATTR_MEDIA_CONTENT_ID: url,
                 ATTR_ENTITY_ID: self.entity_id,
             },
+            blocking=True,
         )
 
     async def on_playback_started(self) -> None:
@@ -219,6 +220,7 @@ class HassPlayer(Player):
                     ATTR_MEDIA_ENQUEUE: MediaPlayerEnqueue.ADD,
                     ATTR_MEDIA_EXTRA: {ATTR_MEDIA_ENQUEUE: True},
                 },
+                blocking=True,
             )
         else:
             # enable repeat of same track to make sure that the player
@@ -231,24 +233,34 @@ class HassPlayer(Player):
                     MP_DOMAIN,
                     SERVICE_REPEAT_SET,
                     {ATTR_ENTITY_ID: self.entity_id, ATTR_MEDIA_REPEAT: "all"},
+                    blocking=True,
                 )
 
     async def stop(self) -> None:
         """Send STOP command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_STOP, {ATTR_ENTITY_ID: self.entity_id}
+            MP_DOMAIN,
+            SERVICE_MEDIA_STOP,
+            {ATTR_ENTITY_ID: self.entity_id},
+            blocking=True,
         )
 
     async def play(self) -> None:
         """Send PLAY/UNPAUSE command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_PLAY, {ATTR_ENTITY_ID: self.entity_id}
+            MP_DOMAIN,
+            SERVICE_MEDIA_PLAY,
+            {ATTR_ENTITY_ID: self.entity_id},
+            blocking=True,
         )
 
     async def pause(self) -> None:
         """Send PAUSE command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_PAUSE, {ATTR_ENTITY_ID: self.entity_id}
+            MP_DOMAIN,
+            SERVICE_MEDIA_PAUSE,
+            {ATTR_ENTITY_ID: self.entity_id},
+            blocking=True,
         )
 
     async def power(self, powered: bool) -> None:
@@ -282,18 +294,25 @@ class HassPlayer(Player):
                 ATTR_ENTITY_ID: self.entity_id,
                 ATTR_MEDIA_VOLUME_LEVEL: volume_level / 100,
             },
+            blocking=True,
         )
 
     async def next_track(self) -> None:
         """Send next_track command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_NEXT_TRACK, {ATTR_ENTITY_ID: self.entity_id}
+            MP_DOMAIN,
+            SERVICE_MEDIA_NEXT_TRACK,
+            {ATTR_ENTITY_ID: self.entity_id},
+            blocking=True,
         )
 
     async def previous_track(self) -> None:
         """Send previous_track command to player."""
         await self.hass.services.async_call(
-            MP_DOMAIN, SERVICE_MEDIA_PREVIOUS_TRACK, {ATTR_ENTITY_ID: self.entity_id}
+            MP_DOMAIN,
+            SERVICE_MEDIA_PREVIOUS_TRACK,
+            {ATTR_ENTITY_ID: self.entity_id},
+            blocking=True,
         )
 
 
