@@ -848,6 +848,9 @@ class QueueCommand(str, Enum):
     PLAY_PAUSE = "play_pause"
     NEXT = "next"
     PREVIOUS = "previous"
+    SEEK = "seek"
+    SKIP_AHEAD = "skip_ahead"
+    SKIP_BACK = "skip_back"
     STOP = "stop"
     POWER = "power"
     POWER_TOGGLE = "power_toggle"
@@ -892,6 +895,12 @@ async def websocket_playerqueue_command(
             await player_queue.stop()
         elif msg[COMMAND] == QueueCommand.PLAY_PAUSE:
             await player_queue.play_pause()
+        elif msg[COMMAND] == QueueCommand.SEEK:
+            await player_queue.seek(int(msg[COMMAND_ARG]))
+        elif msg[COMMAND] == QueueCommand.SKIP_AHEAD:
+            await player_queue.skip_ahead()
+        elif msg[COMMAND] == QueueCommand.SKIP_BACK:
+            await player_queue.skip_back()
         elif msg[COMMAND] == QueueCommand.POWER_TOGGLE:
             await player_queue.player.power_toggle()
         elif msg[COMMAND] == QueueCommand.VOLUME:

@@ -18,12 +18,7 @@
           ? 'to bottom, rgba(0,0,0,.80), rgba(0,0,0,.75)'
           : 'to bottom, rgba(255,255,255,.85), rgba(255,255,255,.65)'
       "
-      style="
-        position: absolute;
-        background-size: 100%;
-        padding: 0;
-        margin-top: -10px;
-      "
+      style="position: absolute; background-size: 100%; padding: 0; margin-top: -10px"
     />
     <!-- now playing media -->
     <div
@@ -96,38 +91,30 @@
               contain
               :src="iconHiRes"
               height="25"
-              :style="
-                $vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''
-              "
+              :style="$vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''"
             />
             <v-img
               v-if="streamDetails.bit_depth <= 16"
               contain
               :src="getContentTypeIcon(streamDetails.content_type)"
               height="25"
-              :style="
-                $vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''
-              "
+              :style="$vuetify.theme.current == 'light' ? 'filter: invert(100%)' : ''"
             />
           </v-btn>
         </template>
         <v-card class="mx-auto" width="300">
           <v-list style="overflow: hidden">
-            <span class="text-h5" style="padding: 10px">{{
-              $t("stream_details")
-            }}</span>
+            <span class="text-h5" style="padding: 10px">{{ $t("stream_details") }}</span>
             <v-divider></v-divider>
-            <v-list-item
-              style="height: 50px; display: flex; align-items: center"
-            >
+            <v-list-item style="height: 50px; display: flex; align-items: center">
               <img
                 height="30"
                 width="50"
                 center
                 :src="getProviderIcon(streamDetails.provider)"
-                style="object-fit: contain;margin-left:-15px"
+                style="object-fit: contain; margin-left: -15px"
               />
-              {{ $t('providers.' + streamDetails.provider) }}
+              {{ $t("providers." + streamDetails.provider) }}
             </v-list-item>
 
             <div style="height: 50px; display: flex; align-items: center">
@@ -148,8 +135,7 @@
             <div
               style="height: 50px; display: flex; align-items: center"
               v-if="
-                activePlayerQueue &&
-                activePlayerQueue.settings.crossfade_duration > 0
+                activePlayerQueue && activePlayerQueue.settings.crossfade_duration > 0
               "
             >
               <img
@@ -202,13 +188,18 @@
 
     <!-- progress bar -->
     <div
-      style="width: 100%; height: 5px"
-      v-if="activePlayerQueue?.active && curQueueItem"
+      style="width: 100%; height: 5px;padding-bottom:15px;margin-top:-5px;"
+      v-if="activePlayerQueue?.active && curQueueItem && curQueueItem.media_type != MediaType.RADIO"
     >
-      <v-progress-linear
-        v-bind:model-value="progress"
+      <v-slider
+        v-bind:model-value="curQueueItemTime"
         height="3"
         color="primary"
+        :min="0"
+        :max="curQueueItem.duration"
+        :thumb-size="10"
+        @update:model-value="api.queueCommandSeek(activePlayerQueue?.queue_id, $event)"
+        style="margin-left:0;margin-right:0"
       />
     </div>
 
@@ -350,23 +341,13 @@ import type {
   Radio,
   Player,
 } from "../plugins/api";
-import {
-  api,
-  PlayerState,
-  ContentType,
-  MediaType,
-  ImageType,
-} from "../plugins/api";
+import { api, PlayerState, ContentType, MediaType, ImageType } from "../plugins/api";
 import { store } from "../plugins/store";
 import VolumeControl from "./VolumeControl.vue";
 import MediaItemThumb, { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { formatDuration, truncateString } from "../utils";
 import { useRouter } from "vue-router";
-import {
-  getContentTypeIcon,
-  iconHiRes,
-  getProviderIcon,
-} from "./ProviderIcons.vue";
+import { getContentTypeIcon, iconHiRes, getProviderIcon } from "./ProviderIcons.vue";
 
 const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
 const iconLevel = new URL("../assets/level.png", import.meta.url).href;
@@ -390,12 +371,6 @@ const curQueueItem = computed(() => {
   if (activePlayerQueue.value) return activePlayerQueue.value.current_item;
   return undefined;
 });
-const progress = computed(() => {
-  if (!curQueueItem.value) return 0;
-  const totalSecs: number = curQueueItem.value.duration;
-  const curPercent = (curQueueItemTime.value / totalSecs) * 100;
-  return curPercent;
-});
 const playerCurTimeStr = computed(() => {
   if (!curQueueItem.value) return "0:00";
   return formatDuration(curQueueItemTime.value);
@@ -404,9 +379,6 @@ const playerTotalTimeStr = computed(() => {
   if (!curQueueItem.value) return "0:00";
   const totalSecs = curQueueItem.value.duration;
   return formatDuration(totalSecs);
-});
-const progressBarWidth = computed(() => {
-  return window.innerWidth - 45;
 });
 const streamDetails = computed(() => {
   return activePlayerQueue.value?.current_item?.streamdetails;

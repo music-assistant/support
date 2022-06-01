@@ -298,6 +298,9 @@ export enum QueueCommand {
   NEXT = "next",
   PREVIOUS = "previous",
   STOP = "stop",
+  SEEK = "seek",
+  SKIP_AHEAD = "skip_ahead",
+  SKIP_BACK = "skip_back",
   POWER = "power",
   POWER_TOGGLE = "power_toggle",
   VOLUME = "volume",
@@ -678,6 +681,15 @@ export class MusicAssistantApi {
   }
   public queueCommandDelete(queueId: string, itemId: string) {
     this.playerQueueCommand(queueId, QueueCommand.DELETE, itemId);
+  }
+  public queueCommandSeek(queueId: string, position: number) {
+    this.playerQueueCommand(queueId, QueueCommand.SEEK, position);
+  }
+  public queueCommandSkipAhead(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.SKIP_AHEAD);
+  }
+  public queueCommandSkipBack(queueId: string) {
+    this.playerQueueCommand(queueId, QueueCommand.SKIP_BACK);
   }
 
   public playerQueueCommand(
