@@ -10,6 +10,9 @@ from homeassistant.components.media_player import (
     MediaPlayerEnqueue,
     MediaPlayerEntity,
 )
+from homeassistant.components.media_player.browse_media import (
+    async_process_play_media_url,
+)
 from homeassistant.components.media_player.const import (
     ATTR_APP_ID,
     ATTR_APP_NAME,
@@ -18,7 +21,6 @@ from homeassistant.components.media_player.const import (
     ATTR_MEDIA_ARTIST,
     ATTR_MEDIA_CONTENT_ID,
     ATTR_MEDIA_DURATION,
-    ATTR_MEDIA_ENQUEUE,
     ATTR_MEDIA_REPEAT,
     ATTR_MEDIA_SHUFFLE,
     ATTR_MEDIA_TITLE,
@@ -364,7 +366,14 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         """Clear players playlist."""
         await self.player.active_queue.clear()
 
-    async def async_play_media(self, media_type: str, media_id: str, **kwargs) -> None:
+    async def async_play_media(
+        self,
+        media_type: str,
+        media_id: str,
+        enqueue: MediaPlayerEnqueue | None = None,
+        announce: bool | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Send the play_media command to the media player."""
         # Handle media_source
         if media_source.is_media_source_id(media_id):
@@ -373,11 +382,17 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             )
             media_id = sourced_media.url
 
-        queue_opt = QUEUE_OPTION_MAP[
-            kwargs.get(ATTR_MEDIA_ENQUEUE, MediaPlayerEnqueue.PLAY)
-        ]
+        media_id = async_process_play_media_url(self.hass, media_id)
 
-        await self.player.active_queue.play_media(media_id, queue_opt)
+        queue_opt = QUEUE_OPTION_MAP.get(enqueue, MediaPlayerEnqueue.PLAY)
+        if announce is None:
+            announce = "/api/tts_proxy" in media_id
+
+        if announce:
+            announce_sound = "/api/tts_proxy" in media_id
+            await self.player.active_queue.play_alert(media_id, announce_sound)
+        else:
+            await self.player.active_queue.play_media(media_id, queue_opt)
 
     async def async_browse_media(
         self, media_content_type=None, media_content_id=None

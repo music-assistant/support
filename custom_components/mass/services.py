@@ -18,7 +18,9 @@ CMD_CLEAR = "clear"
 CMD_PLAY_MEDIA = "play_media"
 CMD_SHUFFLE = "shuffle"
 CMD_REPEAT = "repeat"
-
+CMD_SNAPSHOT_CREATE = "snapshot_create"
+CMD_SNAPSHOT_RESTORE = "snapshot_restore"
+CMD_PLAY_ALERT = "play_alert"
 
 CMD_ARGS_MAP = {
     "repeat_mode_one": RepeatMode.ONE,
@@ -83,6 +85,12 @@ def register_services(hass: HomeAssistant, mass: MusicAssistant):
                 queue.settings.repeat_mode = CMD_ARGS_MAP[
                     data.get("mode", "repeat_mode_all")
                 ]
+            elif data["command"] == CMD_SNAPSHOT_CREATE:
+                await queue.snapshot_create()
+            elif data["command"] == CMD_SNAPSHOT_RESTORE:
+                await queue.snapshot_restore()
+            elif data["command"] == CMD_PLAY_ALERT:
+                await queue.play_alert(data["uri"])
 
     hass.services.async_register(
         DOMAIN, "queue_command", handle_queue_command, schema=QueueCommandServiceSchema
