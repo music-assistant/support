@@ -368,7 +368,9 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         """Send the play_media command to the media player."""
         # Handle media_source
         if media_source.is_media_source_id(media_id):
-            sourced_media = await media_source.async_resolve_media(self.hass, media_id)
+            sourced_media = await media_source.async_resolve_media(
+                self.hass, media_id, self.entity_id
+            )
             media_id = sourced_media.url
 
         queue_opt = QUEUE_OPTION_MAP[

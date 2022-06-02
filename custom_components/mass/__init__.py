@@ -53,6 +53,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     http_session = async_get_clientsession(hass, verify_ssl=False)
     db_file = hass.config.path("music_assistant.db")
 
+    # databases is really chatty with logging at info level
+    logging.getLogger("databases").setLevel(logging.WARNING)
+
     conf = entry.options
 
     # TODO: adjust config flow to support creating multiple provider entries
