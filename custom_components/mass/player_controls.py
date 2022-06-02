@@ -66,6 +66,7 @@ from .const import (
     ESPHOME_DOMAIN,
     SLIMPROTO_DOMAIN,
     SLIMPROTO_EVENT,
+    SONOS_DOMAIN,
 )
 
 OFF_STATES = [STATE_OFF, STATE_UNAVAILABLE, STATE_UNKNOWN, STATE_STANDBY]
@@ -316,17 +317,18 @@ class HassPlayer(Player):
         )
 
 
-class HassSqueezeboxPlayer(HassPlayer):
+class SlimprotoPlayer(HassPlayer):
     """Representation of Hass player from Squeezebox Local integration."""
 
-    def __init__(self, hass: HomeAssistant, entity_id: str, squeeze_id: str) -> None:
+    # TODO: read max sample rate and supported codecs from player
+
+    def __init__(self, *args, **kwargs) -> None:
         """Initialize player."""
-        self.squeeze_id = squeeze_id
-        self.slimserver = hass.data[SLIMPROTO_DOMAIN]
+        super().__init__(*args, **kwargs)
+        self.slimserver = self.hass.data[SLIMPROTO_DOMAIN]
         self._unsubs = [
-            hass.bus.async_listen(SLIMPROTO_EVENT, self.on_squeezebox_event)
+            self.hass.bus.async_listen(SLIMPROTO_EVENT, self.on_squeezebox_event)
         ]
-        super().__init__(hass, entity_id, False)
 
     @callback
     def on_remove(self) -> None:
@@ -351,6 +353,24 @@ class ESPHomePlayer(HassPlayer):
     """Representation of Hass player from ESPHome integration."""
 
     _attr_supported_content_types: Tuple[ContentType] = (ContentType.MP3,)
+    _attr_supported_sample_rates: Tuple[int] = (44100, 48000)
+
+
+class SonosPlayer(HassPlayer):
+    """Representation of Hass player from Sonos integration."""
+
+    _attr_supported_content_types: Tuple[ContentType] = (
+        ContentType.FLAC,
+        ContentType.MP3,
+    )
+    _attr_supported_sample_rates: Tuple[int] = (44100, 48000)
+
+
+PLAYER_MAPPING = {
+    SLIMPROTO_DOMAIN: SlimprotoPlayer,
+    ESPHOME_DOMAIN: ESPHomePlayer,
+    SONOS_DOMAIN: SonosPlayer,
+}
 
 
 class HassGroupPlayer(PlayerGroup):
@@ -495,12 +515,13 @@ async def async_register_player_control(
             if dev_entry := dev_reg.async_get(ent_entry.device_id):
                 if dev_entry.model == "Google Cast Group":
                     player = HassCastGroupPlayer(hass, entity_id)
-        elif ent_entry.platform == SLIMPROTO_DOMAIN:
-            player = HassSqueezeboxPlayer(hass, entity_id, ent_entry.unique_id)
-        elif ent_entry.platform == ESPHOME_DOMAIN:
-            player = ESPHomePlayer(hass, entity_id, mute_as_power)
         elif ent_entry.platform == GROUP_DOMAIN:
             player = HassGroupPlayer(hass, entity_id)
+
+        if player is None:
+            # load player specific mapping or generic one
+            player_cls = PLAYER_MAPPING.get(ent_entry.platform, HassPlayer)
+            player = player_cls(hass, entity_id, mute_as_power)
 
     # handle genric player for all other integrations
     if player is None:
