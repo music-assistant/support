@@ -26,6 +26,9 @@ queue_command:
             - "play_media"
             - "shuffle"
             - "repeat"
+            - snapshot_create
+            - snapshot_restore
+            - play_alert
 
     uri:
       name: Media item to play
