@@ -328,7 +328,7 @@ export enum MassEventType {
   MEDIA_ITEM_UPDATED = "media_item_updated",
   BACKGROUND_JOB_UPDATED = "background_job_updated",
   // special types for local subscriptions only
-  ALL = "*",
+  ALL = "*"
 }
 
 export enum QueueOption {
@@ -710,6 +710,10 @@ export class MusicAssistantApi {
     command: QueueOption = QueueOption.PLAY
   ) {
     this.executeCmd("play_media", { queue_id, command, uri });
+  }
+
+  public startSync(media_type?: MediaType, prov_type?: ProviderType) {
+    this.executeCmd("start_sync", { media_type, prov_type });
   }
 
   public getLocalThumb(path: string, size?: number): Promise<string> {

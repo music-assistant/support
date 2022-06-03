@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant, callback
 from music_assistant import MusicAssistant
 from music_assistant.models.enums import (
     CrossFadeMode,
+    MediaType,
     ProviderType,
     QueueOption,
     RepeatMode,
@@ -67,6 +68,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_playerqueue_command)
     websocket_api.async_register_command(hass, websocket_playerqueue_settings)
     websocket_api.async_register_command(hass, websocket_play_media)
+    websocket_api.async_register_command(hass, websocket_start_sync)
     websocket_api.async_register_command(hass, websocket_item)
     websocket_api.async_register_command(hass, websocket_thumb)
     websocket_api.async_register_command(hass, websocket_library_add)
@@ -993,6 +995,33 @@ async def websocket_play_media(
         )
         return
     connection.send_error(msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[QUEUE_ID]}")
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/start_sync",
+        vol.Optional("media_type"): vol.Coerce(MediaType),
+        vol.Optional("prov_type"): vol.Coerce(ProviderType),
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_start_sync(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Execute play_media command on PlayerQueue."""
+    if media_type := msg.get("media_type"):
+        media_types = (media_type,)
+    else:
+        media_types = None
+    if prov_type := msg.get("prov_type"):
+        prov_types = (prov_type,)
+    else:
+        prov_types = None
+    await mass.music.start_sync(media_types, prov_types)
 
 
 @websocket_api.websocket_command(
