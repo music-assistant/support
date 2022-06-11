@@ -17,7 +17,7 @@
     "helpful-decorators": "^2.1.0",
     "home-assistant-js-websocket": "^7.1.0",
     "v3-infinite-loading": "^1.0.6",
-    "vue": "^3.2.36",
+    "vue": "^3.2.37",
     "vue-i18n": "^9.1.10",
     "vue-router": "^4.0.15",
     "vue-virtual-scroller": "^2.0.0-alpha.1",
