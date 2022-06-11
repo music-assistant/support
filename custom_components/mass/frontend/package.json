@@ -46,7 +46,7 @@
     "sass": "^1.52.3",
     "sass-loader": "^13.0.0",
     "typescript": "~4.7.3",
-    "vite": "^2.9.4",
+    "vite": "^2.9.12",
     "vite-plugin-pwa": "^0.12.0",
     "vitest": "^0.14.2",
     "vue-cli-plugin-vuetify": "~2.5.1",
