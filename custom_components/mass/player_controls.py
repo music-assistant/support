@@ -793,8 +793,17 @@ async def async_register_player_controls(
     entry.async_on_unload(
         hass.bus.async_listen(EVENT_STATE_CHANGED, async_hass_state_event)
     )
+
     # register all current entities
-    for entity in hass.states.async_all(MEDIA_PLAYER_DOMAIN):
-        if entity.entity_id not in allowed_entities:
-            continue
-        await async_register_player_control(hass, mass, entity.entity_id)
+    def register_all():
+        for entity in hass.states.async_all(MEDIA_PLAYER_DOMAIN):
+            if entity.entity_id not in allowed_entities:
+                continue
+            hass.create_task(
+                async_register_player_control(hass, mass, entity.entity_id)
+            )
+
+    register_all()
+    # schedule register a few minutes after startup to catch any slow loading platforms
+    hass.loop.call_later(30, register_all)
+    hass.loop.call_later(120, register_all)

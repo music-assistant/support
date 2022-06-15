@@ -17,10 +17,14 @@ from music_assistant.models.enums import EventType, ProviderType
 from music_assistant.models.errors import MusicAssistantError
 from music_assistant.models.event import MassEvent
 
+from custom_components.mass.config_flow import hide_player_entities
+
 from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
     CONF_FILE_ENABLED,
+    CONF_HIDE_SOURCE_PLAYERS,
+    CONF_PLAYER_ENTITIES,
     CONF_QOBUZ_ENABLED,
     CONF_QOBUZ_PASSWORD,
     CONF_QOBUZ_USERNAME,
@@ -156,6 +160,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async_register_websockets(hass)
     entry.async_on_unload(await async_register_panel(hass, entry.title))
 
+    # cleanup orphan devices/entities
+    dev_reg = dr.async_get(hass)
+    stored_devices = dr.async_entries_for_config_entry(dev_reg, entry.entry_id)
+    for device in stored_devices:
+        for _, player_id in device.identifiers:
+            if player_id not in entry.options[CONF_PLAYER_ENTITIES]:
+                dev_reg.async_remove_device(device.id)
     return True
 
 
@@ -183,6 +194,11 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         os.remove(db_file_old)
     if os.path.isfile(db_file):
         os.rename(db_file, db_file_old)
+
+    # unhide the player entities
+    if not entry.options[CONF_HIDE_SOURCE_PLAYERS]:
+        return
+    hide_player_entities(hass, entry.options[CONF_PLAYER_ENTITIES], False)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

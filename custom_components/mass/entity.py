@@ -19,12 +19,15 @@ class MassBaseEntity(Entity):
         self.player = player
         self.queue = mass.players.get_player_queue(player.player_id)
         self._attr_should_poll = False
-        dev_man = player.device_info.manufacturer or DEFAULT_NAME
         dev_mod = player.device_info.model or player.name
+        if dev_man := player.device_info.manufacturer:
+            model = f"{dev_man} {dev_mod}"
+        else:
+            model = dev_mod
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, player.player_id)},
-            manufacturer=dev_man,
-            model=dev_mod,
+            manufacturer=DEFAULT_NAME,
+            model=model,
             name=player.name,
         )
 

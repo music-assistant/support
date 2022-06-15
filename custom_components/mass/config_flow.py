@@ -246,6 +246,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Handle getting base config from the user."""
 
         if user_input is not None:
+            # figure out if any players are removed
+            prev_players = set(self.data[CONF_PLAYER_ENTITIES])
+            new_players = set(user_input.get(CONF_PLAYER_ENTITIES, []))
+            removed_players = prev_players - new_players
+            if removed_players:
+                hide_player_entities(self.hass, removed_players, False)
+
             self.data.update(user_input)
             return await self.async_step_music()
 
