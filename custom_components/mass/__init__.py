@@ -204,7 +204,12 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
-    unload_success = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if entry.options.get(CONF_CREATE_MASS_PLAYERS, True):
+        unload_success = await hass.config_entries.async_unload_platforms(
+            entry, PLATFORMS
+        )
+    else:
+        unload_success = True
     if mass := hass.data.pop(DOMAIN, None):
         await mass.stop()
     return unload_success
