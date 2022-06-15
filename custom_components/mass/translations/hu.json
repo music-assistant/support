@@ -2,34 +2,9 @@
   "config": {
     "step": {
       "user": {
-        "description": "Kérem, állítsa be mely zenei szolgáltatásokat kívánja igébyne venni. A hozzáférési adatokat az alábbiakban adhatja meg.",
-        "data": {
-          "spotify_enabled": "Spotify szolgáltatás",
-          "spotify_username": "Spotify felhasználónév",
-          "spotify_password": "Spotify jlszó",
-          "qobuz_enabled": "Qobuz szolgáltatás",
-          "qobuz_username": "Qobuz felhasználónév",
-          "qobuz_password": "Qobuz jelszó",
-          "tunein_enabled": "Tune-In Rádió szolgáltatás",
-          "tunein_username": "Tune-In felhasználónév",
-          "filesystem_enabled": "Saját fájlrendszer szolgáltatás",
-          "filesystem_directory": "Mappa a zenefájlokkal",
-          "playlists_directory": "Mappa az m3u playlistekkel (opcionális)."
-        },
-        "data_description": {
-          "filesystem_directory": "Adja meg a teljes elérési útvonalat ahol a fájlok találhatók (pl. /media). Home Assistantnak ezt el kell tudni érnie."
-        }
-      }
-    }
-  },
-  "options": {
-    "step": {
-      "init": {
         "description": "Állítsa be, mely médialjátszóit szeretné Music Assistanttal használni.",
         "data": {
-          "player_entities": "Lejátszó entitások",
-          "hide_source_players": "A forrás-lejátszók elrejtése a Home Assistant kezelőfelületéről.",
-          "create_mass_players": "Médialejátszók létrehozása Music Assistant részére Home Assistantban."
+          "player_entities": "Lejátszó entitások"
         }
       },
       "music": {
@@ -44,8 +19,35 @@
           "tunein_enabled": "Tune-In Rádió szolgáltatás",
           "tunein_username": "Tune-In felhasználónév",
           "filesystem_enabled": "Saját fájlrendszer szolgáltatás",
-          "filesystem_directory": "Mappa a zenefájlokkal",
-          "playlists_directory": "Mappa az m3u playlistekkel (opcionális)."
+          "filesystem_directory": "Mappa a zenefájlokkal"
+        },
+        "data_description": {
+          "filesystem_directory": "Adja meg a teljes elérési útvonalat ahol a fájlok találhatók (pl. /media). Home Assistantnak ezt el kell tudni érnie."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Állítsa be, mely médialjátszóit szeretné Music Assistanttal használni.",
+        "data": {
+          "player_entities": "Lejátszó entitások"
+        }
+      },
+      "music": {
+        "description": "Kérem, állítsa be mely zenei szolgáltatásokat kívánja igébyne venni. A hozzáférési adatokat az alábbiakban adhatja meg.",
+        "data": {
+          "spotify_enabled": "Spotify szolgáltatás",
+          "spotify_username": "Spotify felhasználónév",
+          "spotify_password": "Spotify jlszó",
+          "qobuz_enabled": "Qobuz szolgáltatás",
+          "qobuz_username": "Qobuz felhasználónév",
+          "qobuz_password": "Qobuz jelszó",
+          "tunein_enabled": "Tune-In Rádió szolgáltatás",
+          "tunein_username": "Tune-In felhasználónév",
+          "filesystem_enabled": "Saját fájlrendszer szolgáltatás",
+          "filesystem_directory": "Mappa a zenefájlokkal"
         },
         "data_description": {
           "filesystem_directory": "Adja meg a teljes elérési útvonalat ahol a fájlok találhatók (pl. /media). Home Assistantnak ezt el kell tudni érnie."
@@ -54,10 +56,8 @@
       "adv": {
         "description": "Speciális beállítások Music Assistant működésével kapcsolatosan.",
         "data": {
-          "mute_power_players": "Némítás használata ki/be kapcsolás helyett az alábbi lejátszók esetén."
-        },
-        "data_description": {
-          "mute_power_players": "Egyes médialejátszók nem rendelkeznek megfelelő ki/be kapcsolási lehetőséggel (pl. cast). Ezzel az opcióval, némítás használható a tulajdonképpeni ki/be kapcsolás szimulálásához."
+          "hide_source_players": "A forrás-lejátszók elrejtése a Home Assistant kezelőfelületéről.",
+          "create_mass_players": "Médialejátszók létrehozása Music Assistant részére Home Assistantban."
         }
       }
     }

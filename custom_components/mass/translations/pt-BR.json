@@ -2,6 +2,12 @@
   "config": {
     "step": {
       "user": {
+        "description": "Configure quais media players do Home Assistant você gostaria de usar com o Music Assistant.",
+        "data": {
+          "player_entities": "Entidades media player"
+        }
+      },
+      "music": {
         "description": "Por favor, configure quais provedores de música você deseja habilitar. Para cada provedor de música habilitado, insira suas credenciais abaixo.",
         "data": {
           "spotify_enabled": "Ativar o Spotify",
@@ -13,8 +19,7 @@
           "tunein_enabled": "Ativar o Tune-In Radio",
           "tunein_username": "Nome de usuário do Tune-In Radio",
           "filesystem_enabled": "Ativar uso de diretório de arquivos",
-          "filesystem_directory": "Diretório no disco para seus arquivos de música.",
-          "playlists_directory": "Diretório no disco para seus arquivos de playlists (m3u) (opcional)."
+          "filesystem_directory": "Diretório no disco para seus arquivos de música."
         },
         "data_description": {
           "filesystem_directory": "Especifique o caminho completo onde seus arquivos de mídia estão armazenados (por exemplo, /media). Observe que o Home Assistant deve ter acesso a esse local."
@@ -27,9 +32,7 @@
       "init": {
         "description": "Configure quais media players do Home Assistant você gostaria de usar com o Music Assistant.",
         "data": {
-          "player_entities": "Entidades media player",
-          "hide_source_players": "Oculte os media players na interface do Home Assistant.",
-          "create_mass_players": "Crie media players para players do Music Assistant no Home Assistant."
+          "player_entities": "Entidades media player"
         }
       },
       "music": {
@@ -44,8 +47,7 @@
           "tunein_enabled": "Ativar o Tune-In Radio",
           "tunein_username": "Nome de usuário do Tune-In Radio",
           "filesystem_enabled": "Ativar uso de diretório de arquivos",
-          "filesystem_directory": "Diretório de arquivos de música no disco.",
-          "playlists_directory": "Diretório de arquivos de playlists no disco (.m3u) (opcional)."
+          "filesystem_directory": "Diretório de arquivos de música no disco."
         },
         "data_description": {
           "filesystem_directory": "Especifique o caminho completo no disco onde seus arquivos de mídia estão armazenados (por exemplo, /media). Observe que o Home Assistant deve ter acesso a esse local."
@@ -54,10 +56,8 @@
       "adv": {
         "description": "Configure as opções avançadas para o Music Assistant.",
         "data": {
-          "mute_power_players": "Use mute como controle de energia para esses media players."
-        },
-        "data_description": {
-          "mute_power_players": "Alguns media players não têm um real power on/off e isso atrapalha a reprodução em grupo (por exemplo, o cast). Com esta opção, você pode usar o controle mute como power on/off para esses media players."
+          "hide_source_players": "Oculte os media players na interface do Home Assistant.",
+          "create_mass_players": "Crie media players para players do Music Assistant no Home Assistant."
         }
       }
     }

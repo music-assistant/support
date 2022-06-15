@@ -3,7 +3,6 @@
 import os
 from typing import List
 
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
@@ -11,18 +10,18 @@ from homeassistant.components.media_player import (
     SUPPORT_PAUSE,
     SUPPORT_PLAY,
     SUPPORT_PLAY_MEDIA,
-    SUPPORT_VOLUME_SET,
+    MediaPlayerEntity,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
+from homeassistant.helpers.entity_component import DATA_INSTANCES
 
 from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
     CONF_FILE_ENABLED,
     CONF_HIDE_SOURCE_PLAYERS,
-    CONF_MUTE_POWER_PLAYERS,
     CONF_PLAYER_ENTITIES,
     CONF_QOBUZ_ENABLED,
     CONF_QOBUZ_PASSWORD,
@@ -36,29 +35,33 @@ from .const import (
     DOMAIN,
 )
 
-# Note that volume_set is not strictly needed but the backend needs some adjustments
-# to support a player without volumer support so exclude them for now.
 REQUIRED_FEATURES = (
     SUPPORT_PLAY_MEDIA,
     SUPPORT_PLAY,
     SUPPORT_PAUSE,
-    SUPPORT_VOLUME_SET,
 )
 
+DEFAULT_CONFIG = {
+    CONF_HIDE_SOURCE_PLAYERS: False,
+    CONF_CREATE_MASS_PLAYERS: True,
+    CONF_PLAYER_ENTITIES: [],
+    CONF_SPOTIFY_ENABLED: False,
+    CONF_SPOTIFY_USERNAME: "",
+    CONF_SPOTIFY_PASSWORD: "",
+    CONF_QOBUZ_ENABLED: False,
+    CONF_QOBUZ_USERNAME: "",
+    CONF_QOBUZ_PASSWORD: "",
+    CONF_TUNEIN_ENABLED: False,
+    CONF_TUNEIN_USERNAME: "",
+    CONF_FILE_ENABLED: False,
+    CONF_FILE_DIRECTORY: "",
+}
+
 
 @callback
-def async_get_mass_entities(hass: HomeAssistant) -> List[str]:
-    """Return all media_player entities created by the Music Assistant integration."""
-    ent_reg = er.async_get(hass)
-    return [
-        x.entity_id
-        for x in ent_reg.entities.values()
-        if x.domain == MP_DOMAIN and x.platform == DOMAIN
-    ]
-
-
-@callback
-def hide_player_entities(hass: HomeAssistant, entity_ids: List[str], hide: bool):
+def hide_player_entities(
+    hass: HomeAssistant, entity_ids: List[str], hide: bool
+) -> None:
     """Hide/unhide media_player entities that are used as source for Music Assistant."""
     # Hide the wrapped entry if registered
     registry = er.async_get(hass)
@@ -74,6 +77,105 @@ def hide_player_entities(hass: HomeAssistant, entity_ids: List[str], hide: bool)
             )
 
 
+@callback
+def get_players_schema(hass: HomeAssistant, cur_conf: dict) -> vol.Schema:
+    """Return player config schema."""
+    # filter any non existing device id's from the list to prevent errors
+    control_entities = hass.states.async_entity_ids("media_player")
+    cur_ids = [
+        item for item in cur_conf[CONF_PLAYER_ENTITIES] if item in control_entities
+    ]
+    # blacklist unsupported and mass entities
+    exclude_entities = []
+    for entity_id in hass.states.async_entity_ids(MP_DOMAIN):
+        entity_comp = hass.data.get(DATA_INSTANCES, {}).get(MP_DOMAIN)
+        entity: MediaPlayerEntity = entity_comp.get_entity(entity_id)
+        if not entity or entity.platform.domain == DOMAIN:
+            exclude_entities.append(entity_id)
+            continue
+        # require some basic features, most important `play_media`
+        if not (
+            entity.support_play_media and entity.support_play and entity.support_pause
+        ):
+            exclude_entities.append(entity_id)
+
+    ent_reg = er.async_get(hass)
+    exclude_entities = [
+        x.entity_id
+        for x in ent_reg.entities.values()
+        if x.domain == MP_DOMAIN and x.platform == DOMAIN
+    ]
+
+    return vol.Schema(
+        {
+            vol.Optional(CONF_PLAYER_ENTITIES, default=cur_ids): selector.selector(
+                {
+                    "entity": {
+                        "domain": "media_player",
+                        "multiple": True,
+                        "exclude_entities": exclude_entities,
+                    }
+                }
+            )
+        }
+    )
+
+
+@callback
+def get_music_schema(cur_conf: dict):
+    """Return music config schema."""
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_SPOTIFY_ENABLED,
+                default=cur_conf[CONF_SPOTIFY_ENABLED],
+            ): bool,
+            vol.Optional(
+                CONF_SPOTIFY_USERNAME,
+                default=cur_conf[CONF_SPOTIFY_USERNAME],
+            ): str,
+            vol.Optional(
+                CONF_SPOTIFY_PASSWORD,
+                default=cur_conf[CONF_SPOTIFY_PASSWORD],
+            ): str,
+            vol.Required(
+                CONF_QOBUZ_ENABLED, default=cur_conf[CONF_QOBUZ_ENABLED]
+            ): bool,
+            vol.Optional(
+                CONF_QOBUZ_USERNAME, default=cur_conf[CONF_QOBUZ_USERNAME]
+            ): str,
+            vol.Optional(
+                CONF_QOBUZ_PASSWORD, default=cur_conf[CONF_QOBUZ_PASSWORD]
+            ): str,
+            vol.Required(
+                CONF_TUNEIN_ENABLED,
+                default=cur_conf[CONF_TUNEIN_ENABLED],
+            ): bool,
+            vol.Optional(
+                CONF_TUNEIN_USERNAME, default=cur_conf[CONF_TUNEIN_USERNAME]
+            ): str,
+            vol.Required(
+                CONF_FILE_ENABLED,
+                default=cur_conf[CONF_FILE_ENABLED],
+            ): bool,
+            vol.Optional(
+                CONF_FILE_DIRECTORY, default=cur_conf[CONF_FILE_DIRECTORY]
+            ): str,
+        }
+    )
+
+
+@callback
+def validate_config(user_input: dict) -> dict:
+    """Validate config and return dict with any errors."""
+    errors = {}
+    # check if music directory is valid
+    music_dir = user_input.get(CONF_FILE_DIRECTORY)
+    if music_dir and not os.path.isdir(music_dir):
+        errors[CONF_FILE_DIRECTORY] = "directory_not_exists"
+    return errors
+
+
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Music Assistant."""
 
@@ -82,14 +184,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
         """Return the options flow."""
         return OptionsFlowHandler(config_entry)
 
     def __init__(self, *args, **kwargs) -> None:
         """Initialize."""
         super().__init__(*args, **kwargs)
-        self.data = {}
+        self.data = {**DEFAULT_CONFIG}
 
     async def async_step_user(self, user_input=None):
         """Handle getting base config from the user."""
@@ -100,32 +202,34 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         if user_input is not None:
-
-            # check if music directory is valid
-            music_dir = user_input.get(CONF_FILE_DIRECTORY)
-            if music_dir and not os.path.isdir(music_dir):
-                errors = {CONF_FILE_DIRECTORY: "directory_not_exists"}
-            else:
-                return self.async_create_entry(
-                    title=DEFAULT_NAME, data={}, options=user_input
-                )
+            self.data.update(user_input)
+            return await self.async_step_music()
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_SPOTIFY_ENABLED, default=False): bool,
-                    vol.Optional(CONF_SPOTIFY_USERNAME): str,
-                    vol.Optional(CONF_SPOTIFY_PASSWORD): str,
-                    vol.Required(CONF_QOBUZ_ENABLED, default=False): bool,
-                    vol.Optional(CONF_QOBUZ_USERNAME): str,
-                    vol.Optional(CONF_QOBUZ_PASSWORD): str,
-                    vol.Required(CONF_TUNEIN_ENABLED, default=False): bool,
-                    vol.Optional(CONF_TUNEIN_USERNAME): str,
-                    vol.Required(CONF_FILE_ENABLED, default=False): bool,
-                    vol.Optional(CONF_FILE_DIRECTORY): str,
-                }
-            ),
+            data_schema=get_players_schema(self.hass, self.data),
+            last_step=False,
+            errors=errors,
+        )
+
+    async def async_step_music(self, user_input=None):
+        """Handle getting music provider config from the user."""
+
+        errors = None
+
+        if user_input is not None:
+            self.data.update(user_input)
+            errors = validate_config(user_input)
+
+            if not errors:
+                return self.async_create_entry(
+                    title=DEFAULT_NAME, data={}, options={**self.data}
+                )
+
+        return self.async_show_form(
+            step_id="music",
+            data_schema=get_music_schema(self.data),
+            last_step=True,
             errors=errors,
         )
 
@@ -136,7 +240,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry):
         """Initialize options flow."""
         self.config_entry = config_entry
-        self.data = {}
+        self.data = {**self.config_entry.options}
 
     async def async_step_init(self, user_input=None):
         """Handle getting base config from the user."""
@@ -145,42 +249,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             self.data.update(user_input)
             return await self.async_step_music()
 
-        conf = self.config_entry.options
-
-        # filter any non existing device id's from the list
-        control_entities = self.hass.states.async_entity_ids("media_player")
-        cur_ids = [
-            item
-            for item in conf.get(CONF_PLAYER_ENTITIES, control_entities)
-            if item in control_entities
-        ]
-
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_PLAYER_ENTITIES,
-                        default=cur_ids,
-                    ): selector.selector(
-                        {
-                            "entity": {
-                                "domain": "media_player",
-                                "multiple": True,
-                                "exclude_entities": async_get_mass_entities(self.hass),
-                            }
-                        }
-                    ),
-                    vol.Required(
-                        CONF_HIDE_SOURCE_PLAYERS,
-                        default=conf.get(CONF_HIDE_SOURCE_PLAYERS, False),
-                    ): selector.selector({"boolean": {}}),
-                    vol.Required(
-                        CONF_CREATE_MASS_PLAYERS,
-                        default=conf.get(CONF_CREATE_MASS_PLAYERS, True),
-                    ): selector.selector({"boolean": {}}),
-                }
-            ),
+            data_schema=get_players_schema(self.hass, self.data),
             last_step=False,
         )
 
@@ -191,56 +262,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             self.data.update(user_input)
+            errors = validate_config(user_input)
 
-            # check if music directory is valid
-            music_dir = user_input.get(CONF_FILE_DIRECTORY)
-            if music_dir and not os.path.isdir(music_dir):
-                errors = {CONF_FILE_DIRECTORY: "directory_not_exists"}
-            else:
+            if not errors:
                 return await self.async_step_adv()
 
-        conf = self.config_entry.options
         return self.async_show_form(
             step_id="music",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_SPOTIFY_ENABLED,
-                        default=conf.get(CONF_SPOTIFY_ENABLED, False),
-                    ): bool,
-                    vol.Optional(
-                        CONF_SPOTIFY_USERNAME,
-                        default=conf.get(CONF_SPOTIFY_USERNAME, ""),
-                    ): str,
-                    vol.Optional(
-                        CONF_SPOTIFY_PASSWORD,
-                        default=conf.get(CONF_SPOTIFY_PASSWORD, ""),
-                    ): str,
-                    vol.Required(
-                        CONF_QOBUZ_ENABLED, default=conf.get(CONF_QOBUZ_ENABLED, False)
-                    ): bool,
-                    vol.Optional(
-                        CONF_QOBUZ_USERNAME, default=conf.get(CONF_QOBUZ_USERNAME, "")
-                    ): str,
-                    vol.Optional(
-                        CONF_QOBUZ_PASSWORD, default=conf.get(CONF_QOBUZ_PASSWORD, "")
-                    ): str,
-                    vol.Required(
-                        CONF_TUNEIN_ENABLED,
-                        default=conf.get(CONF_TUNEIN_ENABLED, False),
-                    ): bool,
-                    vol.Optional(
-                        CONF_TUNEIN_USERNAME, default=conf.get(CONF_TUNEIN_USERNAME, "")
-                    ): str,
-                    vol.Required(
-                        CONF_FILE_ENABLED,
-                        default=conf.get(CONF_FILE_ENABLED, False),
-                    ): bool,
-                    vol.Optional(
-                        CONF_FILE_DIRECTORY, default=conf.get(CONF_FILE_DIRECTORY, "")
-                    ): str,
-                }
-            ),
+            data_schema=get_music_schema(self.data),
             last_step=False,
             errors=errors,
         )
@@ -258,21 +287,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             )
             return self.async_create_entry(title=DEFAULT_NAME, data={**self.data})
 
-        conf = self.config_entry.options
-
-        # filter any non existing device id's from the list
-        cur_ids = [
-            item
-            for item in conf.get(CONF_MUTE_POWER_PLAYERS, [])
-            if item in self.data.get(CONF_PLAYER_ENTITIES, [])
-        ]
         return self.async_show_form(
             step_id="adv",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        CONF_MUTE_POWER_PLAYERS, default=cur_ids
-                    ): cv.multi_select(self.data.get(CONF_PLAYER_ENTITIES, []))
+                    vol.Required(
+                        CONF_HIDE_SOURCE_PLAYERS,
+                        default=self.data[CONF_HIDE_SOURCE_PLAYERS],
+                    ): selector.selector({"boolean": {}}),
+                    vol.Required(
+                        CONF_CREATE_MASS_PLAYERS,
+                        default=self.data[CONF_CREATE_MASS_PLAYERS],
+                    ): selector.selector({"boolean": {}}),
                 }
             ),
             last_step=True,

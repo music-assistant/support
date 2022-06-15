@@ -2,6 +2,13 @@
   "config": {
     "step": {
       "user": {
+        "title": "Mediaspelers",
+        "description": "Configureer welke Media spelers je wilt gebruiken met Music Assistant.",
+        "data": {
+          "player_entities": "Mediaplayer entiteiten"
+        }
+      },
+      "music": {
         "title": "Muziekproviders instellen",
         "description": "Configureer a.u.b. met welke Muziekproviders je Music Assistant wilt gebruiken. Voor elke ingeschakelde provider moet je even jouw inloggegevens opgeven.",
         "data": {
@@ -14,8 +21,7 @@
           "tunein_enabled": "Tune-In Radio muziekprovider inschakelen",
           "tunein_username": "Gebruikersnaam voor Tune-In Radio",
           "filesystem_enabled": "Bestandssysteem provider inschakelen",
-          "filesystem_directory": "Bestandslocatie waar de muziekbestanden te vinden zijn.",
-          "playlists_directory": "Bestandslocatie waar playlists (.m3u) te vinden zijn (optioneel)."
+          "filesystem_directory": "Bestandslocatie waar de muziekbestanden te vinden zijn."
         },
         "data_description": {
           "filesystem_directory": "Specificeer het volledige pad op de schijf waar de mediabestanden te vinden zijn, bijvoorbeeld '/media/muziek'. Home Assistant moet toegang hebben tot deze bestandslocatie."
@@ -32,9 +38,7 @@
         "title": "Mediaspelers",
         "description": "Configureer welke Media spelers je wilt gebruiken met Music Assistant.",
         "data": {
-          "player_entities": "Mediaplayer entiteiten",
-          "hide_source_players": "Verberg bronspelers in de Home Assistant interface.",
-          "create_mass_players": "Maak mediaspelers aan in Home Assistant voor Music Assistant spelers (aanbevolen)."
+          "player_entities": "Mediaplayer entiteiten"
         }
       },
       "music": {
@@ -50,8 +54,7 @@
           "tunein_enabled": "Tune-In Radio muziekprovider inschakelen",
           "tunein_username": "Gebruikersnaam voor Tune-In Radio",
           "filesystem_enabled": "Bestandssysteem provider inschakelen",
-          "filesystem_directory": "Bestandslocatie waar de muziekbestanden te vinden zijn.",
-          "playlists_directory": "Bestandslocatie waar playlists (.m3u) te vinden zijn (optioneel)."
+          "filesystem_directory": "Bestandslocatie waar de muziekbestanden te vinden zijn."
         },
         "data_description": {
           "filesystem_directory": "Specificeer het volledige pad op de schijf waar de mediabestanden te vinden zijn, bijvoorbeeld '/media/muziek'. Home Assistant moet toegang hebben tot deze bestandslocatie."
@@ -61,10 +64,8 @@
         "title": "Geavanceerd",
         "description": "Geavanceerde opties.",
         "data": {
-          "mute_power_players": "Gebruik mute als power control voor deze spelers."
-        },
-        "data_description": {
-          "mute_power_players": "Sommige spelers hebben geen eigen aan/uit functie (b.v. Cast). In die gevallen kan het handig zijn om mute hiervoor te gebruiken."
+          "hide_source_players": "Verberg bronspelers in de Home Assistant interface.",
+          "create_mass_players": "Maak mediaspelers aan in Home Assistant voor Music Assistant spelers (aanbevolen)."
         }
       }
     },
