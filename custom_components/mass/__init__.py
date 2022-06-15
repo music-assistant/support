@@ -17,8 +17,7 @@ from music_assistant.models.enums import EventType, ProviderType
 from music_assistant.models.errors import MusicAssistantError
 from music_assistant.models.event import MassEvent
 
-from custom_components.mass.config_flow import hide_player_entities
-
+from .config_flow import hide_player_entities
 from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
