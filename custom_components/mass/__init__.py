@@ -167,6 +167,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         for _, player_id in device.identifiers:
             if player_id not in entry.options[CONF_PLAYER_ENTITIES]:
                 dev_reg.async_remove_device(device.id)
+            elif not entry.options[CONF_CREATE_MASS_PLAYERS]:
+                dev_reg.async_remove_device(device.id)
     return True
 
 
