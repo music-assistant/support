@@ -499,6 +499,7 @@ export class MusicAssistantApi {
       this.library.tracks.push(...items);
       if (items.length < limit) break;
     }
+    this.stats.count.tracks = this.library.tracks.length;
     this.library.tracksFetched = true;
   }
   public async fetchLibraryArtists() {
@@ -514,6 +515,7 @@ export class MusicAssistantApi {
       this.library.artists.push(...items);
       if (items.length < limit) break;
     }
+    this.stats.count.artists = this.library.artists.length;
     this.library.artistsFetched = true;
   }
   public async fetchLibraryAlbums() {
@@ -529,6 +531,7 @@ export class MusicAssistantApi {
       this.library.albums.push(...items);
       if (items.length < limit) break;
     }
+    this.stats.count.albums = this.library.albums.length;
     this.library.albumsFetched = true;
   }
   public async fetchLibraryPlaylists() {
@@ -547,6 +550,7 @@ export class MusicAssistantApi {
       this.library.playlists.push(...items);
       if (items.length < limit) break;
     }
+    this.stats.count.playlists = this.library.playlists.length;
     this.library.playlistsFetched = true;
   }
   public async fetchLibraryRadios() {
@@ -566,6 +570,7 @@ export class MusicAssistantApi {
       this.library.radios.push(...items);
       if (items.length < limit) break;
     }
+    this.stats.count.radios = this.library.radios.length;
     this.library.radiosFetched = true;
   }
 
@@ -896,7 +901,8 @@ export class MusicAssistantApi {
     // handle new item added to library (or existing one updated)
     if (item.media_type == MediaType.ALBUM) {
       if (!this.library.albumsFetched) {
-        if (item.in_library) this.stats.count.albums += 1;
+        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
+          this.stats.count.albums += 1;
         return;
       }
       const items = this.library.albums.filter(
@@ -907,7 +913,8 @@ export class MusicAssistantApi {
       this.stats.count.albums = items.length;
     } else if (item.media_type == MediaType.ARTIST) {
       if (!this.library.artistsFetched) {
-        if (item.in_library) this.stats.count.artists += 1;
+        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
+          this.stats.count.artists += 1;
         return;
       }
       const items = this.library.artists.filter(
@@ -918,7 +925,8 @@ export class MusicAssistantApi {
       this.stats.count.artists = items.length;
     } else if (item.media_type == MediaType.TRACK) {
       if (!this.library.tracksFetched) {
-        if (item.in_library) this.stats.count.tracks += 1;
+        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
+          this.stats.count.tracks += 1;
         return;
       }
       const items = this.library.tracks.filter(
@@ -929,7 +937,8 @@ export class MusicAssistantApi {
       this.stats.count.tracks = items.length;
     } else if (item.media_type == MediaType.PLAYLIST) {
       if (!this.library.playlistsFetched) {
-        if (item.in_library) this.stats.count.playlists += 1;
+        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
+          this.stats.count.playlists += 1;
         return;
       }
       const items = this.library.playlists.filter(
@@ -940,7 +949,8 @@ export class MusicAssistantApi {
       this.stats.count.playlists = items.length;
     } else if (item.media_type == MediaType.RADIO) {
       if (!this.library.radiosFetched) {
-        if (item.in_library) this.stats.count.radios += 1;
+        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
+          this.stats.count.radios += 1;
         return;
       }
       const items = this.library.radios.filter(

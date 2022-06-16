@@ -1099,7 +1099,7 @@ async def websocket_stats(
         "providers": {x.id: x.to_dict() for x in mass.music.providers},
         "count": {
             "artists": await mass.music.artists.count(),
-            "albums": await mass.music.artists.count(),
+            "albums": await mass.music.albums.count(),
             "tracks": await mass.music.tracks.count(),
             "playlists": await mass.music.playlists.count(),
             "radios": await mass.music.radio.count(),
