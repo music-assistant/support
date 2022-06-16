@@ -3,6 +3,11 @@ import { reactive } from "vue";
 import type { MediaItemType } from "./api";
 import type { LocationQuery, RouteParams, RouteMeta } from "vue-router";
 
+interface ContextMenuItem {
+  title: string;
+  link: () => void;
+}
+
 interface Store {
   selectedPlayer?: Player;
   isInStandaloneMode: boolean;
@@ -16,6 +21,7 @@ interface Store {
   contextMenuItems: MediaItemType[];
   contextMenuParentItem?: MediaItemType;
   customContextMenuCallback?: () => void;
+  topBarContextMenuItems: ContextMenuItem[];
   prevRoutes: Array<{
     name: string;
     params: RouteParams;
@@ -35,5 +41,6 @@ export const store: Store = reactive({
   defaultTopBarTitle: "Music Assistant",
   contextMenuItems: [],
   contextMenuParentItem: undefined,
+  topBarContextMenuItems: [],
   prevRoutes: [],
 });

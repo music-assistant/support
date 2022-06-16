@@ -69,6 +69,27 @@
           style="margin-right: -20px"
           @click="onContextMenuBtn"
         ></v-btn>
+
+        <v-menu location="bottom end">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              :icon="mdiDotsVertical"
+              v-if="store.topBarContextMenuItems.length > 0"
+              :color="store.topBarTextColor"
+              style="margin-right: -50px"
+              v-bind="props"
+            ></v-btn>
+          </template>
+
+          <v-list>
+            <v-list-item
+              v-for="(item, index) in store.topBarContextMenuItems"
+              :key="index"
+            >
+              <v-list-item-title @click="item.link">{{ item.title }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </template>
   </v-app-bar>

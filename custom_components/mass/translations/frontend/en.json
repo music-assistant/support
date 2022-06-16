@@ -16,6 +16,7 @@
   "settings": "Settings",
   "queue": "Queue",
   "tasks": "Tasks",
+  "sync": "Run sync",
   "artist_toptracks": "Top tracks",
   "artist_albums": "Albums",
   "album_tracks": "Album tracks",

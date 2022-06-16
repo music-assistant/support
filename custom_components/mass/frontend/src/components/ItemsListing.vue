@@ -50,9 +50,6 @@
           <v-icon v-if="viewMode == 'panel'" :icon="mdiViewList"></v-icon>
           <v-icon v-if="viewMode == 'list'" :icon="mdiGrid"></v-icon>
         </v-btn>
-        <v-btn v-if="refreshButton" icon @click="refreshButton ? refreshButton() : ''">
-          <v-icon :icon="mdiRefresh"></v-icon>
-        </v-btn>
       </div>
     </v-toolbar>
     <v-text-field
@@ -139,7 +136,6 @@ import {
   mdiGrid,
   mdiViewList,
   mdiCheck,
-  mdiRefresh,
 } from "@mdi/js";
 
 import { watchEffect, ref, computed, onBeforeUnmount, nextTick } from "vue";
@@ -167,7 +163,6 @@ export interface Props {
   showLibrary?: boolean;
   showDuration?: boolean;
   showSearchByDefault?: boolean;
-  refreshButton?: () => void;
 }
 interface SortKey {
   text: string;
