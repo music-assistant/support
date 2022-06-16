@@ -895,7 +895,10 @@ export class MusicAssistantApi {
   private handleLibraryEvent(evt: MassEventType, item: MediaItemType) {
     // handle new item added to library (or existing one updated)
     if (item.media_type == MediaType.ALBUM) {
-      if (!this.library.albumsFetched) return;
+      if (!this.library.albumsFetched) {
+        if (item.in_library) this.stats.count.albums += 1;
+        return;
+      }
       const items = this.library.albums.filter(
         (x) => x.item_id != item.item_id
       );
@@ -903,7 +906,10 @@ export class MusicAssistantApi {
       this.library.albums = items;
       this.stats.count.albums = items.length;
     } else if (item.media_type == MediaType.ARTIST) {
-      if (!this.library.artistsFetched) return;
+      if (!this.library.artistsFetched) {
+        if (item.in_library) this.stats.count.artists += 1;
+        return;
+      }
       const items = this.library.artists.filter(
         (x) => x.item_id != item.item_id
       );
@@ -911,7 +917,10 @@ export class MusicAssistantApi {
       this.library.artists = items;
       this.stats.count.artists = items.length;
     } else if (item.media_type == MediaType.TRACK) {
-      if (!this.library.tracksFetched) return;
+      if (!this.library.tracksFetched) {
+        if (item.in_library) this.stats.count.tracks += 1;
+        return;
+      }
       const items = this.library.tracks.filter(
         (x) => x.item_id != item.item_id
       );
@@ -919,7 +928,10 @@ export class MusicAssistantApi {
       this.library.tracks = items;
       this.stats.count.tracks = items.length;
     } else if (item.media_type == MediaType.PLAYLIST) {
-      if (!this.library.playlistsFetched) return;
+      if (!this.library.playlistsFetched) {
+        if (item.in_library) this.stats.count.playlists += 1;
+        return;
+      }
       const items = this.library.playlists.filter(
         (x) => x.item_id != item.item_id
       );
@@ -927,7 +939,10 @@ export class MusicAssistantApi {
       this.library.playlists = items;
       this.stats.count.playlists = items.length;
     } else if (item.media_type == MediaType.RADIO) {
-      if (!this.library.radiosFetched) return;
+      if (!this.library.radiosFetched) {
+        if (item.in_library) this.stats.count.radios += 1;
+        return;
+      }
       const items = this.library.radios.filter(
         (x) => x.item_id != item.item_id
       );
