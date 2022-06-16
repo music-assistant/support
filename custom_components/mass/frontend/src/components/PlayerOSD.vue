@@ -252,7 +252,7 @@
           x-large
           variant="plain"
           v-else
-          :disabled="activePlayerQueue && !activePlayerQueue?.current_item"
+          :disabled="activePlayerQueue && !activePlayerQueue?.items > 0"
           @click="api.queueCommandPlay(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">{{ mdiPlay }}</v-icon>

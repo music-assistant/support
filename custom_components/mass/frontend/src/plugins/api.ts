@@ -8,10 +8,6 @@ import {
 } from "home-assistant-js-websocket";
 import { reactive, ref } from "vue";
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export enum MediaType {
   ARTIST = "artist",
   ALBUM = "album",
@@ -293,7 +289,7 @@ export interface PlayerQueue {
   index_in_buffer?: number;
   current_item?: QueueItem;
   next_item?: QueueItem;
-  shuffle_enabled: boolean;
+  items: number;
   settings: QueueSettings;
 }
 
