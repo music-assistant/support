@@ -46,8 +46,8 @@
           >
           <v-list-item-title v-else> {{ curMediaItem.name }}</v-list-item-title>
           <v-list-item-subtitle
-            v-if="curMediaItem && 'artists' in curMediaItem"
-            style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
+            v-if="curMediaItem && 'artists' in curMediaItem && !$vuetify.display.mobile"
+            style="margin-top: 5px; text-overflow: ellipsis; height: 30px;"
           >
             <span
               v-for="(artist, artistindex) in getTrackArtists(curMediaItem)"
@@ -60,6 +60,17 @@
               >
                 /
               </label>
+            </span>
+          </v-list-item-subtitle>
+          <v-list-item-subtitle
+            v-else-if="curMediaItem && 'artists' in curMediaItem"
+            style="margin-top: 5px; text-overflow: ellipsis; height: 30px;"
+          >
+            <span
+              v-for="(artist, artistindex) in getTrackArtists(curMediaItem).slice(0, 1)"
+              :key="artistindex"
+            >
+              <a @click="artistClick(artist)">{{ artist.name }}</a>
             </span>
           </v-list-item-subtitle>
           <v-list-item-subtitle
