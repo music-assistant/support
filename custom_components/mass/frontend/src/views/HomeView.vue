@@ -16,8 +16,8 @@
           min-width="120"
           align="center"
           justify="center"
-          :disabled="api.library[card.key].length == 0"
-          :style="api.library[card.key].length == 0 ? 'opacity:0.5' : ''"
+          :disabled="api.stats.count[card.key] == 0"
+          :style="api.stats.count[card.key] == 0 ? 'opacity:0.5' : ''"
         >
           <v-icon
             variant="plain"
@@ -29,8 +29,8 @@
           <v-divider />
           <span class="text-center text-subtitle-1" style="padding: 10px">
             {{ $t(card.key) }}
-            <span class="text-caption" v-if="api.library[card.key].length > 0"
-              >({{ api.library[card.key].length }})</span
+            <span class="text-caption" v-if="api.stats.count[card.key] > 0"
+              >({{ api.stats.count[card.key] }})</span
             >
           </span>
         </v-card>
@@ -51,15 +51,15 @@ import {
   mdiRadio,
 } from "@mdi/js";
 import api from "@/plugins/api";
-import type { Library } from "@/plugins/api";
+import type { LibraryCount } from "@/plugins/api";
 
 store.topBarTitle = store.defaultTopBarTitle;
 
-const artistsKey: keyof Library = "artists";
-const albumsKey: keyof Library = "albums";
-const tracksKey: keyof Library = "tracks";
-const radiosKey: keyof Library = "radios";
-const playlistsKey: keyof Library = "playlists";
+const artistsKey: keyof LibraryCount = "artists";
+const albumsKey: keyof LibraryCount = "albums";
+const tracksKey: keyof LibraryCount = "tracks";
+const radiosKey: keyof LibraryCount = "radios";
+const playlistsKey: keyof LibraryCount = "playlists";
 
 const cards = ref([
   {

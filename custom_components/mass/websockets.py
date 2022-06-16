@@ -36,6 +36,9 @@ COMMAND_ARG = "command_arg"
 LAZY = "lazy"
 REFRESH = "refresh"
 
+OFFSET = "offset"
+LIMIT = "limit"
+
 ERR_NOT_LOADED = "not_loaded"
 
 DATA_UNSUBSCRIBE = "unsubs"
@@ -76,7 +79,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_artist_tracks)
     websocket_api.async_register_command(hass, websocket_artist_albums)
     websocket_api.async_register_command(hass, websocket_jobs)
-    websocket_api.async_register_command(hass, websocket_providers)
+    websocket_api.async_register_command(hass, websocket_stats)
     websocket_api.async_register_command(hass, websocket_subscribe_events)
 
 
@@ -106,6 +109,8 @@ def async_get_mass(orig_func: Callable) -> Callable:
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/artists",
+        vol.Optional(OFFSET, default=0): int,
+        vol.Optional(LIMIT, default=500): int,
     }
 )
 @websocket_api.async_response
@@ -117,7 +122,12 @@ async def websocket_artists(
     mass: MusicAssistant,
 ) -> None:
     """Return artists."""
-    result = [item.to_dict() for item in await mass.music.artists.library()]
+    result = [
+        item.to_dict()
+        for item in await mass.music.artists.library(
+            limit=msg[LIMIT], offset=msg[OFFSET]
+        )
+    ]
     await connection.send_big_result(
         msg[ID],
         result,
@@ -219,6 +229,8 @@ async def websocket_artist_albums(
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/albums",
+        vol.Optional(OFFSET, default=0): int,
+        vol.Optional(LIMIT, default=500): int,
     }
 )
 @websocket_api.async_response
@@ -230,7 +242,12 @@ async def websocket_albums(
     mass: MusicAssistant,
 ) -> None:
     """Return albums."""
-    result = [item.to_dict() for item in await mass.music.albums.library()]
+    result = [
+        item.to_dict()
+        for item in await mass.music.albums.library(
+            limit=msg[LIMIT], offset=msg[OFFSET]
+        )
+    ]
     await connection.send_big_result(
         msg[ID],
         result,
@@ -332,6 +349,8 @@ async def websocket_album_versions(
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/tracks",
+        vol.Optional(OFFSET, default=0): int,
+        vol.Optional(LIMIT, default=500): int,
     }
 )
 @websocket_api.async_response
@@ -343,7 +362,12 @@ async def websocket_tracks(
     mass: MusicAssistant,
 ) -> None:
     """Return library tracks."""
-    result = [item.to_dict() for item in await mass.music.tracks.library()]
+    result = [
+        item.to_dict()
+        for item in await mass.music.tracks.library(
+            limit=msg[LIMIT], offset=msg[OFFSET]
+        )
+    ]
     await connection.send_big_result(
         msg[ID],
         result,
@@ -442,6 +466,8 @@ async def websocket_track_preview(
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/playlists",
+        vol.Optional(OFFSET, default=0): int,
+        vol.Optional(LIMIT, default=500): int,
     }
 )
 @websocket_api.async_response
@@ -453,7 +479,12 @@ async def websocket_playlists(
     mass: MusicAssistant,
 ) -> None:
     """Return playlists."""
-    result = [item.to_dict() for item in await mass.music.playlists.library()]
+    result = [
+        item.to_dict()
+        for item in await mass.music.playlists.library(
+            limit=msg[LIMIT], offset=msg[OFFSET]
+        )
+    ]
     connection.send_result(
         msg[ID],
         result,
@@ -582,6 +613,8 @@ async def websocket_remove_playlist_tracks(
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/radios",
+        vol.Optional(OFFSET, default=0): int,
+        vol.Optional(LIMIT, default=500): int,
     }
 )
 @websocket_api.async_response
@@ -593,7 +626,10 @@ async def websocket_radios(
     mass: MusicAssistant,
 ) -> None:
     """Return radios."""
-    result = [item.to_dict() for item in await mass.music.radio.library()]
+    result = [
+        item.to_dict()
+        for item in await mass.music.radio.library(limit=msg[LIMIT], offset=msg[OFFSET])
+    ]
     await connection.send_big_result(
         msg[ID],
         result,
@@ -1044,22 +1080,31 @@ async def websocket_jobs(
     )
 
 
-# generic providers endpoint
+# generic stats endpoint
 @websocket_api.websocket_command(
     {
-        vol.Required(TYPE): f"{DOMAIN}/providers",
+        vol.Required(TYPE): f"{DOMAIN}/stats",
     }
 )
 @websocket_api.async_response
 @async_get_mass
-async def websocket_providers(
+async def websocket_stats(
     hass: HomeAssistant,
     connection: ActiveConnection,
     msg: dict,
     mass: MusicAssistant,
 ) -> None:
-    """Return providers."""
-    result = {x.id: x.to_dict() for x in mass.music.providers}
+    """Return some statistics and generic info."""
+    result = {
+        "providers": {x.id: x.to_dict() for x in mass.music.providers},
+        "count": {
+            "artists": await mass.music.artists.count(),
+            "albums": await mass.music.artists.count(),
+            "tracks": await mass.music.tracks.count(),
+            "playlists": await mass.music.playlists.count(),
+            "radios": await mass.music.radio.count(),
+        },
+    }
     connection.send_result(
         msg[ID],
         result,

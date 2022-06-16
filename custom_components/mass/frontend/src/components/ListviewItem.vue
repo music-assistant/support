@@ -278,7 +278,7 @@ const artistClick = function (item: Artist | ItemMapping) {
 const itemIsAvailable = function (item: MediaItem) {
   if (!props.item.provider_ids) return true;
   for (const x of item.provider_ids) {
-    if (x.available && x.prov_id in api.providers) return true;
+    if (x.available && x.prov_id in api.stats.providers) return true;
   }
   return false;
 };

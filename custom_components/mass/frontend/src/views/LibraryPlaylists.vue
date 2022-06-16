@@ -1,7 +1,7 @@
 <template>
   <ItemsListing
     itemtype="playlists"
-    :items="api.library.playlists"
+    :items="api.library.playlists.length > 0 ? api.library.playlists : []"
     :show-library="false"
     :show-providers="true"
     :show-search-by-default="true"
@@ -14,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
 import { api, MediaType } from "../plugins/api";
@@ -22,4 +23,7 @@ import { store } from "../plugins/store";
 const { t } = useI18n();
 
 store.topBarTitle = t("playlists");
+onMounted(() => {
+  api.fetchLibraryPlaylists();
+});
 </script>

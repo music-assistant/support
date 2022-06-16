@@ -1,7 +1,7 @@
 <template>
   <ItemsListing
     itemtype="radios"
-    :items="api.library.radios"
+    :items="api.library.radios.length > 0 ? api.library.radios : []"
     :show-library="false"
     :show-providers="true"
     :show-duration="false"
@@ -15,6 +15,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
 import { api, MediaType } from "../plugins/api";
@@ -23,4 +24,7 @@ import { store } from "../plugins/store";
 const { t } = useI18n();
 
 store.topBarTitle = t("radios");
+onMounted(() => {
+  api.fetchLibraryRadios();
+});
 </script>

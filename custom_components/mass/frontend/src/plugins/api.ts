@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-condition */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   type Connection,
@@ -6,6 +7,10 @@ import {
   getAuth
 } from "home-assistant-js-websocket";
 import { reactive, ref } from "vue";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export enum MediaType {
   ARTIST = "artist",
@@ -373,6 +378,24 @@ export interface Library {
   tracks: Track[];
   radios: Radio[];
   playlists: Playlist[];
+  artistsFetched: boolean;
+  albumsFetched: boolean;
+  tracksFetched: boolean;
+  radiosFetched: boolean;
+  playlistsFetched: boolean;
+}
+
+export interface LibraryCount {
+  artists: number;
+  albums: number;
+  tracks: number;
+  playlists: number;
+  radios: number;
+}
+
+export interface Stats {
+  providers: { [provider_id: string]: MusicProvider };
+  count: LibraryCount;
 }
 
 export class MusicAssistantApi {
@@ -383,13 +406,21 @@ export class MusicAssistantApi {
   private _throttleId?: any;
   public players = reactive<{ [player_id: string]: Player }>({});
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
-  public providers = reactive<{ [provider_id: string]: MusicProvider }>({});
+  public stats = reactive<Stats>({
+    providers: {},
+    count: { artists: 0, albums: 0, tracks: 0, playlists: 0, radios: 0 }
+  });
   public library = reactive<Library>({
     artists: [],
     albums: [],
     tracks: [],
     radios: [],
-    playlists: []
+    playlists: [],
+    artistsFetched: false,
+    albumsFetched: false,
+    tracksFetched: false,
+    radiosFetched: false,
+    playlistsFetched: false
   });
   public jobs = ref<BackgroundJob[]>([]);
   private _wsEventCallbacks: Array<[string, CallableFunction]>;
@@ -410,14 +441,9 @@ export class MusicAssistantApi {
     else if (!this._conn) {
       this._conn = await this.connectHassStandalone();
     }
-    // load initial data from api
     this._initialized = true;
-    for (const player of await this.getPlayers()) {
-      this.players[player.player_id] = player;
-    }
-    for (const queue of await this.getPlayerQueues()) {
-      this.queues[queue.queue_id] = queue;
-    }
+
+    // load initial data from api
     this._fetchState();
     // subscribe to mass events
     this._conn?.subscribeMessage(
@@ -446,29 +472,101 @@ export class MusicAssistantApi {
 
   private async _fetchState() {
     // fetch full initial state
-    this.providers = await this.getData("providers");
-    this.jobs.value = await this.getData("jobs");
+    for (const player of await this.getPlayers()) {
+      this.players[player.player_id] = player;
+    }
+    for (const queue of await this.getPlayerQueues()) {
+      this.queues[queue.queue_id] = queue;
+    }
 
-    // initial load of library items
-    this.getLibraryAlbums().then((items) => {
-      this.library.albums = items;
-    });
-    this.getLibraryArtists().then((items) => {
-      this.library.artists = items;
-    });
-    this.getLibraryTracks().then((items) => {
-      this.library.tracks = items;
-    });
-    this.getLibraryRadios().then((items) => {
-      this.library.radios = items;
-    });
-    this.getLibraryPlaylists().then((items) => {
-      this.library.playlists = items;
-    });
+    const stats = await this.getData<Stats>("stats");
+    Object.assign(this.stats, stats);
+    console.log("stats", stats);
+
+    this.jobs.value = await this.getData("jobs");
   }
 
-  public getLibraryTracks(): Promise<Track[]> {
-    return this.getData("tracks");
+  public async fetchLibraryTracks() {
+    // prefetch library tracks into the store.
+    // Once they're fetched it will be kept up to date by the eventbus
+    if (this.library.tracksFetched) return;
+    let offset = 0;
+    const limit = 500;
+    while (true) {
+      const items = await this.getData<Track[]>("tracks", { offset, limit });
+      if (items.length == 0) break;
+      offset += limit;
+      this.library.tracks.push(...items);
+      if (items.length < limit) break;
+    }
+    this.library.tracksFetched = true;
+  }
+  public async fetchLibraryArtists() {
+    // prefetch library artists into the store.
+    // Once they're fetched it will be kept up to date by the eventbus
+    if (this.library.artistsFetched) return;
+    let offset = 0;
+    const limit = 500;
+    while (true) {
+      const items = await this.getData<Artist[]>("artists", { offset, limit });
+      if (items.length == 0) break;
+      offset += limit;
+      this.library.artists.push(...items);
+      if (items.length < limit) break;
+    }
+    this.library.artistsFetched = true;
+  }
+  public async fetchLibraryAlbums() {
+    // prefetch library albums into the store.
+    // Once they're fetched it will be kept up to date by the eventbus
+    if (this.library.albumsFetched) return;
+    let offset = 0;
+    const limit = 500;
+    while (true) {
+      const items = await this.getData<Album[]>("albums", { offset, limit });
+      if (items.length == 0) break;
+      offset += limit;
+      this.library.albums.push(...items);
+      if (items.length < limit) break;
+    }
+    this.library.albumsFetched = true;
+  }
+  public async fetchLibraryPlaylists() {
+    // prefetch library playlists into the store.
+    // Once they're fetched it will be kept up to date by the eventbus
+    if (this.library.playlistsFetched) return;
+    let offset = 0;
+    const limit = 500;
+    while (true) {
+      const items = await this.getData<Playlist[]>("playlists", {
+        offset,
+        limit
+      });
+      if (items.length == 0) break;
+      offset += limit;
+      this.library.playlists.push(...items);
+      if (items.length < limit) break;
+    }
+    this.library.playlistsFetched = true;
+  }
+  public async fetchLibraryRadios() {
+    // prefetch library radios into the store.
+    // Once they're fetched it will be kept up to date by the eventbus
+    if (this.library.radiosFetched) return;
+    this.library.radios = [];
+    let offset = 0;
+    const limit = 500;
+    while (true) {
+      const items = await this.getData<Radio[]>("radios", {
+        offset,
+        limit
+      });
+      if (items.length == 0) break;
+      offset += limit;
+      this.library.radios.push(...items);
+      if (items.length < limit) break;
+    }
+    this.library.radiosFetched = true;
   }
 
   public getTrack(
@@ -498,10 +596,6 @@ export class MusicAssistantApi {
     });
   }
 
-  public getLibraryArtists(): Promise<Artist[]> {
-    return this.getData("artists");
-  }
-
   public getArtist(
     provider: ProviderType,
     item_id: string,
@@ -525,10 +619,6 @@ export class MusicAssistantApi {
     lazy = true
   ): Promise<Album[]> {
     return this.getData("artist/albums", { provider, item_id, lazy });
-  }
-
-  public getLibraryAlbums(): Promise<Album[]> {
-    return this.getData("albums");
   }
 
   public getAlbum(
@@ -556,10 +646,6 @@ export class MusicAssistantApi {
     return this.getData("album/versions", { provider, item_id, lazy });
   }
 
-  public getLibraryPlaylists(): Promise<Playlist[]> {
-    return this.getData("playlists");
-  }
-
   public getPlaylist(
     provider: ProviderType,
     item_id: string,
@@ -583,10 +669,6 @@ export class MusicAssistantApi {
 
   public removePlaylistTracks(item_id: string, position: number | number[]) {
     this.executeCmd("playlist/tracks/remove", { item_id, position });
-  }
-
-  public getLibraryRadios(): Promise<Radio[]> {
-    return this.getData("radios");
   }
 
   public getRadio(
@@ -801,7 +883,7 @@ export class MusicAssistantApi {
       ].includes(msg.event)
     ) {
       // media item added/updated in library
-      this.handleLibraryEvent(msg.data as MediaItemType);
+      this.handleLibraryEvent(msg.event, msg.data as MediaItemType);
     }
     // signal + log all events
     this.signalEvent(msg);
@@ -810,38 +892,48 @@ export class MusicAssistantApi {
     }
   }
 
-  private handleLibraryEvent(item: MediaItemType) {
+  private handleLibraryEvent(evt: MassEventType, item: MediaItemType) {
     // handle new item added to library (or existing one updated)
     if (item.media_type == MediaType.ALBUM) {
+      if (!this.library.albumsFetched) return;
       const items = this.library.albums.filter(
         (x) => x.item_id != item.item_id
       );
       if (item.in_library) items.push(item as Album);
       this.library.albums = items;
+      this.stats.count.albums = items.length;
     } else if (item.media_type == MediaType.ARTIST) {
+      if (!this.library.artistsFetched) return;
       const items = this.library.artists.filter(
         (x) => x.item_id != item.item_id
       );
       if (item.in_library) items.push(item as Artist);
       this.library.artists = items;
+      this.stats.count.artists = items.length;
     } else if (item.media_type == MediaType.TRACK) {
+      if (!this.library.tracksFetched) return;
       const items = this.library.tracks.filter(
         (x) => x.item_id != item.item_id
       );
       if (item.in_library) items.push(item as Track);
       this.library.tracks = items;
+      this.stats.count.tracks = items.length;
     } else if (item.media_type == MediaType.PLAYLIST) {
+      if (!this.library.playlistsFetched) return;
       const items = this.library.playlists.filter(
         (x) => x.item_id != item.item_id
       );
       if (item.in_library) items.push(item as Playlist);
       this.library.playlists = items;
+      this.stats.count.playlists = items.length;
     } else if (item.media_type == MediaType.RADIO) {
+      if (!this.library.radiosFetched) return;
       const items = this.library.radios.filter(
         (x) => x.item_id != item.item_id
       );
       if (item.in_library) items.push(item as Radio);
       this.library.radios = items;
+      this.stats.count.radios = items.length;
     }
   }
 
