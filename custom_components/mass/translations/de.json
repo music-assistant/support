@@ -1,0 +1,76 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mediaplayer",
+        "description": "Konfiguriere welche Home Assistant Mediaplayer du mit Music Assistant benutzen möchtest.",
+        "data": {
+          "player_entities": "Mediaplayer Entitäten"
+        }
+      },
+      "music": {
+        "title": "Musikquellen einrichten",
+        "description": "Bitte konfiguriere welche Musikquellen du aktivieren möchtest. Für alle aktivierten Musikquellen müssen unten Zugangsdaten eingegeben werden.",
+        "data": {
+          "spotify_enabled": "Aktiviere Spotify Musikquelle",
+          "spotify_username": "Benutzername für Spotify",
+          "spotify_password": "Passwort für Spotify",
+          "qobuz_enabled": "Aktiviere Qobuz Musikquelle",
+          "qobuz_username": "Benutzername für Qobuz",
+          "qobuz_password": "Passwort für Qobuz",
+          "tunein_enabled": "Aktiviere Tune-In Radio Musikquelle",
+          "tunein_username": "Benutzername für Tune-In Radio",
+          "filesystem_enabled": "Aktiviere Dateisystem Musikquelle",
+          "filesystem_directory": "Pfad im Dateisystem zu deinen Musikdateien."
+        },
+        "data_description": {
+          "filesystem_directory": "Gebe den vollständigen Pfad im Dateisystem an, an dem deine Musikdateien abgespeichert sind. (z.B. /media). Berücksichtige, das Home Assistant Zugriff auf diesen Pfad haben muss."
+        }
+      }
+    },
+    "error": {
+      "directory_not_exists": "Ordner existiert nicht oder ist nicht zugänglich"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mediaplayer",
+        "description": "Konfiguriere welche Home Assistant Mediaplayer du mit Music Assistant benutzen möchtest.",
+        "data": {
+          "player_entities": "Mediaplayer Entitäten"
+        }
+      },
+      "music": {
+        "title": "Musikquellen",
+        "description": "Bitte konfiguriere welche Musikquellen du aktivieren möchtest. Für alle aktivierten Musikquellen müssen unten Zugangsdaten eingegeben werden.",
+        "data": {
+          "spotify_enabled": "Aktiviere Spotify Musikquelle",
+          "spotify_username": "Benutzername für Spotify",
+          "spotify_password": "Passwort für Spotify",
+          "qobuz_enabled": "Aktiviere Qobuz Musikquelle",
+          "qobuz_username": "Benutzername für Qobuz",
+          "qobuz_password": "Passwort für Qobuz",
+          "tunein_enabled": "Aktiviere Tune-In Radio Musikquelle",
+          "tunein_username": "Benutzername für Tune-In Radio",
+          "filesystem_enabled": "Aktiviere Dateisystem Musikquelle",
+          "filesystem_directory": "Pfad im Dateisystem zu deinen Musikdateien."
+        },
+        "data_description": {
+          "filesystem_directory": "Gebe den vollständigen Pfad im Dateisystem an, an dem deine Musikdateien abgespeichert sind. (z.B. /media). Berücksichtige, das Home Assistant Zugriff auf diesen Pfad haben muss."
+        }
+      },
+      "adv": {
+        "title": "Fortgeschritten",
+        "description": "Konfiguriere fortgeschrittene Optionen für Music Assistant.",
+        "data": {
+          "hide_source_players": "Verstecke ursprüngliche Mediaplayer Entitäten in der Home Assistant UI.",
+          "create_mass_players": "Erstelle neue Mediaplayer für Music Assistant Mediaplayer in Home Assistant."
+        }
+      }
+    },
+    "error": {
+      "directory_not_exists": "Ordner existiert nicht oder ist nicht zugänglich"
+    }
+  }
+}
