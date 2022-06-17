@@ -222,6 +222,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors = validate_config(user_input)
 
             if not errors:
+                # config complete, store entry
+                self.data.update(user_input)
+                hide_player_entities(
+                    self.hass,
+                    self.data[CONF_PLAYER_ENTITIES],
+                    self.data[CONF_HIDE_SOURCE_PLAYERS],
+                )
                 return self.async_create_entry(
                     title=DEFAULT_NAME, data={}, options={**self.data}
                 )
@@ -285,14 +292,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Handle getting advanced config options from the user."""
 
         if user_input is not None:
-            # config complete, store entry
             self.data.update(user_input)
-            hide_player_entities(
-                self.hass,
-                self.data[CONF_PLAYER_ENTITIES],
-                self.data[CONF_HIDE_SOURCE_PLAYERS],
-            )
-            return self.async_create_entry(title=DEFAULT_NAME, data={**self.data})
+            errors = validate_config(user_input)
+
+            if not errors:
+                # config complete, store entry
+                self.data.update(user_input)
+                hide_player_entities(
+                    self.hass,
+                    self.data[CONF_PLAYER_ENTITIES],
+                    self.data[CONF_HIDE_SOURCE_PLAYERS],
+                )
+                return self.async_create_entry(title=DEFAULT_NAME, data={**self.data})
 
         return self.async_show_form(
             step_id="adv",
