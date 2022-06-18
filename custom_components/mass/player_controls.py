@@ -60,8 +60,7 @@ from .const import (
 
 LOGGER = logging.getLogger(__name__)
 
-OFF_STATES = (STATE_OFF, STATE_UNAVAILABLE, STATE_UNKNOWN, STATE_STANDBY)
-UNAVAILABLE_STATES = (STATE_UNAVAILABLE, STATE_UNKNOWN)
+OFF_STATES = (STATE_OFF, STATE_UNAVAILABLE, STATE_STANDBY)
 CAST_DOMAIN = "cast"
 CAST_MULTIZONE_MANAGER_KEY = "cast_multizone_manager"
 
@@ -72,7 +71,7 @@ GROUP_DOMAIN = "group"
 STATE_MAPPING = {
     STATE_OFF: PlayerState.OFF,
     STATE_ON: PlayerState.IDLE,
-    STATE_UNKNOWN: PlayerState.OFF,
+    STATE_UNKNOWN: PlayerState.IDLE,
     STATE_UNAVAILABLE: PlayerState.OFF,
     STATE_IDLE: PlayerState.IDLE,
     STATE_PLAYING: PlayerState.PLAYING,
@@ -747,7 +746,7 @@ class HassGroupPlayer(HassPlayer):
     def update_attributes(self) -> None:
         """Call when player state is about to be updated in the player manager."""
         hass_state = self.hass.states.get(self.entity_id)
-        self._attr_available = hass_state.state not in UNAVAILABLE_STATES
+        self._attr_available = hass_state.state != STATE_UNAVAILABLE
         self._attr_name = hass_state.name
 
         # collect the group childs, be prepared for the usecase where the user actually
