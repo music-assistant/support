@@ -142,8 +142,11 @@ export const getImageThumbForItem = async function (
     return `https://images.weserv.nl/?url=${url}&w=200`;
   } else if (url.startsWith("https://")) {
     return url;
-  } else if (url.startsWith("http://")) {
-    // only allow https images!
+  } else if (
+    url.startsWith("http://") &&
+    window.location.protocol == "https:"
+  ) {
+    // require https images if we're hosted as https...
     return url.replace("http://", "https://");
   } else {
     // use image proxy in HA integration to grab thumb

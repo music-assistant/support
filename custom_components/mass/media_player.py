@@ -309,7 +309,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         """If the image url is remotely accessible."""
         if not self.player.active_queue.active:
             return True
-        return self.media_image_url is None or self.media_image_url.startswith("http")
+        return self.media_image_url is None or self.media_image_url.startswith("https")
 
     async def async_get_media_image(self) -> tuple[bytes | None, str | None]:
         """Fetch media image of current playing image."""
