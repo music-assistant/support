@@ -230,7 +230,7 @@
           small
           icon
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue?.active"
+          :disabled="!activePlayerQueue || !activePlayerQueue?.active || activePlayerQueue?.items == 0"
           @click="api.queueCommandPrevious(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipPrevious" />
@@ -241,6 +241,7 @@
           x-large
           variant="plain"
           v-if="activePlayerQueue && activePlayerQueue?.active"
+          :disabled="activePlayerQueue && activePlayerQueue?.items == 0"
           @click="api.queueCommandPlayPause(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">{{
@@ -263,7 +264,7 @@
           x-large
           variant="plain"
           v-else
-          :disabled="activePlayerQueue && !activePlayerQueue?.items > 0"
+          :disabled="activePlayerQueue && activePlayerQueue?.items == 0"
           @click="api.queueCommandPlay(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">{{ mdiPlay }}</v-icon>
@@ -272,7 +273,7 @@
           icon
           small
           variant="plain"
-          :disabled="!activePlayerQueue || !activePlayerQueue?.active"
+          :disabled="!activePlayerQueue || !activePlayerQueue?.active || activePlayerQueue?.items == 0"
           @click="api.queueCommandNext(activePlayerQueue?.queue_id)"
         >
           <v-icon :icon="mdiSkipNext" />

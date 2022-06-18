@@ -22,7 +22,6 @@ from .const import (
     CONF_CREATE_MASS_PLAYERS,
     CONF_FILE_DIRECTORY,
     CONF_FILE_ENABLED,
-    CONF_HIDE_SOURCE_PLAYERS,
     CONF_PLAYER_ENTITIES,
     CONF_QOBUZ_ENABLED,
     CONF_QOBUZ_PASSWORD,
@@ -162,12 +161,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # cleanup orphan devices/entities
     dev_reg = dr.async_get(hass)
     stored_devices = dr.async_entries_for_config_entry(dev_reg, entry.entry_id)
-    for device in stored_devices:
-        for _, player_id in device.identifiers:
-            if player_id not in entry.options[CONF_PLAYER_ENTITIES]:
-                dev_reg.async_remove_device(device.id)
-            elif not entry.options[CONF_CREATE_MASS_PLAYERS]:
-                dev_reg.async_remove_device(device.id)
+    if CONF_PLAYER_ENTITIES in entry.options:
+        for device in stored_devices:
+            for _, player_id in device.identifiers:
+                if player_id not in entry.options[CONF_PLAYER_ENTITIES]:
+                    dev_reg.async_remove_device(device.id)
+                elif not entry.options[CONF_CREATE_MASS_PLAYERS]:
+                    dev_reg.async_remove_device(device.id)
     return True
 
 
@@ -197,9 +197,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         os.rename(db_file, db_file_old)
 
     # unhide the player entities
-    if not entry.options[CONF_HIDE_SOURCE_PLAYERS]:
-        return
-    hide_player_entities(hass, entry.options[CONF_PLAYER_ENTITIES], False)
+    hide_player_entities(hass, entry.options.get(CONF_PLAYER_ENTITIES, []), False)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

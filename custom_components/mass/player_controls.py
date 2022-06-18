@@ -253,8 +253,10 @@ class HassPlayer(Player):
 
     async def play_url(self, url: str) -> None:
         """Play the specified url on the player."""
+        # a lot of players do not power on at playback request so send power on from here
+        if not self.powered:
+            await self.power(True)
         LOGGER.debug("[%s] play_url: %s", self.entity_id, url)
-        self._attr_powered = True
         self._attr_current_url = url
         if self.use_mute_as_power:
             await self.volume_mute(False)
