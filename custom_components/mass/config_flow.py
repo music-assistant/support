@@ -95,7 +95,10 @@ def get_players_schema(hass: HomeAssistant, cur_conf: dict) -> vol.Schema:
             continue
         # require some basic features, most important `play_media`
         if not (
-            entity.support_play_media and entity.support_play and entity.support_pause
+            entity.support_play_media
+            and entity.support_play
+            and entity.support_pause
+            and entity.support_volume_set
         ):
             exclude_entities.append(entity_id)
 

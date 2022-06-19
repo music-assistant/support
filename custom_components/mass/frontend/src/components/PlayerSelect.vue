@@ -15,9 +15,10 @@
     <v-divider></v-divider>
     <v-expansion-panels v-model="panelItem" focusable accordion flat>
       <v-expansion-panel
-        v-for="player in availablePlayers"
+        v-for="player in sortedPlayers"
         :id="player.player_id"
         :key="player.player_id"
+        :disabled="!player.available"
         flat
       >
         <v-expansion-panel-title
@@ -118,11 +119,11 @@ import { store } from "../plugins/store";
 const panelItem = ref<number | undefined>(undefined);
 
 // computed properties
-const availablePlayers = computed(() => {
+const sortedPlayers = computed(() => {
   const res: Player[] = [];
   for (const player_id in api?.players) {
     const player = api?.players[player_id];
-    if (player?.available) res.push(player);
+    res.push(player);
   }
   return res
     .slice()

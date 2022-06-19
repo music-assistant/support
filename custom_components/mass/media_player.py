@@ -66,6 +66,7 @@ from .const import (
     ATTR_IS_GROUP,
     ATTR_QUEUE_ITEMS,
     ATTR_SOURCE_ENTITY_ID,
+    CONF_PLAYER_ENTITIES,
     DEFAULT_NAME,
     DOMAIN,
 )
@@ -114,11 +115,14 @@ async def async_setup_entry(
 ) -> None:
     """Set up Music Assistant MediaPlayer(s) from Config Entry."""
     mass: MusicAssistant = hass.data[DOMAIN]
+    allowed_players = config_entry.options.get(CONF_PLAYER_ENTITIES, [])
     added_ids = set()
 
     async def async_add_player(event: MassEvent) -> None:
         """Add MediaPlayerEntity from Music Assistant Player."""
         if event.object_id in added_ids:
+            return
+        if event.object_id not in allowed_players:
             return
         added_ids.add(event.object_id)
         async_add_entities([MassPlayer(mass, event.data)])

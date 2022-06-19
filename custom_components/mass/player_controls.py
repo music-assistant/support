@@ -799,25 +799,15 @@ async def async_register_player_control(
     """Register hass media_player entity as player control on Music Assistant."""
 
     # check for existing player first if already registered
-    if player := mass.players.get_player(entity_id, True):
+    if player := mass.players.get_player(entity_id):
         return player
-
-    entity = hass.states.get(entity_id)
-    if entity is None or entity.attributes is None:
-        return
 
     entity_comp = hass.data.get(DATA_INSTANCES, {}).get(MP_DOMAIN)
     if not entity_comp:
-        return
+        return None
     entity: MediaPlayerEntity = entity_comp.get_entity(entity_id)
     if not entity:
-        return
-
-    # require some basic features, most important `play_media`
-    if not entity.support_play_media:
-        return
-    if not entity.support_play or not entity.support_pause:
-        return
+        return None
 
     player = None
     # Integration specific player controls
@@ -847,7 +837,7 @@ async def async_register_player_controls(
             return
 
         # handle existing source player
-        if source_player := mass.players.get_player(entity_id, True):
+        if source_player := mass.players.get_player(entity_id):
             source_player.on_hass_event(event)
             return
         # entity not (yet) registered
