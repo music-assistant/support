@@ -277,6 +277,12 @@ class HassPlayer(Player):
 
     async def pause(self) -> None:
         """Send PAUSE command to player."""
+        if not self.entity.support_pause:
+            LOGGER.warning(
+                "[%s] pause not supported, sending STOP instead...", self.entity_id
+            )
+            await self.stop()
+            return
         LOGGER.debug("[%s] pause", self.entity_id)
         await self.entity.async_media_pause()
 
