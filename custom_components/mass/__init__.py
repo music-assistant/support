@@ -88,7 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 username=conf.get(CONF_TUNEIN_USERNAME),
             )
         )
-    if conf.get(CONF_FILE_ENABLED):
+    if conf.get(CONF_FILE_ENABLED) and conf.get(CONF_FILE_DIRECTORY):
         providers.append(
             MusicProviderConfig(
                 ProviderType.FILESYSTEM_LOCAL,
