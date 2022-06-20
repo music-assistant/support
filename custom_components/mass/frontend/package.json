@@ -49,7 +49,7 @@
     "vite-plugin-pwa": "^0.12.0",
     "vitest": "^0.14.2",
     "vue-cli-plugin-vuetify": "~2.5.1",
-    "vue-tsc": "^0.37.5",
+    "vue-tsc": "^0.38.1",
     "vuetify-loader": "^2.0.0-alpha.0"
   }
 }
