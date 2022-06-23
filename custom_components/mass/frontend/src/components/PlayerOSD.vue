@@ -224,7 +224,7 @@
     <!-- Control buttons -->
     <div class="mediacontrols">
       <!-- left side: playback buttons -->
-      <div class="mediacontrols-left">
+      <div class="mediacontrols-left" v-if="activePlayerQueue && activePlayerQueue.available">
         <!-- prev track -->
         <v-btn
           small
