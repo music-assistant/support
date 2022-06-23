@@ -43,6 +43,7 @@ from music_assistant.models.player import (
     PlayerState,
     get_child_players,
     get_group_volume,
+    set_group_volume,
 )
 
 from .const import (
@@ -117,6 +118,13 @@ class HassPlayer(Player):
         if reg_entry := self.entity.registry_entry:
             return reg_entry.name or self.entity.name
         return self.entity_id
+
+    @property
+    def is_group(self) -> bool:
+        """Return bool if this player is a grouped player (playergroup)."""
+        if self.entity.group_members:
+            return True
+        return self._attr_is_group
 
     @property
     def support_power(self) -> bool:
@@ -309,13 +317,22 @@ class HassPlayer(Player):
     async def volume_set(self, volume_level: int) -> None:
         """Send volume level (0..100) command to player."""
         LOGGER.debug("[%s] volume_set: %s", self.entity_id, volume_level)
-        if self.entity.support_volume_set:
+        if self.is_group:
+            await set_group_volume(self, volume_level)
+        elif self.entity.support_volume_set:
             await self.entity.async_set_volume_level(volume_level / 100)
 
     async def volume_mute(self, muted: bool) -> None:
         """Send volume mute command to player."""
-        # for players that do not support mute, we fake mute with volume
-        if not bool(self.entity.supported_features & SUPPORT_VOLUME_MUTE):
+        supports_mute = bool(self.entity.supported_features & SUPPORT_VOLUME_MUTE)
+        if not supports_mute and self.is_group:
+            # mute not supported but group player = redirect to childs
+            await asyncio.gather(
+                *[x.volume_mute() for x in get_child_players(self, True)]
+            )
+            return
+        if not supports_mute:
+            # for players that do not support mute, we fake mute with volume
             await super().volume_mute(muted)
             return
         await self.entity.async_mute_volume(muted)
