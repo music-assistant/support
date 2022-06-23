@@ -92,10 +92,11 @@ import {
   mdiPlusCircleOutline,
   mdiClose,
   mdiRefresh,
+  mdiCancel
 } from "@mdi/js";
 import ListviewItem from "./ListviewItem.vue";
 import { MediaType, QueueOption } from "../plugins/api";
-import type { MediaItem, MediaItemType, Playlist, Track } from "../plugins/api";
+import type { MediaItem, MediaItemType, Playlist, Track, PlayerQueue } from "../plugins/api";
 import { ref, watch } from "vue";
 import api from "../plugins/api";
 import { useI18n } from "vue-i18n";
@@ -275,6 +276,17 @@ const showContextMenu = function () {
       icon: mdiPlusCircleOutline,
     });
   }
+  // clear selection
+  if (store.contextMenuItems.length > 1) {
+    actionMenuItems.value.push({
+      label: "clear_selection",
+      action: () => {
+        store.contextMenuItems = [];
+        close();
+      },
+      icon: mdiCancel,
+    });
+  }
 };
 const showPlaylistsMenu = async function () {
   // get all editable playlists
@@ -308,6 +320,9 @@ const itemIsAvailable = function (item: MediaItem) {
   return false;
 };
 const close = function () {
+  if (store.contextMenuItems.length == 1) {
+    store.contextMenuItems = [];
+  }
   store.showContextMenu = false;
 };
 const queueIdFromName = function (name: string) {

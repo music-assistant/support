@@ -39,6 +39,7 @@
   "refresh_item": "Refresh item",
   "items_total": "{0} total item(s)",
   "items_selected": "{0} item(s) selected",
+  "clear_selection": "Clear selection",
   "players": "Players",
   "play": "Play",
   "play_on": "Play on:",

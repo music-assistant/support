@@ -39,6 +39,7 @@
   "refresh_item": "Vernieuwen",
   "items_total": "{0} item(s) totaal",
   "items_selected": "{0} item(s) geselecteerd",
+  "clear_selection": "Selectie leegmaken",
   "players": "Spelers",
   "play": "Afspelen",
   "play_on": "Afspelen op:",

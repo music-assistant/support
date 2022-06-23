@@ -1,16 +1,15 @@
 <template>
   <section>
     <v-toolbar dense flat color="transparent" height="35">
-      <span v-if="!selectedItems.length && items.length">{{
+      <span v-if="!store.contextMenuItems.length && items.length">{{
         $t("items_total", [items.length])
       }}</span>
       <a
-        v-else-if="selectedItems.length"
+        v-else-if="store.contextMenuItems.length"
         @click="
-          store.contextMenuItems = selectedItems;
           store.showContextMenu = true;
         "
-        >{{ $t("items_selected", [selectedItems.length]) }}</a
+        >{{ $t("items_selected", [store.contextMenuItems.length]) }}</a
       >
       <v-spacer></v-spacer>
       <v-menu
@@ -190,7 +189,6 @@ const search = ref("");
 const sortDesc = ref(false);
 const sortBy = ref<string>("name");
 const sortKeys = ref<SortKey[]>([]);
-const selectedItems = ref<MediaItemType[]>([]);
 const sorting = ref(false);
 const showSortMenu = ref(false);
 const showSearch = ref(props.showSearchByDefault);
@@ -282,15 +280,15 @@ const filteredItems = computed(() => {
   return result;
 });
 const isSelected = function (item: MediaItemType) {
-  return selectedItems.value.includes(item);
+  return store.contextMenuItems.includes(item);
 };
 const onSelect = function (item: MediaItemType, selected: boolean) {
   if (selected) {
-    if (!selectedItems.value.includes(item)) selectedItems.value.push(item);
+    if (!store.contextMenuItems.includes(item)) store.contextMenuItems.push(item);
   } else {
-    for (let i = 0; i < selectedItems.value.length; i++) {
-      if (selectedItems.value[i] === item) {
-        selectedItems.value.splice(i, 1);
+    for (let i = 0; i < store.contextMenuItems.length; i++) {
+      if (store.contextMenuItems[i] === item) {
+        store.contextMenuItems.splice(i, 1);
       }
     }
   }
@@ -412,7 +410,7 @@ watchEffect(async () => {
 const keyListener = function (e: KeyboardEvent) {
   if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
-    selectedItems.value = props.items;
+    store.contextMenuItems = props.items;
   } else if (!searchHasFocus.value && e.key == "Backspace") {
     search.value = search.value.slice(0, -1);
   } else if (!searchHasFocus.value && e.key.length == 1) {
