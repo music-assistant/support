@@ -279,7 +279,7 @@ const showContextMenu = function () {
 const showPlaylistsMenu = async function () {
   // get all editable playlists
   const items = [];
-  for (const playlist of await api.getLibraryPlaylists()) {
+  for (const playlist of api.library.playlists) {
     if (
       playlist.is_editable &&
       !(
