@@ -43,3 +43,7 @@ ESPHOME_DOMAIN = "esphome"
 SONOS_DOMAIN = "sonos"
 DLNA_DOMAIN = "dlna_dmr"
 ATV_DOMAIN = "apple_tv"
+KODI_DOMAIN = "kodi"
+GROUP_DOMAIN = "group"
+
+BLACKLIST_DOMAINS = (ATV_DOMAIN,)
