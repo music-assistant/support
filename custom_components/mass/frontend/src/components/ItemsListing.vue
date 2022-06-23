@@ -318,7 +318,7 @@ const onClick = function (mediaItem: MediaItemType) {
     });
   } else if (store.selectedPlayer) {
     // assume track (or radio) item
-    api.playMedia(store.selectedPlayer?.active_queue, mediaItem.uri);
+    api.playMedia(store.selectedPlayer?.active_queue, mediaItem);
   }
 };
 

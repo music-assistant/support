@@ -801,10 +801,10 @@ export class MusicAssistantApi {
 
   public playMedia(
     queue_id: string,
-    uri: string | string[],
+    media: string | string[] | MediaItemType | MediaItemType[],
     command: QueueOption = QueueOption.PLAY
   ) {
-    this.executeCmd("play_media", { queue_id, command, uri });
+    this.executeCmd("play_media", { queue_id, command, media });
   }
 
   public startSync(media_type?: MediaType, prov_type?: ProviderType) {

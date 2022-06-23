@@ -28,6 +28,7 @@ ID = "id"
 ITEM_ID = "item_id"
 PROVIDER = "provider"
 URI = "uri"
+MEDIA = "media"
 POSITION = "position"
 PLAYER_ID = "player_id"
 QUEUE_ID = "queue_id"
@@ -1009,7 +1010,7 @@ async def websocket_playerqueue_settings(
     {
         vol.Required(TYPE): f"{DOMAIN}/play_media",
         vol.Required(QUEUE_ID): str,
-        vol.Required(URI): vol.Any(str, list),
+        vol.Required(MEDIA): vol.Any(str, list, dict),
         vol.Optional(COMMAND, default=QueueOption.PLAY): vol.Coerce(QueueOption),
     }
 )
@@ -1023,7 +1024,7 @@ async def websocket_play_media(
 ) -> None:
     """Execute play_media command on PlayerQueue."""
     if player_queue := mass.players.get_player_queue(msg[QUEUE_ID]):
-        await player_queue.play_media(msg[URI], msg[COMMAND])
+        await player_queue.play_media(msg[MEDIA], msg[COMMAND])
 
         connection.send_result(
             msg[ID],

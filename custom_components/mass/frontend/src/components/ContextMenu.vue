@@ -147,7 +147,7 @@ const showContextMenu = function () {
       action: () => {
         api.playMedia(
           queueIdFromName(queueName.value),
-          store.contextMenuItems.map((x) => x.uri),
+          store.contextMenuItems,
           QueueOption.PLAY
         );
         close();
@@ -166,7 +166,7 @@ const showContextMenu = function () {
       action: () => {
         api.playMedia(
           queueIdFromName(queueName.value),
-          store.contextMenuItems.map((x) => x.uri),
+          store.contextMenuItems,
           QueueOption.NEXT
         );
         close();
@@ -181,7 +181,7 @@ const showContextMenu = function () {
       action: () => {
         api.playMedia(
           queueIdFromName(queueName.value),
-          store.contextMenuItems.map((x) => x.uri),
+          store.contextMenuItems,
           QueueOption.ADD
         );
         close();
