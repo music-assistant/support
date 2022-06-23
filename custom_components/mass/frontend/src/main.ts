@@ -36,6 +36,7 @@ export type HassData = {
     themes: Record<string, Record<string, string>>;
   };
   selectedLanguage: string;
+  dockedSidebar: string;
 };
 
 export type HassPanelData = {

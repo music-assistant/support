@@ -62,7 +62,9 @@ document.addEventListener("forward-hass-prop", function (e) {
   if (!api.initialized) {
     api.initialize(hass.connection);
     locale.value = hass.selectedLanguage;
+    console.log('hass', hass)
   }
+  store.alwaysShowMenuButton = hass.dockedSidebar == "always_hidden";
   setTheme(hass);
 });
 

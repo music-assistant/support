@@ -22,6 +22,7 @@ interface Store {
   contextMenuParentItem?: MediaItemType;
   customContextMenuCallback?: () => void;
   topBarContextMenuItems: ContextMenuItem[];
+  alwaysShowMenuButton: boolean;
   prevRoutes: Array<{
     name: string;
     params: RouteParams;
@@ -42,5 +43,6 @@ export const store: Store = reactive({
   contextMenuItems: [],
   contextMenuParentItem: undefined,
   topBarContextMenuItems: [],
+  alwaysShowMenuButton: false,
   prevRoutes: [],
 });

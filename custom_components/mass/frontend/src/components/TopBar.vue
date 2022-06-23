@@ -8,7 +8,10 @@
       style="margin-left: -15px"
     />
     <v-app-bar-nav-icon
-      v-if="$vuetify.display.mobile && store.prevRoutes.length === 0"
+      v-if="
+        ($vuetify.display.mobile || store.alwaysShowMenuButton) &&
+        store.prevRoutes.length === 0
+      "
       :icon="mdiMenu"
       :color="store.topBarTextColor"
       @click="toggleHAMenu"
