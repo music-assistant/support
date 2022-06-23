@@ -43,7 +43,7 @@
           <v-icon v-if="sortDesc" :icon="mdiArrowDown"></v-icon>
         </v-btn>
         <v-btn icon @click="toggleSearch()">
-          <v-icon :icon="mdiSearchWeb"></v-icon>
+          <v-icon :icon="mdiMagnify"></v-icon>
         </v-btn>
         <v-btn icon @click="toggleViewMode()">
           <v-icon v-if="viewMode == 'panel'" :icon="mdiViewList"></v-icon>
@@ -55,7 +55,7 @@
       v-model="search"
       id="searchInput"
       clearable
-      :prepend-inner-icon="mdiSearchWeb"
+      :prepend-inner-icon="mdiMagnify"
       :label="$t('search')"
       hide-details
       variant="filled"
@@ -130,7 +130,7 @@
 import {
   mdiArrowUp,
   mdiArrowDown,
-  mdiSearchWeb,
+  mdiMagnify,
   mdiSort,
   mdiGrid,
   mdiViewList,
