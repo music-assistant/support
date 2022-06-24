@@ -855,10 +855,14 @@ async def async_register_player_control(
         return None
 
     # load player specific mapping or generic one
-    player_cls = PLAYER_MAPPING.get(entry_platform, HassPlayer)
-    player = player_cls(hass, entity_id)
-    await mass.players.register_player(player)
-    return player
+    try:
+        player_cls = PLAYER_MAPPING.get(entry_platform, HassPlayer)
+        player = player_cls(hass, entity_id)
+        await mass.players.register_player(player)
+        return player
+    except Exception as err:  # pylint: disable=broad-except
+        LOGGER.error("Error while registering player %s", entity_id, exc_info=err)
+        return None
 
 
 async def async_register_player_controls(
