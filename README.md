@@ -112,6 +112,7 @@ In some cases it just works out of the box and in some cases it will need a few 
 - [Slimproto Squeezebox players](https://www.home-assistant.io/integrations/slimproto/)
 - [Sonos](https://www.home-assistant.io/integrations/sonos/)
 - [Linkplay](https://github.com/nagyrobi/home-assistant-custom-components-linkplay)
+- [Bose](https://www.home-assistant.io/integrations/soundtouch/)
 
 ### Confirmed NOT working
 
