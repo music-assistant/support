@@ -53,7 +53,7 @@ FORWARD_EVENTS = (
 )
 
 def get_local_ip_from_internal_url(hass: HomeAssistant):
-    """Get the stream ip address from the internal_url"""
+    """Get the stream ip address from the internal_url."""
     url = get_url(hass, allow_internal=True, allow_external=False)
     parsed_uri = urlparse(url)
     
