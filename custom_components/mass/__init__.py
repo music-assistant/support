@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import os
+import socket
+from urllib.parse import urlparse
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
@@ -11,6 +13,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.start import async_at_start
+from homeassistant.helpers.network import get_url
 from music_assistant import MusicAssistant
 from music_assistant.models.config import MassConfig, MusicProviderConfig
 from music_assistant.models.enums import EventType, ProviderType
@@ -49,6 +52,15 @@ FORWARD_EVENTS = (
     EventType.QUEUE_TIME_UPDATED,
 )
 
+def get_local_ip_from_internal_url(hass: HomeAssistant):
+    """Get the stream ip address from the internal_url"""
+    url = get_url(hass, allow_internal=True, allow_external=False)
+    parsed_uri = urlparse(url)
+    
+    if parsed_uri.netloc == '':
+        return hass.config.api.local_ip
+    
+    return socket.gethostbyname(parsed_uri.netloc)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up from a config entry."""
@@ -95,7 +107,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 path=conf.get(CONF_FILE_DIRECTORY),
             )
         )
-    stream_ip = hass.config.api.local_ip
+    stream_ip = get_local_ip_from_internal_url(hass)
     mass_conf = MassConfig(
         database_url=f"sqlite:///{db_file}", providers=providers, stream_ip=stream_ip
     )
