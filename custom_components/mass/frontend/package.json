@@ -43,7 +43,7 @@
     "prettier": "^2.7.1",
     "replace-in-file": "^6.3.5",
     "sass": "^1.52.3",
-    "sass-loader": "^13.0.0",
+    "sass-loader": "^13.0.2",
     "typescript": "~4.7.4",
     "vite": "^2.9.12",
     "vite-plugin-pwa": "^0.12.0",
