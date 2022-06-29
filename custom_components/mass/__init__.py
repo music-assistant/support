@@ -67,7 +67,7 @@ def get_local_ip_from_internal_url(hass: HomeAssistant):
         LOGGER.warning(
             "Unable to retrieve the internal URL from Home Assistant, "
             "this may cause issues resolving the correct internal stream ip. "
-            "Please set a valid (non HTTPS) internal url in the Home Assistant configuration"
+            "Please set a valid internal url in the Home Assistant configuration"
         )
         return hass.config.api.local_ip
     parsed_uri = urlparse(url)
