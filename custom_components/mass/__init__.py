@@ -56,12 +56,18 @@ FORWARD_EVENTS = (
 def get_local_ip_from_internal_url(hass: HomeAssistant):
     """Get the stream ip address from the internal_url."""
     try:
-        url = get_url(hass, allow_internal=True, allow_external=False)
+        url = get_url(
+            hass,
+            allow_internal=True,
+            allow_external=False,
+            allow_cloud=False,
+            allow_ip=True,
+        )
     except NoURLAvailableError:
         LOGGER.warning(
-            "No internal URL set in Home Assistant, "
+            "Unable to retrieve the internal URL from Home Assistant, "
             "this may cause issues resolving the correct internal stream ip. "
-            "Please set an internal url in the Home Assistant configuration"
+            "Please set a valid (non HTTPS) internal url in the Home Assistant configuration"
         )
         return hass.config.api.local_ip
     parsed_uri = urlparse(url)
