@@ -219,8 +219,9 @@ class HassPlayer(Player):
 
     def on_child_update(self, player_id: str, changed_keys: set) -> None:
         """Call when one of the child players of a playergroup updates."""
+        self.logger.debug("on_child_update [%s] %s", player_id, changed_keys)
         # power off group player if last child player turns off
-        if "powered" in changed_keys and self.powered:
+        if "powered" in changed_keys and self.active_queue.active:
             powered_childs = set()
             for child_player in self.get_child_players(True):
                 if child_player.powered:
@@ -254,9 +255,9 @@ class HassPlayer(Player):
 
     async def stop(self) -> None:
         """Send STOP command to player."""
-        if self.is_passive or self.active_queue.queue_id != self.player_id:
+        if self.is_passive:
             self.logger.debug(
-                "stop command ignored: player is passive (not the group leader) or not the active queue"
+                "stop command ignored: player is passive (not the group leader)"
             )
             return
         self.logger.debug("stop command called")
@@ -265,9 +266,9 @@ class HassPlayer(Player):
 
     async def play(self) -> None:
         """Send PLAY/UNPAUSE command to player."""
-        if self.is_passive or self.active_queue.queue_id != self.player_id:
+        if self.is_passive:
             self.logger.debug(
-                "play command ignored: player is passive (not the group leader) or not the active queue"
+                "play command ignored: player is passive (not the group leader)"
             )
             return
         self.logger.debug("play")
@@ -275,9 +276,9 @@ class HassPlayer(Player):
 
     async def pause(self) -> None:
         """Send PAUSE command to player."""
-        if self.is_passive or self.active_queue.queue_id != self.player_id:
+        if self.is_passive:
             self.logger.debug(
-                "pause command ignored: player is passive (not the group leader) or not the active queue"
+                "pause command ignored: player is passive (not the group leader)"
             )
             return
         if not self.entity.support_pause:
@@ -291,14 +292,11 @@ class HassPlayer(Player):
         """Send POWER command to player."""
         self.logger.debug("power command called with value: %s", powered)
         # send stop if this player is active queue
-        powered_childs = len(self.get_child_players(True))
-        if (
-            not powered
-            and powered_childs <= 1
-            and self.active_queue.queue_id == self.player_id
-            and self.active_queue.active
+        if not powered and (
+            (self.is_group and len(self.get_child_players(True)) <= 1)
+            or (self.active_queue.queue_id == self.player_id)
         ):
-            await self.active_queue.stop()
+            await self.stop()
         if self.use_mute_as_power:
             await self.volume_mute(not powered)
         elif powered and bool(self.entity.supported_features & SUPPORT_TURN_ON):
@@ -477,6 +475,13 @@ class CastPlayer(HassPlayer):
         return self._attr_device_info.model == "Google Cast Group"
 
     @property
+    def powered(self) -> bool:
+        """Return power state."""
+        if self.is_group:
+            return self.group_powered
+        return super().powered
+
+    @property
     def group_name(self) -> str:
         """Return name of this grouped player."""
         return self.name
@@ -553,10 +558,27 @@ class CastPlayer(HassPlayer):
             quick_play, cast, "default_media_receiver", enqueue_data
         )
 
+    async def volume_set(self, volume_level: int) -> None:
+        """Send volume level (0..100) command to player."""
+        if self.is_group:
+            # redirect to set_group_volume
+            await self.set_group_volume(volume_level)
+        else:
+            await super().volume_set(volume_level)
+
+    async def power(self, powered: bool) -> None:
+        """Send volume level (0..100) command to player."""
+        if self.is_group:
+            # redirect to set_group_power
+            await self.set_group_power(powered)
+        else:
+            await super().power(powered)
+
     async def set_group_power(self, powered: bool) -> None:
         """Send power command to the group player."""
-        # a cast group player is a dedicated player which we need to power on/off
-        await super().power(powered)
+        # a cast group player is a dedicated player which we need to power off
+        if not powered:
+            await self.entity.async_turn_off()
         if powered and not self.group_powered:
             # turn on (all) group clients if none are on now
             await super().set_group_power(True)
@@ -701,21 +723,19 @@ class HassGroupPlayer(HassPlayer):
         super().__init__(*args, **kwargs)
 
     @property
-    def support_power(self) -> bool:
-        """Return if this player supports power commands."""
-        return False
+    def powered(self) -> bool:
+        """Return power state."""
+        return self.group_powered
 
     @property
     def state(self) -> PlayerState:
         """Return the state of the grouped player."""
         if not self.powered:
             return PlayerState.OFF
-        # grab details from first (powered) group child
-        if self.active_queue.active:
-            for child_player in self.get_child_players(True):
-                if not child_player.current_url:
-                    continue
-                return child_player.state
+        if not self.active_queue.active:
+            return PlayerState.IDLE
+        if group_leader := self.mass.players.get_player(self.group_leader):
+            return group_leader.state
         return PlayerState.IDLE
 
     @property
@@ -750,6 +770,14 @@ class HassGroupPlayer(HassPlayer):
         """Return the group leader for this player group."""
         for child_player in self.get_child_players(True):
             # simply return the first (non passive) powered child player
+            if child_player.is_passive:
+                continue
+            if not child_player.current_url:
+                continue
+            if not (self.active_queue and self.active_queue.stream):
+                continue
+            if self.active_queue.stream.stream_id not in child_player.current_url:
+                continue
             return child_player.player_id
         # fallback to the first player
         return self.group_members[0]
@@ -776,33 +804,35 @@ class HassGroupPlayer(HassPlayer):
     @property
     def current_url(self) -> str:
         """Return the current_url of the grouped player."""
-        # grab details from first (powered) group child
-        for child_player in self.get_child_players(True):
-            if not child_player.current_url:
-                continue
-            return child_player.current_url
-        return ""
+        return self._attr_current_url
 
     @property
     def elapsed_time(self) -> float:
         """Return the corrected/precise elsapsed time of the grouped player."""
-        # grab details from first (powered) group child
-        for child_player in self.get_child_players(True):
-            if not child_player.current_url:
-                continue
-            return child_player.elapsed_time
+        if group_leader := self.mass.players.get_player(self.group_leader):
+            return group_leader.elapsed_time
         return 0
 
     async def set_group_power(self, powered: bool) -> None:
         """Send power command to the group player."""
         self.logger.debug("set_group_power command called with value: %s", powered)
-        # a cast group player is a dedicated player which we need to power on/off
+        if not powered:
+            await self.stop()
         if powered and not self.group_powered:
             # turn on (all) group clients if none are on now
             await super().set_group_power(True)
         else:
             await super().set_group_power(False)
-        await super().power(powered)
+
+    async def volume_set(self, volume_level: int) -> None:
+        """Send volume level (0..100) command to player."""
+        # redirect to groupchilds
+        await self.set_group_volume(volume_level)
+
+    async def power(self, powered: bool) -> None:
+        """Send volume level (0..100) command to player."""
+        # redirect to set_group_power
+        await self.set_group_power(powered)
 
     async def stop(self) -> None:
         """Send STOP command to player."""
