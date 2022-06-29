@@ -103,7 +103,19 @@ const getVolumePlayers = function (player: Player) {
   }
   for (const groupChildId of player.group_members) {
     const volumeChild = api?.players[groupChildId];
-    if (volumeChild && volumeChild.available) {
+    // allow a group to be in a group
+    if (volumeChild.is_group) {
+      for (const subGroupCildId of volumeChild.group_members) {
+        const subVolumeChild = api?.players[subGroupCildId];
+        if (
+          subVolumeChild &&
+          subVolumeChild.available &&
+          !items.includes(subVolumeChild)
+        ) {
+          items.push(subVolumeChild);
+        }
+      }
+    } else if (volumeChild && volumeChild.available) {
       items.push(volumeChild);
     }
   }

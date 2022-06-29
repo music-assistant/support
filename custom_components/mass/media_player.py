@@ -61,8 +61,10 @@ from music_assistant.models.player_queue import QueueOption, RepeatMode
 
 from .const import (
     ATTR_ACTIVE_QUEUE,
+    ATTR_GROUP_LEADER,
     ATTR_GROUP_MEMBERS,
     ATTR_IS_GROUP,
+    ATTR_QUEUE_INDEX,
     ATTR_QUEUE_ITEMS,
     ATTR_SOURCE_ENTITY_ID,
     CONF_PLAYER_ENTITIES,
@@ -189,9 +191,10 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             ATTR_SOURCE_ENTITY_ID: self.player.player_id,  # player_id = entity_id of HA source entity
             ATTR_IS_GROUP: self.player.is_group,
             ATTR_GROUP_MEMBERS: self.player.group_members,
-            # ATTR_GROUP_PARENTS: self.player.group_parents,
+            ATTR_GROUP_LEADER: self.player.group_leader,
             ATTR_ACTIVE_QUEUE: self.player.active_queue.queue_id,
             ATTR_QUEUE_ITEMS: len(self.player.active_queue.items),
+            ATTR_QUEUE_INDEX: self.player.active_queue.current_index,
         }
 
     @property

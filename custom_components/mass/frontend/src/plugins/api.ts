@@ -318,7 +318,7 @@ export enum QueueCommand {
   MOVE_NEXT = "move_next",
   DELETE = "delete",
   GROUP_POWER = "group_power",
-  GROUP_VOLUME = "group_volume",
+  GROUP_VOLUME = "group_volume"
 }
 
 export enum MassEventType {
@@ -736,7 +736,12 @@ export class MusicAssistantApi {
     this.playerQueueCommand(queueId, QueueCommand.STOP);
   }
   public queueCommandPowerToggle(queueId: string) {
-    this.playerQueueCommand(queueId, QueueCommand.POWER_TOGGLE);
+    this.playerQueueCommand(
+      queueId,
+      QueueCommand.POWER,
+      !this.players[queueId].powered
+    );
+    console.log(this.players[queueId])
   }
   public queueCommandNext(queueId: string) {
     this.playerQueueCommand(queueId, QueueCommand.NEXT);

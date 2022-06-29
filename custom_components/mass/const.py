@@ -34,7 +34,8 @@ ATTR_GROUP_MEMBERS = "group_members"
 ATTR_GROUP_PARENTS = "group_parents"
 ATTR_ACTIVE_QUEUE = "active_queue"
 ATTR_QUEUE_ITEMS = "items_in_queue"
-
+ATTR_QUEUE_INDEX = "queue_index"
+ATTR_GROUP_LEADER = "group_leader"
 
 SLIMPROTO_DOMAIN = "slimproto"
 SLIMPROTO_EVENT = "slimproto_event"
