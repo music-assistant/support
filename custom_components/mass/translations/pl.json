@@ -42,30 +42,30 @@
         }
       },
       "music": {
-        "title": "Music Providers",
-        "description": "Configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
+        "title": "Dostawcy muzyki",
+        "description": "Ustaw z których dostawców muzyki chcesz korzystać. Dla każdego z nich wypełnij dane dostępowe.",
         "data": {
-          "spotify_enabled": "Enable Spotify music provider",
-          "spotify_username": "Username for Spotify",
-          "spotify_password": "Password for Spotify",
-          "qobuz_enabled": "Enable Qobuz music provider",
-          "qobuz_username": "Username for Qobuz",
-          "qobuz_password": "Password for Qobuz",
-          "tunein_enabled": "Enable Tune-In Radio music provider",
-          "tunein_username": "Username for Tune-In Radio",
-          "filesystem_enabled": "Enable filesystem provider",
-          "filesystem_directory": "Directory on disk to your music files."
+          "spotify_enabled": "Włącz Spotify jako dostawcę muzyki",
+          "spotify_username": "Użytkownik Spotify",
+          "spotify_password": "Hasło Spotify",
+          "qobuz_enabled": "Włącz Qobuz jako dostawcę muzyki",
+          "qobuz_username": "Użytkownik Qobuz",
+          "qobuz_password": "Hasło Qobuz",
+          "tunein_enabled": "Włącz Tune-In jako dostawcę radia",
+          "tunein_username": "Użytkownik Tune-In Radio",
+          "filesystem_enabled": "Włącz obsługę muzyki z systemu plików",
+          "filesystem_directory": "Podaj katalog na dysku z muzyką."
         },
         "data_description": {
-          "filesystem_directory": "Specify the full path on disk where your media files are stored (e.g. /media). Note that Home Assistant must have access to this location."
+          "filesystem_directory": "Podaj pełną ścieżkę do katalog na dysku z muzyką (np. /media). Pamiętaj że Home Assistant musi mieć dostęp do tego katalogu."
         }
       },
       "adv": {
         "title": "Zaawansowane",
         "description": "Konfiguracja zaawansowanych opcji Music Assistant.",
         "data": {
-          "hide_source_players": "Hide source players in the Home Assistant UI.",
-          "create_mass_players": "Create mediaplayers for Music Assistant players in Home Assistant."
+          "hide_source_players": "Ukryj źródłowe odtwarzacze w Home Assistant UI.",
+          "create_mass_players": "Utwórz odtwarzacze dla Music Assistant players w Home Assistant."
         }
       }
     },
