@@ -62,7 +62,7 @@
       },
       "adv": {
         "title": "Zaawansowane",
-        "description": "Configure advanced options for Music Assistant.",
+        "description": "Konfiguracja zaawansowanych opcji Music Assistant.",
         "data": {
           "hide_source_players": "Hide source players in the Home Assistant UI.",
           "create_mass_players": "Create mediaplayers for Music Assistant players in Home Assistant."
@@ -70,7 +70,7 @@
       }
     },
     "error": {
-      "directory_not_exists": "Directory does not exist or not accessible"
+      "directory_not_exists": "Katalog nie istnieje albo nie ma do niego dostępu"
     }
   }
 }
