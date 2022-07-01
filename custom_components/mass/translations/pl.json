@@ -3,40 +3,40 @@
     "step": {
       "user": {
         "title": "Odtwarzacze",
-        "description": "Configure which Home Assistant media players you would like to use with Music Assistant.",
+        "description": "Ustaw które odtwarzacze z Home Assistant chciałbyś używać z Music Assistant.",
         "data": {
           "player_entities": "Encje odtwarzaczy"
         }
       },
       "music": {
-        "title": "Ustaw Music Providers",
-        "description": "Please configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
+        "title": "Ustaw dostawców muzyki",
+        "description": "Proszę ustaw z których dostawców muzyki chcesz korzystać. Dla każdego z nich wypełnij dane dostępowe.",
         "data": {
-          "spotify_enabled": "Enable Spotify music provider",
+          "spotify_enabled": "Włącz Spotify jako dostawcę muzyki",
           "spotify_username": "Użytkownik Spotify",
           "spotify_password": "Hasło Spotify",
-          "qobuz_enabled": "Enable Qobuz music provider",
+          "qobuz_enabled": "Włącz Qobuz jako dostawcę muzyki",
           "qobuz_username": "Użytkownik Qobuz",
           "qobuz_password": "Hasło Qobuz",
-          "tunein_enabled": "Enable Tune-In Radio music provider",
+          "tunein_enabled": "Włącz Tune-In jako dostawcę radia",
           "tunein_username": "Użytkownik Tune-In Radio",
-          "filesystem_enabled": "Enable filesystem provider",
-          "filesystem_directory": "Directory on disk to your music files."
+          "filesystem_enabled": "Włącz obsługę muzyki z systemu plików",
+          "filesystem_directory": "Podaj katalog na dysku z muzyką."
         },
         "data_description": {
-          "filesystem_directory": "Specify the full path on disk where your media files are stored (e.g. /media). Note that Home Assistant must have access to this location."
+          "filesystem_directory": "Podaj pełną ścieżkę do katalog na dysku z muzyką (np. /media). Pamiętaj że Home Assistant musi mieć dostęp do tego katalogu."
         }
       }
     },
     "error": {
-      "directory_not_exists": "Directory does not exist or not accessible"
+      "directory_not_exists": "Katalog nie istnieje albo nie ma do niego dostępu."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Odtwarzacze",
-        "description": "Configure which Home Assistant media players you would like to use with Music Assistant.",
+        "description": "Ustaw które odtwarzacze z Home Assistant chciałbyś używać z Music Assistant.",
         "data": {
           "player_entities": "Encje odtwarzaczy"
         }
