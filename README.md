@@ -12,7 +12,7 @@ Turn your Home Assistant instance into a jukebox, hassle free streaming of your 
 
 ## Introduction
 
-Music Assistant is a music library manager for your offline and online music sources, combined with the power of Home assistant to easily stream your favourite music to a wide range of supported players.
+Music Assistant is a music library manager for your offline and online music sources, combined with the power of Home Assistant to easily stream your favourite music to a wide range of supported players.
 
 Music Assistant consists of multiple building blocks:
 
@@ -77,16 +77,16 @@ Music Assistant consists of multiple building blocks:
 
 - Music from your music sources will be automatically loaded into the Music Assistant library. If you have multiple sources, they will be merged as one library.
 - In this first implementation there's only support for "Library items", so your favourited artists, albums and playlists. In a later release we'll provide options to browse the recommendations of the various streaming providers.
-- Note that at the first startup it can take a while before data is available (first sync), the Music Assistant UI will notify you about tasks being in progress.
+- Note that at the first startup it can take a while before data is available (first sync), the Music Assistant UI will notify you about tasks that are in progress.
 - Music sources are synced at integration (re)load and every 3 hours.
 - If a song is available on multiple providers (e.g. Spotify and a flac file on disk), the file/stream with the highest quality is always preferred when starting a stream.
 - Music Assistant uses a custom stream port (TCP 8095 by default) to stream audio to players. Players must be able to reach the Home Assistant instance and this port. If you're running one of the recommended Home Assistant installation methods, this is all handled for you, otherwise you will have to make sure you're running HA in HOST network mode. Note: If the default port 8095 is occupied, the next port will be tried, and so on.
 
 ## Music provider specific notes
 
-- When using Spotify as music source please note that **only Spotify Premium accounts** are supported, free accounts will not work.
-- For Tune-In radio, make sure to fill in your username and not your emailadress. Be aware that only favorites in your Tune-In library will be visible in Music Assistant.
-- When using the file system provider, make sure that your audio files contain proper ID3 tag information and that the location can be reached from Home Assistant, for example /media/music. There is not (yet) support for remote file locations such as SMB, cloud drives etc.
+- When using Spotify as a music source please note that **only Spotify Premium accounts** are supported, free accounts will not work.
+- For Tune-In radio, make sure to fill in your username and not your email address. Be aware that only favorites in your Tune-In library will be visible in Music Assistant.
+- When using the file system provider, make sure that your audio files contain proper ID3 tag information and that the location can be reached from Home Assistant, for example /media/music. There is not (yet) direct support for remote file locations such as SMB, cloud drives etc however SMB shares can be mounted via the OS and then will be accessible. See here for the details https://github.com/music-assistant/hass-music-assistant/discussions/452
 
 ## Supported Media players
 
@@ -120,7 +120,7 @@ In some cases it just works out of the box and in some cases it will need a few 
 
 With a large project like this, there is always enough todo. Not only with actual writing of code but also in documentation, providing support, testing etc. Ofcourse you help me out greatly by donating me a few bucks but helping out can also be done in other ways:
 
-- If you like to help with the development, e.g. implementing a new music provider or fix a player specific quirk, please reach out to me on discord in a PM. I did not have time to write extended development docs but once you get the grasps of the structure it is relatively straigth forward. 
+- If you like to help with the development, e.g. implementing a new music provider or fix a player specific quirk, please reach out to me on discord in a PM. I did not have time to write extended development docs but once you get the grasp of the structure it is relatively straight forward. 
 - Help others out on discord or within the discussions part of Github.
 - Help out with writing documentation and HOWTO's and the FAQ's.
 - Just like [Erik](https://github.com/erkr) help out as a moderator on discord and Github with the load of incoming reports, request and questions. Thanks Erik!
