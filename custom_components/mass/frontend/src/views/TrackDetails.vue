@@ -18,11 +18,15 @@
     <v-divider />
     <ItemsListing
       :items="trackVersions"
-      itemtype="tracks"
+      itemtype="trackversions"
       :loading="loading"
       :parent-item="track"
       :show-providers="true"
-      v-if="activeTab == 'versions'"
+      :show-library="false"
+      :load-data="loadTrackVersions"
+      :count="trackVersions.length"
+      :sort-keys="['sort_name', 'duration']"
+      v-if="activeTab == 'versions' && trackVersions.length > 0"
     />
     <div v-if="activeTab == 'details'">
       <v-table style="width: 100%">
@@ -78,17 +82,16 @@
 </template>
 
 <script setup lang="ts">
-import ItemsListing from "../components/ItemsListing.vue";
+import ItemsListing, { filteredItems } from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref, reactive } from "@vue/reactivity";
-import { useTheme } from "vuetify";
-import type { MassEvent, ProviderType, Track } from "../plugins/api";
-import { api, MassEventType } from "../plugins/api";
+import type { ProviderType, Track } from "../plugins/api";
+import { api } from "../plugins/api";
 import {
   getProviderIcon,
   getQualityIcon,
 } from "../components/ProviderIcons.vue";
-import { onBeforeUnmount, watchEffect } from "vue";
+import { watchEffect } from "vue";
 import { parseBool } from "../utils";
 
 export interface Props {
@@ -107,7 +110,6 @@ const track = ref<Track>();
 const trackVersions = ref<Track[]>([]);
 const loading = ref(true);
 const previewUrls = reactive<Record<number, string>>({});
-const theme = useTheme();
 
 watchEffect(async () => {
   api
@@ -138,20 +140,15 @@ const fetchPreviewUrl = async function (
   previewUrls[index] = url;
 };
 
-// listen for item updates to refresh interface when that happens
-const unsub = api.subscribe(MassEventType.MEDIA_ITEM_UPDATED, (evt: MassEvent) => {
-  const newItem = evt.data as Track;
-  if (
-    (props.provider == "database" && newItem.item_id == props.item_id) ||
-    newItem.provider_ids.filter(
-      (x) => x.prov_type == props.provider && x.item_id == props.item_id
-    ).length > 0
-  ) {
-    // got update for current item
-    track.value = newItem;
-  }
-});
-onBeforeUnmount(unsub);
+const loadTrackVersions = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  return filteredItems(trackVersions.value, offset, limit, sort, search, inLibraryOnly);
+};
 </script>
 
 <style>

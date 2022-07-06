@@ -4,7 +4,7 @@ import {
   type Connection,
   createConnection,
   ERR_HASS_HOST_REQUIRED,
-  getAuth
+  getAuth,
 } from "home-assistant-js-websocket";
 import { reactive, ref } from "vue";
 
@@ -14,7 +14,8 @@ export enum MediaType {
   TRACK = "track",
   PLAYLIST = "playlist",
   RADIO = "radio",
-  UNKNOWN = "unknown"
+  FOLDER = "folder",
+  UNKNOWN = "unknown",
 }
 
 export enum MediaQuality {
@@ -26,7 +27,7 @@ export enum MediaQuality {
   LOSSLESS_HI_RES_1 = 20, // 44.1/48khz 24 bits HI-RES
   LOSSLESS_HI_RES_2 = 21, // 88.2/96khz 24 bits HI-RES
   LOSSLESS_HI_RES_3 = 22, // 176/192khz 24 bits HI-RES
-  LOSSLESS_HI_RES_4 = 23 // above 192khz 24 bits HI-RES
+  LOSSLESS_HI_RES_4 = 23, // above 192khz 24 bits HI-RES
 }
 
 export enum ProviderType {
@@ -38,7 +39,7 @@ export enum ProviderType {
   QOBUZ = "qobuz",
   TUNEIN = "tunein",
   DATABASE = "database",
-  URL = "url"
+  URL = "url",
 }
 export interface MediaItemProviderId {
   item_id: string;
@@ -61,7 +62,7 @@ export enum LinkType {
   TIKTOK = "tiktok",
   DISCOGS = "discogs",
   WIKIPEDIA = "wikipedia",
-  ALLMUSIC = "allmusic"
+  ALLMUSIC = "allmusic",
 }
 
 export enum ImageType {
@@ -75,7 +76,7 @@ export enum ImageType {
   BACK = "back",
   CDART = "cdart",
   EMBEDDED_THUMB = "embedded_thumb",
-  OTHER = "other"
+  OTHER = "other",
 }
 
 export interface MediaItemLink {
@@ -125,6 +126,7 @@ export interface MediaItem {
   in_library: boolean;
   media_type: MediaType;
   uri: string;
+  timestamp: number;
 }
 
 export interface Artist extends MediaItem {
@@ -135,7 +137,7 @@ export enum AlbumType {
   ALBUM = "album",
   SINGLE = "single",
   COMPILATION = "compilation",
-  UNKNOWN = "unknown"
+  UNKNOWN = "unknown",
 }
 
 export interface Album extends MediaItem {
@@ -171,13 +173,24 @@ export interface Radio extends MediaItem {
   duration?: number;
 }
 
-export type MediaItemType = Artist | Album | Track | Playlist | Radio;
+export interface BrowseFolder extends MediaItem {
+  label: string;
+  items?: MediaItemType[];
+}
+
+export type MediaItemType =
+  | Artist
+  | Album
+  | Track
+  | Playlist
+  | Radio
+  | BrowseFolder;
 
 export enum StreamType {
   EXECUTABLE = "executable",
   URL = "url",
   FILE = "file",
-  CACHE = "cache"
+  CACHE = "cache",
 }
 
 export enum ContentType {
@@ -191,7 +204,7 @@ export enum ContentType {
   PCM_S24LE = "s24le", // PCM signed 24-bit little-endian
   PCM_S32LE = "s32le", // PCM signed 32-bit little-endian
   PCM_F32LE = "f32le", // PCM 32-bit floating-point little-endian
-  PCM_F64LE = "f64le," // PCM 64-bit floating-point little-endian
+  PCM_F64LE = "f64le,", // PCM 64-bit floating-point little-endian
 }
 
 export interface StreamDetails {
@@ -216,7 +229,7 @@ export enum PlayerState {
   IDLE = "idle",
   PAUSED = "paused",
   PLAYING = "playing",
-  OFF = "off"
+  OFF = "off",
 }
 
 export interface DeviceInfo {
@@ -260,13 +273,13 @@ export enum CrossFadeMode {
   DISABLED = "disabled", // no crossfading at all
   STRICT = "strict", // do not crossfade tracks of same album
   SMART = "smart", // crossfade if possible (do not crossfade different sample rates)
-  ALWAYS = "always" // all tracks - resample to fixed sample rate
+  ALWAYS = "always", // all tracks - resample to fixed sample rate
 }
 
 export enum RepeatMode {
   OFF = "off", // no repeat at all
   ONE = "one", // repeat current/single track
-  ALL = "all" // repeat entire queue
+  ALL = "all", // repeat entire queue
 }
 
 export interface QueueSettings {
@@ -318,7 +331,7 @@ export enum QueueCommand {
   MOVE_NEXT = "move_next",
   DELETE = "delete",
   GROUP_POWER = "group_power",
-  GROUP_VOLUME = "group_volume"
+  GROUP_VOLUME = "group_volume",
 }
 
 export enum MassEventType {
@@ -331,18 +344,16 @@ export enum MassEventType {
   QUEUE_ITEMS_UPDATED = "queue_items_updated",
   QUEUE_TIME_UPDATED = "queue_time_updated",
   SHUTDOWN = "application_shutdown",
-  MEDIA_ITEM_ADDED = "media_item_added",
-  MEDIA_ITEM_UPDATED = "media_item_updated",
   BACKGROUND_JOB_UPDATED = "background_job_updated",
   // special types for local subscriptions only
-  ALL = "*"
+  ALL = "*",
 }
 
 export enum QueueOption {
   PLAY = "play",
   REPLACE = "replace",
   NEXT = "next",
-  ADD = "add"
+  ADD = "add",
 }
 
 export type MassEvent = {
@@ -356,7 +367,7 @@ export enum JobStatus {
   RUNNING = "running",
   CANCELLED = "cancelled",
   FINISHED = "success",
-  ERROR = "error"
+  ERROR = "error",
 }
 
 export type BackgroundJob = {
@@ -396,7 +407,8 @@ export interface LibraryCount {
 
 export interface Stats {
   providers: { [provider_id: string]: MusicProvider };
-  count: LibraryCount;
+  db_count: LibraryCount;
+  library_count: LibraryCount;
 }
 
 export class MusicAssistantApi {
@@ -409,19 +421,14 @@ export class MusicAssistantApi {
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
   public stats = reactive<Stats>({
     providers: {},
-    count: { artists: 0, albums: 0, tracks: 0, playlists: 0, radios: 0 }
-  });
-  public library = reactive<Library>({
-    artists: [],
-    albums: [],
-    tracks: [],
-    radios: [],
-    playlists: [],
-    artistsFetched: false,
-    albumsFetched: false,
-    tracksFetched: false,
-    radiosFetched: false,
-    playlistsFetched: false
+    db_count: { artists: 0, albums: 0, tracks: 0, playlists: 0, radios: 0 },
+    library_count: {
+      artists: 0,
+      albums: 0,
+      tracks: 0,
+      playlists: 0,
+      radios: 0,
+    },
   });
   public jobs = ref<BackgroundJob[]>([]);
   private _wsEventCallbacks: Array<[string, CallableFunction]>;
@@ -452,7 +459,7 @@ export class MusicAssistantApi {
         this.handleMassEvent(msg);
       },
       {
-        type: "mass/subscribe"
+        type: "mass/subscribe",
       }
     );
   }
@@ -487,92 +494,14 @@ export class MusicAssistantApi {
     this.jobs.value = await this.getData("jobs");
   }
 
-  public async fetchLibraryTracks() {
-    // prefetch library tracks into the store.
-    // Once they're fetched it will be kept up to date by the eventbus
-    if (this.library.tracksFetched) return;
-    let offset = 0;
-    const limit = 500;
-    while (true) {
-      const items = await this.getData<Track[]>("tracks", { offset, limit });
-      if (items.length == 0) break;
-      offset += limit;
-      this.library.tracks.push(...items);
-      if (items.length < limit) break;
-    }
-    this.stats.count.tracks = this.library.tracks.length;
-    this.library.tracksFetched = true;
-  }
-  public async fetchLibraryArtists() {
-    // prefetch library artists into the store.
-    // Once they're fetched it will be kept up to date by the eventbus
-    if (this.library.artistsFetched) return;
-    let offset = 0;
-    const limit = 500;
-    while (true) {
-      const items = await this.getData<Artist[]>("artists", { offset, limit });
-      if (items.length == 0) break;
-      offset += limit;
-      this.library.artists.push(...items);
-      if (items.length < limit) break;
-    }
-    this.stats.count.artists = this.library.artists.length;
-    this.library.artistsFetched = true;
-  }
-  public async fetchLibraryAlbums() {
-    // prefetch library albums into the store.
-    // Once they're fetched it will be kept up to date by the eventbus
-    if (this.library.albumsFetched) return;
-    let offset = 0;
-    const limit = 500;
-    while (true) {
-      const items = await this.getData<Album[]>("albums", { offset, limit });
-      if (items.length == 0) break;
-      offset += limit;
-      this.library.albums.push(...items);
-      if (items.length < limit) break;
-    }
-    this.stats.count.albums = this.library.albums.length;
-    this.library.albumsFetched = true;
-  }
-  public async fetchLibraryPlaylists() {
-    // prefetch library playlists into the store.
-    // Once they're fetched it will be kept up to date by the eventbus
-    if (this.library.playlistsFetched) return;
-    let offset = 0;
-    const limit = 500;
-    while (true) {
-      const items = await this.getData<Playlist[]>("playlists", {
-        offset,
-        limit
-      });
-      if (items.length == 0) break;
-      offset += limit;
-      this.library.playlists.push(...items);
-      if (items.length < limit) break;
-    }
-    this.stats.count.playlists = this.library.playlists.length;
-    this.library.playlistsFetched = true;
-  }
-  public async fetchLibraryRadios() {
-    // prefetch library radios into the store.
-    // Once they're fetched it will be kept up to date by the eventbus
-    if (this.library.radiosFetched) return;
-    this.library.radios = [];
-    let offset = 0;
-    const limit = 500;
-    while (true) {
-      const items = await this.getData<Radio[]>("radios", {
-        offset,
-        limit
-      });
-      if (items.length == 0) break;
-      offset += limit;
-      this.library.radios.push(...items);
-      if (items.length < limit) break;
-    }
-    this.stats.count.radios = this.library.radios.length;
-    this.library.radiosFetched = true;
+  public getTracks(
+    offset?: number,
+    limit?: number,
+    sort?: string,
+    library?: boolean,
+    search?: string
+  ): Promise<Track[]> {
+    return this.getData("tracks", { offset, limit, sort, library, search });
   }
 
   public getTrack(
@@ -587,9 +516,8 @@ export class MusicAssistantApi {
   public getTrackVersions(
     provider: ProviderType,
     item_id: string,
-    lazy = true
   ): Promise<Track[]> {
-    return this.getData("track/versions", { provider, item_id, lazy });
+    return this.getData("track/versions", { provider, item_id });
   }
 
   public getTrackPreviewUrl(
@@ -598,8 +526,18 @@ export class MusicAssistantApi {
   ): Promise<string> {
     return this.getData("track/preview", {
       provider,
-      item_id
+      item_id,
     });
+  }
+
+  public getArtists(
+    offset?: number,
+    limit?: number,
+    sort?: string,
+    library?: boolean,
+    search?: string
+  ): Promise<Artist[]> {
+    return this.getData("artists", { offset, sort, limit, library, search });
   }
 
   public getArtist(
@@ -614,17 +552,25 @@ export class MusicAssistantApi {
   public getArtistTracks(
     provider: ProviderType,
     item_id: string,
-    lazy = true
   ): Promise<Track[]> {
-    return this.getData("artist/tracks", { provider, item_id, lazy });
+    return this.getData("artist/tracks", { provider, item_id });
   }
 
   public getArtistAlbums(
     provider: ProviderType,
     item_id: string,
-    lazy = true
   ): Promise<Album[]> {
-    return this.getData("artist/albums", { provider, item_id, lazy });
+    return this.getData("artist/albums", { provider, item_id });
+  }
+
+  public getAlbums(
+    offset?: number,
+    limit?: number,
+    sort?: string,
+    library?: boolean,
+    search?: string
+  ): Promise<Album[]> {
+    return this.getData("albums", { offset, limit, sort, library, search });
   }
 
   public getAlbum(
@@ -639,17 +585,25 @@ export class MusicAssistantApi {
   public getAlbumTracks(
     provider: ProviderType,
     item_id: string,
-    lazy = true
   ): Promise<Track[]> {
-    return this.getData("album/tracks", { provider, item_id, lazy });
+    return this.getData("album/tracks", { provider, item_id });
   }
 
   public getAlbumVersions(
     provider: ProviderType,
     item_id: string,
-    lazy = true
   ): Promise<Album[]> {
-    return this.getData("album/versions", { provider, item_id, lazy });
+    return this.getData("album/versions", { provider, item_id });
+  }
+
+  public getPlaylists(
+    offset?: number,
+    limit?: number,
+    sort?: string,
+    library?: boolean,
+    search?: string
+  ): Promise<Playlist[]> {
+    return this.getData("playlists", { offset, limit, sort, library, search });
   }
 
   public getPlaylist(
@@ -664,9 +618,8 @@ export class MusicAssistantApi {
   public getPlaylistTracks(
     provider: ProviderType,
     item_id: string,
-    lazy = true
   ): Promise<Track[]> {
-    return this.getData("playlist/tracks", { provider, item_id, lazy });
+    return this.getData("playlist/tracks", { provider, item_id });
   }
 
   public addPlaylistTracks(item_id: string, uri: string | string[]) {
@@ -675,6 +628,16 @@ export class MusicAssistantApi {
 
   public removePlaylistTracks(item_id: string, position: number | number[]) {
     this.executeCmd("playlist/tracks/remove", { item_id, position });
+  }
+
+  public getRadios(
+    offset?: number,
+    limit?: number,
+    sort?: string,
+    library?: boolean,
+    search?: string
+  ): Promise<Radio[]> {
+    return this.getData("radios", { offset, limit, sort, library, search });
   }
 
   public getRadio(
@@ -711,6 +674,14 @@ export class MusicAssistantApi {
     return await this.addToLibrary([item]);
   }
 
+  public browse(uri?: string): Promise<Track[]> {
+    return this.getData("browse", { uri });
+  }
+
+  public search(query: string): Promise<Track[]> {
+    return this.getData("search", { query });
+  }
+
   public async getPlayers(): Promise<Player[]> {
     return this.getData("players");
   }
@@ -741,7 +712,6 @@ export class MusicAssistantApi {
       QueueCommand.POWER,
       !this.players[queueId].powered
     );
-    console.log(this.players[queueId])
   }
   public queueCommandNext(queueId: string) {
     this.playerQueueCommand(queueId, QueueCommand.NEXT);
@@ -809,7 +779,7 @@ export class MusicAssistantApi {
       this.executeCmd("playerqueue/command", {
         queue_id,
         command,
-        command_arg
+        command_arg,
       });
     }, 200);
   }
@@ -848,7 +818,7 @@ export class MusicAssistantApi {
           },
           saveTokens: (tokens) => {
             localStorage.hassTokens = JSON.stringify(tokens);
-          }
+          },
         }
       : {};
     try {
@@ -897,84 +867,11 @@ export class MusicAssistantApi {
         (x) => x.id !== msg.data?.id && x.status !== JobStatus.FINISHED
       );
       this.jobs.value.push(msg.data as BackgroundJob);
-    } else if (
-      [
-        MassEventType.MEDIA_ITEM_ADDED,
-        MassEventType.MEDIA_ITEM_UPDATED
-      ].includes(msg.event)
-    ) {
-      // media item added/updated in library
-      this.handleLibraryEvent(msg.event, msg.data as MediaItemType);
     }
     // signal + log all events
     this.signalEvent(msg);
     if (msg.event !== MassEventType.QUEUE_TIME_UPDATED) {
       console.log("[event]", msg);
-    }
-  }
-
-  private handleLibraryEvent(evt: MassEventType, item: MediaItemType) {
-    // handle new item added to library (or existing one updated)
-    if (item.media_type == MediaType.ALBUM) {
-      if (!this.library.albumsFetched) {
-        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
-          this.stats.count.albums += 1;
-        return;
-      }
-      const items = this.library.albums.filter(
-        (x) => x.item_id != item.item_id
-      );
-      if (item.in_library) items.push(item as Album);
-      this.library.albums = items;
-      this.stats.count.albums = items.length;
-    } else if (item.media_type == MediaType.ARTIST) {
-      if (!this.library.artistsFetched) {
-        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
-          this.stats.count.artists += 1;
-        return;
-      }
-      const items = this.library.artists.filter(
-        (x) => x.item_id != item.item_id
-      );
-      if (item.in_library) items.push(item as Artist);
-      this.library.artists = items;
-      this.stats.count.artists = items.length;
-    } else if (item.media_type == MediaType.TRACK) {
-      if (!this.library.tracksFetched) {
-        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
-          this.stats.count.tracks += 1;
-        return;
-      }
-      const items = this.library.tracks.filter(
-        (x) => x.item_id != item.item_id
-      );
-      if (item.in_library) items.push(item as Track);
-      this.library.tracks = items;
-      this.stats.count.tracks = items.length;
-    } else if (item.media_type == MediaType.PLAYLIST) {
-      if (!this.library.playlistsFetched) {
-        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
-          this.stats.count.playlists += 1;
-        return;
-      }
-      const items = this.library.playlists.filter(
-        (x) => x.item_id != item.item_id
-      );
-      if (item.in_library) items.push(item as Playlist);
-      this.library.playlists = items;
-      this.stats.count.playlists = items.length;
-    } else if (item.media_type == MediaType.RADIO) {
-      if (!this.library.radiosFetched) {
-        if (item.in_library && evt == MassEventType.MEDIA_ITEM_ADDED)
-          this.stats.count.radios += 1;
-        return;
-      }
-      const items = this.library.radios.filter(
-        (x) => x.item_id != item.item_id
-      );
-      if (item.in_library) items.push(item as Radio);
-      this.library.radios = items;
-      this.stats.count.radios = items.length;
     }
   }
 
@@ -993,7 +890,7 @@ export class MusicAssistantApi {
     return (this._conn as Connection).sendMessagePromise({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args
+      ...args,
     });
   }
 
@@ -1003,7 +900,7 @@ export class MusicAssistantApi {
     (this._conn as Connection).sendMessage({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args
+      ...args,
     });
   }
 }

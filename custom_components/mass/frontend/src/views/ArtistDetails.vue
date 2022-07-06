@@ -17,38 +17,37 @@
     </v-tabs>
     <v-divider />
     <ItemsListing
-      :items="artistTopTracks"
-      :loading="loading"
-      itemtype="tracks"
+      itemtype="artisttracks"
       :parent-item="artist"
       :show-providers="true"
       :show-track-number="false"
-      v-if="activeTab == 'tracks'"
+      :show-library="false"
+      :load-data="loadArtistTracks"
+      :count="artistTopTracks.length"
+      :sort-keys="['timestamp DESC', 'sort_name', 'sort_album']"
+      v-if="activeTab == 'tracks' && artistTopTracks.length > 0"
     />
     <ItemsListing
-      :items="artistAlbums"
-      :loading="loading"
-      itemtype="albums"
+      itemtype="artistalbums"
       :parent-item="artist"
       :show-providers="true"
-      v-if="activeTab == 'albums'"
+      :show-library="false"
+      :load-data="loadArtistAlbums"
+      :count="artistAlbums.length"
+      :sort-keys="['timestamp DESC', 'sort_name', 'year']"
+      v-if="activeTab == 'albums' && artistAlbums.length > 0"
     />
   </section>
 </template>
 
 <script setup lang="ts">
 import ItemsListing from "../components/ItemsListing.vue";
+import { filteredItems } from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
-import type {
-  Album,
-  Artist,
-  MassEvent,
-  ProviderType,
-  Track,
-} from "../plugins/api";
-import { api, MassEventType } from "../plugins/api";
-import { onBeforeUnmount, watchEffect } from "vue";
+import type { Album, Artist, ProviderType, Track } from "../plugins/api";
+import { api } from "../plugins/api";
+import { watchEffect } from "vue";
 import { parseBool } from "../utils";
 
 export interface Props {
@@ -95,19 +94,36 @@ const getExtraInfo = async function () {
   );
 };
 
-// listen for item updates to refresh interface when that happens
-const unsub = api.subscribe(MassEventType.MEDIA_ITEM_UPDATED, (evt: MassEvent) => {
-  const newItem = evt.data as Artist;
-  if (
-    (props.provider == "database" && newItem.item_id == props.item_id) ||
-    newItem.provider_ids.filter(
-      (x) => x.prov_type == props.provider && x.item_id == props.item_id
-    ).length > 0
-  ) {
-    // got update for current item
-    artist.value = newItem;
-    getExtraInfo();
-  }
-});
-onBeforeUnmount(unsub);
+const loadArtistAlbums = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  return filteredItems(
+    artistAlbums.value,
+    offset,
+    limit,
+    sort,
+    search,
+    inLibraryOnly
+  );
+};
+const loadArtistTracks = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  return filteredItems(
+    artistTopTracks.value,
+    offset,
+    limit,
+    sort,
+    search,
+    inLibraryOnly
+  );
+};
 </script>

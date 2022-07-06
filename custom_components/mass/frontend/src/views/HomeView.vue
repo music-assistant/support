@@ -7,8 +7,53 @@
       padding-bottom: 20px;
     "
   >
-    <v-row dense>
-      <v-col v-for="card in cards" :key="card.key">
+    <!-- <v-text-field
+      v-model="search"
+      id="searchInput"
+      clearable
+      :prepend-inner-icon="mdiMagnify"
+      label="Global search..."
+      hide-details
+      variant="outlined"
+      @focus="searchHasFocus = true"
+      @blur="searchHasFocus = false"
+    ></v-text-field> -->
+
+    <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
+    <!-- panel view -->
+    <!-- <v-row dense align-content="start" align="start">
+      <v-col v-for="item in browseItems" :key="item.uri" align-self="start">
+        <PanelviewItem :item="item" :size="thumbSize" :is-selected="false" />
+      </v-col>
+    </v-row> -->
+
+    <div style="margin-top: 20px">
+      <v-row dense align-content="start" align="start">
+        <v-col v-for="card in cards" :key="card.label" align-self="start">
+          <v-card
+            @click="$router.push(card.path)"
+            hover
+            border
+            width="auto"
+            min-height="90"
+            min-width="90"
+            align="center"
+            justify="center"
+          >
+            <v-btn variant="plain" icon height="80">
+              <v-icon :icon="card.icon" size="80" style="align: center; padding: 10px">
+              </v-icon>
+            </v-btn>
+            <v-divider />
+            <span class="text-center text-subtitle-1" style="padding: 10px">
+              {{ $t(card.label) }}
+            </span>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- <v-slide-group class="pa-4" :show-arrows="false">
+      <v-slide-group-item v-for="card in cards" :key="card.key">
         <v-card
           @click="$router.push(card.path)"
           hover
@@ -34,58 +79,72 @@
             >
           </span>
         </v-card>
-      </v-col>
-    </v-row>
+      </v-slide-group-item>
+    </v-slide-group> -->
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { store } from "../plugins/store";
+import PanelviewItem from "../components/PanelviewItem.vue";
 
 import {
   mdiAccountMusic,
   mdiAlbum,
   mdiFileMusic,
+  mdiMagnify,
   mdiPlaylistMusic,
   mdiRadio,
+  mdiFolder
 } from "@mdi/js";
-import api from "@/plugins/api";
-import type { LibraryCount } from "@/plugins/api";
+import api, { type MediaItemType } from "@/plugins/api";
+import { useDisplay } from "vuetify";
+
+const { mobile } = useDisplay();
 
 store.topBarTitle = store.defaultTopBarTitle;
 
-const artistsKey: keyof LibraryCount = "artists";
-const albumsKey: keyof LibraryCount = "albums";
-const tracksKey: keyof LibraryCount = "tracks";
-const radiosKey: keyof LibraryCount = "radios";
-const playlistsKey: keyof LibraryCount = "playlists";
+const searchHasFocus = ref(false);
+const loading = ref(false);
+const search = ref("");
+
+
+const thumbSize = computed(() => {
+  return mobile.value ? 150 : 225;
+});
 
 const cards = ref([
   {
-    key: artistsKey,
+    label: "artists",
     icon: mdiAccountMusic,
     path: "/artists",
   },
   {
-    key: albumsKey,
+    label: "albums",
     icon: mdiAlbum,
     path: "/albums",
   },
   {
-    key: tracksKey,
+    label: "tracks",
     icon: mdiFileMusic,
     path: "/tracks",
   },
   {
-    key: playlistsKey,
+    label: "radios",
+    icon: mdiRadio,
+    path: "/radios",
+  },
+  {
+    label: "playlists",
     icon: mdiPlaylistMusic,
     path: "/playlists",
   },
   {
-    key: radiosKey,
-    icon: mdiRadio,
-    path: "/radios",
+    label: "browse",
+    icon: mdiFolder,
+    path: "/browse",
   },
 ]);
 </script>

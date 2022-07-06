@@ -1,30 +1,31 @@
 <template>
   <ItemsListing
     itemtype="playlists"
-    :items="api.library.playlists.length > 0 ? api.library.playlists : []"
-    :show-library="false"
+    :items="items"
+    :show-duration="false"
     :show-providers="true"
-    :show-search-by-default="!$vuetify.display.mobile"
+    :load-data="loadItems"
+    :show-library="false"
+    :sort-keys="['sort_name', 'timestamp DESC']"
   />
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from "vue";
-import { useDisplay } from "vuetify";
+import { onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
-import { api, MediaType } from "../plugins/api";
+import { api, MediaType, type Playlist } from "../plugins/api";
 import { store } from "../plugins/store";
 
 const { t } = useI18n();
-const display = useDisplay();
+const items = ref<Playlist[]>([]);
 
 store.topBarTitle = t("playlists");
 store.topBarContextMenuItems = [
   {
     title: t("sync"),
     link: () => {
-      api.startSync(MediaType.PLAYLIST);
+      api.startSync(MediaType.ALBUM);
     },
   },
 ];
@@ -32,7 +33,14 @@ onBeforeUnmount(() => {
   store.topBarContextMenuItems = [];
 });
 
-onMounted(() => {
-  api.fetchLibraryPlaylists();
-});
+const loadItems = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  const library = inLibraryOnly || undefined;
+  return await api.getPlaylists(offset, limit, sort, library, search);
+};
 </script>

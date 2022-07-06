@@ -221,7 +221,7 @@ export interface Props {
 const props = defineProps<Props>();
 const showFullInfo = ref(false);
 const fanartImage = ref();
-const display = useDisplay();
+const { mobile } = useDisplay();
 
 const imgGradient = new URL("../assets/info_gradient.jpg", import.meta.url)
   .href;
@@ -235,7 +235,7 @@ const router = useRouter();
 
 watchEffect(async () => {
   if (props.item) {
-    if (display.mobile) {
+    if (mobile.value) {
       store.topBarTitle = truncateString(props.item.name, 30);
     } else {
       store.topBarTitle =
@@ -289,7 +289,7 @@ const description = computed(() => {
       }
     });
   }
-  const maxChars = display.mobile ? 200 : 460;
+  const maxChars = mobile.value ? 160 : 260;
   desc = desc.replace("\r\n", "<br /><br /><br />");
   desc = desc.replace("\r", "<br /><br />");
   desc = desc.replace("\n", "<br /><br />");

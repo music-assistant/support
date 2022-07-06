@@ -7,18 +7,21 @@
       style="padding-right: 0px"
     >
       <template v-slot:prepend
-        ><div
+        ><div v-if="item.media_type == MediaType.FOLDER" class="listitem-thumb">
+          <v-btn variant="plain" icon
+            ><v-icon :icon="mdiFolder" size="50" style="align: center;">
+            </v-icon
+          ></v-btn>
+        </div>
+        <div
+          v-else
           class="listitem-thumb"
           @click.stop="emit('select', item, !isSelected)"
         >
           <MediaItemThumb :item="item" :size="50" width="50px" height="50px" />
           <div
             v-if="isSelected"
-            style="
-              position: absolute;
-              background-color: #82b1ff94;
-              margin-top: -50px;
-            "
+            style="position: absolute; background-color: #82b1ff94; margin-top: -50px"
           >
             <v-icon dark size="51" :icon="mdiCheckboxMarkedOutline"></v-icon>
           </div></div
@@ -26,11 +29,15 @@
 
       <!-- title -->
       <template v-slot:title>
-        {{ item.name }}
-        <span v-if="'version' in item && item.version"
-          >({{ item.version }})</span
-        >
-        <b v-if="!itemIsAvailable(item)"> UNAVAILABLE</b>
+        <span v-if="item.media_type == MediaType.FOLDER">
+          <span v-if="'label' in item && item.label">{{ $t(item.label) }}</span>
+          <span v-else>{{ $t(item.name) }}</span>
+        </span>
+        <span v-else>
+          {{ item.name }}
+          <span v-if="'version' in item && item.version">({{ item.version }})</span>
+          <b v-if="!itemIsAvailable(item)"> UNAVAILABLE</b>
+        </span>
         <!-- explicit icon -->
         <v-tooltip location="bottom">
           <template #activator="{ props }">
@@ -51,12 +58,8 @@
         <!-- track artists + album name -->
         <div v-if="'artists' in item && item.artists">
           <span v-for="(artist, artistindex) in item.artists" :key="artist.uri">
-            <a color="primary" @click.stop="artistClick(artist)">{{
-              artist.name
-            }}</a>
-            <label
-              v-if="artistindex + 1 < item.artists.length"
-              :key="artistindex"
+            <a color="primary" @click.stop="artistClick(artist)">{{ artist.name }}</a>
+            <label v-if="artistindex + 1 < item.artists.length" :key="artistindex"
               >/</label
             >
           </span>
@@ -69,8 +72,8 @@
             - {{ item.album.name }}</a
           >
           <!-- track + disc number -->
-          <label v-if="showTrackNumber && item.track_number" style="color: grey"
-            > - disc {{ item.disc_number }} track {{ item.track_number }}</label
+          <label v-if="showTrackNumber && item.track_number" style="color: grey">
+            - disc {{ item.disc_number }} track {{ item.track_number }}</label
           >
         </div>
         <!-- album artist -->
@@ -80,9 +83,7 @@
         <!-- playlist owner -->
         <div v-if="'owner' in item && item.owner">{{ item.owner }}</div>
         <!-- radio description -->
-        <div
-          v-if="item.media_type == MediaType.RADIO && item.metadata.description"
-        >
+        <div v-if="item.media_type == MediaType.RADIO && item.metadata.description">
           {{ item.metadata.description }}
         </div>
       </template>
@@ -109,9 +110,7 @@
 
           <!-- provider icons -->
           <ProviderIcons
-            v-if="
-              item.provider_ids && showProviders && !$vuetify.display.mobile
-            "
+            v-if="item.provider_ids && showProviders && !$vuetify.display.mobile"
             :provider-ids="item.provider_ids"
             :height="20"
             class="listitem-actions"
@@ -120,9 +119,7 @@
           <!-- in library (heart) icon -->
           <div
             class="listitem-action"
-            v-if="
-              'in_library' in item && showLibrary && !$vuetify.display.mobile
-            "
+            v-if="'in_library' in item && showLibrary && !$vuetify.display.mobile"
           >
             <v-tooltip location="bottom">
               <template #activator="{ props }">
@@ -145,9 +142,7 @@
           <!-- track duration -->
           <div
             class="listitem-action"
-            v-if="
-              showDuration && 'duration' in item && !$vuetify.display.mobile
-            "
+            v-if="showDuration && 'duration' in item && !$vuetify.display.mobile"
           >
             <span>{{ formatDuration(item.duration) }}</span>
           </div>
@@ -175,6 +170,7 @@ import {
   mdiDotsVertical,
   mdiCheckboxMarkedOutline,
   mdiAlphaEBox,
+  mdiFolder,
 } from "@mdi/js";
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
@@ -193,7 +189,6 @@ import type {
 import { api, MediaQuality, MediaType } from "../plugins/api";
 import { formatDuration, parseBool } from "../utils";
 import { useTheme } from "vuetify";
-
 
 // properties
 export interface Props {

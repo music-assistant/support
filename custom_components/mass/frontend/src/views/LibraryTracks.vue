@@ -1,24 +1,29 @@
 <template>
   <ItemsListing
     itemtype="tracks"
-    :items="api.library.tracks.length > 0 ? api.library.tracks : []"
-    :show-library="false"
-    :show-track-number="false"
+    :items="items"
     :show-providers="true"
-    :show-search-by-default="!$vuetify.display.mobile"
+    :show-track-number="false"
+    :load-data="loadItems"
+    :sort-keys="[
+      'sort_name',
+      'timestamp DESC',
+      'sort_artist',
+      'sort_album',
+      'duration',
+    ]"
   />
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from "vue";
-import { useDisplay } from "vuetify";
+import { onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
-import { api, MediaType } from "../plugins/api";
+import { api, MediaType, type Track } from "../plugins/api";
 import { store } from "../plugins/store";
 
 const { t } = useI18n();
-const display = useDisplay();
+const items = ref<Track[]>([]);
 
 store.topBarTitle = t("tracks");
 store.topBarContextMenuItems = [
@@ -33,7 +38,14 @@ onBeforeUnmount(() => {
   store.topBarContextMenuItems = [];
 });
 
-onMounted(() => {
-  api.fetchLibraryTracks();
-});
+const loadItems = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  const library = inLibraryOnly || undefined;
+  return await api.getTracks(offset, limit, sort, library, search);
+};
 </script>

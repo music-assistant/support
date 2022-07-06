@@ -1,6 +1,7 @@
 <template>
   <section>
     <InfoHeader :item="playlist" />
+    
     <v-tabs v-model="activeTab" show-arrows grow hide-slider>
       <v-tab
         :class="activeTab == 'tracks' ? 'active-tab' : 'inactive-tab'"
@@ -10,24 +11,28 @@
       >
     </v-tabs>
     <v-divider />
+    <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
     <ItemsListing
-      :items="playlistTracks"
-      :loading="loading"
       itemtype="playlisttracks"
       :parent-item="playlist"
+      :show-providers="false"
+      :show-library="false"
       :show-track-number="false"
-      v-if="activeTab == 'tracks'"
+      :load-data="loadPlaylistTracks"
+      :count="playlistTracks.length"
+      :sort-keys="['position', 'sort_name', 'sort_artist', 'sort_album']"
+      v-if="activeTab == 'tracks' && playlistTracks.length > 0"
     />
   </section>
 </template>
 
 <script setup lang="ts">
-import ItemsListing from "../components/ItemsListing.vue";
+import ItemsListing, { filteredItems } from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref } from "@vue/reactivity";
-import type { MassEvent, Playlist, ProviderType, Track } from "../plugins/api";
-import { api, MassEventType } from "../plugins/api";
-import { onBeforeUnmount, watchEffect } from "vue";
+import type { Playlist, ProviderType, Track } from "../plugins/api";
+import { api } from "../plugins/api";
+import { watchEffect } from "vue";
 import { parseBool } from "../utils";
 
 export interface Props {
@@ -62,20 +67,13 @@ watchEffect(async () => {
   loading.value = false;
 });
 
-// listen for item updates to refresh interface when that happens
-const unsub = api.subscribe(
-  MassEventType.MEDIA_ITEM_UPDATED,
-  async (evt: MassEvent) => {
-    const updItem = evt.data as Playlist;
-    if (updItem.item_id == props.item_id) {
-      // got update for current item
-      // fetch playlist tracks as they might have changed
-      playlistTracks.value = await api.getPlaylistTracks(
-        props.provider as ProviderType,
-        props.item_id
-      );
-    }
-  }
-);
-onBeforeUnmount(unsub);
+const loadPlaylistTracks = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  return filteredItems(playlistTracks.value, offset, limit, sort, search, inLibraryOnly);
+};
 </script>

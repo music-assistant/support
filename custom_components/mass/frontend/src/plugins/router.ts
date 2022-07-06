@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, type Router } from "vue-router";
 import HomeView from "../views/HomeView.vue";
+import BrowseView from "../views/BrowseView.vue";
 import LibraryArtists from "../views/LibraryArtists.vue";
 import LibraryTracks from "../views/LibraryTracks.vue";
 import LibraryAlbums from "@/views/LibraryAlbums.vue";
@@ -21,6 +22,7 @@ declare module "vue-router" {
 
 const routes = [
   { name: "home", path: "/", component: HomeView, props: true },
+  { name: "browse", path: "/browse", component: BrowseView, props: true },
   {
     name: "artists",
     path: "/artists",

@@ -56,13 +56,13 @@
 import InfoHeader from "../components/InfoHeader.vue";
 import { useTheme } from "vuetify";
 import { ref } from "@vue/reactivity";
-import type { MassEvent, ProviderType, Radio, Track } from "../plugins/api";
-import { api, MassEventType } from "../plugins/api";
+import type { ProviderType, Radio } from "../plugins/api";
+import { api } from "../plugins/api";
 import {
   getProviderIcon,
   getQualityIcon,
 } from "../components/ProviderIcons.vue";
-import { onBeforeUnmount, watchEffect } from "vue";
+import { watchEffect } from "vue";
 import { parseBool } from "../utils";
 
 export interface Props {
@@ -91,21 +91,6 @@ watchEffect(async () => {
   radio.value = item;
   loading.value = false;
 });
-
-// listen for item updates to refresh interface when that happens
-const unsub = api.subscribe(MassEventType.MEDIA_ITEM_UPDATED, (evt: MassEvent) => {
-  const newItem = evt.data as Track;
-  if (
-    (props.provider == "database" && newItem.item_id == props.item_id) ||
-    newItem.provider_ids.filter(
-      (x) => x.prov_type == props.provider && x.item_id == props.item_id
-    ).length > 0
-  ) {
-    // got update for current item
-    radio.value = newItem;
-  }
-});
-onBeforeUnmount(unsub);
 </script>
 
 <style>

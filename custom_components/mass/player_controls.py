@@ -779,7 +779,7 @@ class HassGroupPlayer(HassPlayer):
         return result
 
     @property
-    def group_leader(self) -> str:
+    def group_leader(self) -> str | None:
         """Return the group leader for this player group."""
         for child_player in self.get_child_players(True):
             # simply return the first (non passive) powered child player
@@ -793,7 +793,7 @@ class HassGroupPlayer(HassPlayer):
                 continue
             return child_player.player_id
         # fallback to the first player
-        return self.group_members[0]
+        return self.group_members[0] if self.group_members else None
 
     @property
     def is_group_leader(self) -> bool:

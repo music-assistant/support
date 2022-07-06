@@ -1,23 +1,21 @@
 <template>
   <ItemsListing
     itemtype="artists"
-    :items="api.library.artists.length > 0 ? api.library.artists : []"
-    :show-library="false"
+    :items="items"
     :show-providers="true"
-    :show-search-by-default="!$vuetify.display.mobile"
+    :load-data="loadItems"
   />
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from "vue";
-import { useDisplay } from "vuetify";
+import { onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
-import { api, MediaType } from "../plugins/api";
+import { api, MediaType, type Artist } from "../plugins/api";
 import { store } from "../plugins/store";
 
 const { t } = useI18n();
-const display = useDisplay();
+const items = ref<Artist[]>([]);
 
 store.topBarTitle = t("artists");
 store.topBarContextMenuItems = [
@@ -32,7 +30,14 @@ onBeforeUnmount(() => {
   store.topBarContextMenuItems = [];
 });
 
-onMounted(() => {
-  api.fetchLibraryArtists();
-});
+const loadItems = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  const library = inLibraryOnly || undefined;
+  return await api.getArtists(offset, limit, sort, library, search);
+};
 </script>

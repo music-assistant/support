@@ -1,31 +1,31 @@
 <template>
   <ItemsListing
     itemtype="radios"
-    :items="api.library.radios.length > 0 ? api.library.radios : []"
-    :show-library="false"
-    :show-providers="true"
+    :items="items"
     :show-duration="false"
-    :show-search-by-default="!$vuetify.display.mobile"
+    :show-providers="true"
+    :show-library="false"
+    :load-data="loadItems"
+    :sort-keys="['sort_name', 'timestamp DESC']"
   />
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from "vue";
-import { useDisplay } from "vuetify";
+import { onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
-import { api, MediaType } from "../plugins/api";
+import { api, MediaType, type Radio } from "../plugins/api";
 import { store } from "../plugins/store";
 
 const { t } = useI18n();
-const display = useDisplay();
+const items = ref<Radio[]>([]);
 
 store.topBarTitle = t("radios");
 store.topBarContextMenuItems = [
   {
     title: t("sync"),
     link: () => {
-      api.startSync(MediaType.RADIO);
+      api.startSync(MediaType.ALBUM);
     },
   },
 ];
@@ -33,7 +33,14 @@ onBeforeUnmount(() => {
   store.topBarContextMenuItems = [];
 });
 
-onMounted(() => {
-  api.fetchLibraryRadios();
-});
+const loadItems = async function (
+  offset: number,
+  limit: number,
+  sort: string,
+  search?: string,
+  inLibraryOnly = true
+) {
+  const library = inLibraryOnly || undefined;
+  return await api.getRadios(offset, limit, sort, library, search);
+};
 </script>

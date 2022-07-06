@@ -12,6 +12,7 @@
   "playlist": "Afspeellijst",
   "playlist_tracks": "Nummers in afspeellijst",
   "radios": "Radio",
+  "browse": "Bladeren",
   "search": "Zoeken",
   "settings": "Instellingen",
   "queue": "Wachtrij",
@@ -79,6 +80,17 @@
     "strict": "Strikt: Alleen indien liedjes van verschillend album en zelfde sample rate",
     "smart": "Slim/automatisch: Crossfade indien mogelijk (zonder samplerate verlagingen)",
     "always": "Crossfade geforceerd inschakelen (past gefixeerde sample rate toe)"
+  },
+  "sort": {
+    "sort_name": "Alfabetisch",
+    "sort_name DESC": "Alfabetisch (omgekeerd)",
+    "sort_artist": "Artiest",
+    "sort_album": "Album",
+    "year": "Verschijningsdatum/jaar",
+    "position": "Positie",
+    "track_number": "Tracknummer",
+    "timestamp DESC": "Onlangs toegevoegd",
+    "duration": "Duur"
   },
   "on": "Aan",
   "off": "Uit",

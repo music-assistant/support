@@ -417,7 +417,7 @@ const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
 const iconLevel = new URL("../assets/level.png", import.meta.url).href;
 
 const router = useRouter();
-const display = useDisplay();
+const { mobile } = useDisplay();
 const theme = useTheme();
 
 // local refs
@@ -461,7 +461,7 @@ const artistClick = function (item: Artist | ItemMapping) {
   });
 };
 const getTrackArtists = function (item: Track) {
-  if (display.mobile.value) return item.artists.slice(0, 2);
+  if (mobile.value) return item.artists.slice(0, 2);
   return item.artists;
 };
 

@@ -19,7 +19,7 @@
     />
     <v-toolbar-title
       :style="`color: ${store.topBarTextColor}`"
-      v-text="truncateString(store.topBarTitle || '', $vuetify.display.mobile ? 25 : 150)"
+      v-html="truncateString(store.topBarTitle || '', $vuetify.display.mobile ? 25 : 150)"
     ></v-toolbar-title>
     <template v-slot:append>
       <div style="align-items: right; display: flex">

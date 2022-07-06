@@ -3,8 +3,8 @@
     @click="emit('click', item)"
     :min-height="
       [MediaType.ARTIST, MediaType.RADIO].includes(item.media_type)
-        ? size * 1.9
-        : size * 2.2
+        ? size * 1.4
+        : size * 1.8
     "
     :min-width="size"
     :max-width="size * 1.5"
@@ -16,7 +16,7 @@
       :item="item"
       :size="size"
       :min-height="size"
-      :max-height="size * 1.2"
+      :max-height="size"
       :max-width="size * 1.5"
       :min-width="size"
       width="100%"
@@ -60,11 +60,9 @@
       </v-tooltip>
     </div>
 
-    <v-card-title
-      :class="$vuetify.display.mobile ? 'body-2' : 'text-subtitle-1'"
-      style="padding: 8px; color: primary; margin-top: 8px"
-      v-text="truncateString(item.name, 35)"
-    />
+    <v-card-text style="padding: 8px; color: primary; margin-top: 8px"
+      ><b>{{ truncateString(item.name, 35) }}</b></v-card-text
+    >
     <v-card-subtitle
       v-if="'artist' in item && item.artist"
       style="
@@ -120,7 +118,6 @@ import type {
 import { MediaType, MediaQuality } from "../plugins/api";
 import { truncateString } from "../utils";
 
-
 // properties
 export interface Props {
   item: MediaItemType;
@@ -135,7 +132,6 @@ const props = withDefaults(defineProps<Props>(), {
 const router = useRouter();
 const actionInProgress = ref(false);
 const theme = useTheme();
-
 
 // computed properties
 const isHiRes = computed(() => {
