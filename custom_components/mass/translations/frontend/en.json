@@ -75,8 +75,8 @@
     "always": "Crossfade all tracks (resamples all audio to fixed rate)"
   },
   "sort": {
-    "sort_name": "Alfabetically",
-    "sort_name DESC": "Alfabetically (descending)",
+    "sort_name": "Alphabetically",
+    "sort_name DESC": "Alphabetically (descending)",
     "sort_artist": "Artist",
     "sort_album": "Album",
     "year": "Release year",
