@@ -92,7 +92,7 @@
   "jobs_running": "There are {0} background jobs running.",
   "actions": "Actions",
   "no_content": "No items found.",
-  "no_content_sync_running": "Items not (yet) available. Please wait for the Library synchronization to complete.",
+  "no_content_filter": "No items found for the current filter/search conditions.",
   "details": "Details",
   "explicit": "Explicit",
   "providers": {

@@ -99,7 +99,7 @@
   "jobs_running": "Er zijn {0} achtergrondtaken actief.",
   "actions": "Acties",
   "no_content": "Geen items gevonden.",
-  "no_content_sync_running": "Items (nog) niet beschikbaar. Wacht tot de synchonisatietaken zijn voltooid.",
+  "no_content_filter": "Geen items gevonden voor de huidige zoek/filter instellingen.",
   "details": "Details",
   "explicit": "Expliciet",
   "providers": {

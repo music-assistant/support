@@ -128,9 +128,16 @@
       <InfiniteLoading @infinite="loadNextPage" />
 
       <!-- show alert if no items found -->
-      <v-alert type="info" v-if="!loading && items.length == 0">{{
-        $t("no_content")
-      }}</v-alert>
+      <div v-if="!loading && items.length == 0">
+        <v-alert
+          type="info"
+          v-if="!loading && items.length == 0 && (search || inLibraryOnly)"
+          >{{ $t("no_content_filter") }}</v-alert
+        >
+        <v-alert type="info" v-if="!loading && items.length == 0">{{
+          $t("no_content")
+        }}</v-alert>
+      </div>
     </div>
   </section>
 </template>
@@ -240,6 +247,8 @@ const toggleViewMode = function () {
 
 const toggleLibraryFilter = function () {
   inLibraryOnly.value = !inLibraryOnly.value;
+  const inLibraryOnlyStr = inLibraryOnly.value ? "true" : "false";
+  localStorage.setItem(`libraryFilter.${props.itemtype}`, inLibraryOnlyStr);
   loadData(true);
 };
 
@@ -312,7 +321,7 @@ const loadNextPage = function ($state: any) {
   });
 };
 
-// watchers
+// get/set default settings at load
 onMounted(() => {
   // get stored/default viewMode for this itemtype
   const savedViewMode = localStorage.getItem(`viewMode.${props.itemtype}`);
@@ -325,7 +334,7 @@ onMounted(() => {
   } else {
     viewMode.value = "list";
   }
-
+  // get stored/default sortBy for this itemtype
   const savedSortBy = localStorage.getItem(`sortBy.${props.itemtype}`);
   if (savedSortBy) {
     sortBy.value = savedSortBy;
@@ -333,17 +342,20 @@ onMounted(() => {
     sortBy.value = props.sortKeys[0];
   }
 
-  if (
-    ["artists", "albums", "tracks", "playlists", "radios"].includes(
-      props.itemtype
-    )
-  ) {
-    inLibraryOnly.value = true;
+  // get stored/default libraryOnlyFilter for this itemtype
+  if (props.showLibrary !== false) {
+    const savedInLibraryOnlyStr = localStorage.getItem(
+      `libraryFilter.${props.itemtype}`
+    );
+    if (savedInLibraryOnlyStr && savedInLibraryOnlyStr == "true") {
+      inLibraryOnly.value = true;
+    }
   }
 
   loadData(true);
 });
 
+// watchers
 watch(
   () => search.value,
   (newVal) => {
