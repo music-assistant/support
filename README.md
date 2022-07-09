@@ -7,7 +7,7 @@
 
 
 
-Turn your Home Assistant instance into a jukebox, hassle free streaming of your favorite media to Home Assistant media players.
+Turn your Home Assistant instance into a jukebox, hassle free streaming of your favourite media to Home Assistant media players.
 
 
 ## Introduction
@@ -19,7 +19,7 @@ Music Assistant consists of multiple building blocks:
 - Music Assistant integration in Home Assistant - the core part that runs the Music Assistant engine and keeps track of your Music sources.
 - Import Home Assistant media players into the Music Assistant engine to use as target for playback.
 - Optionally export Music Assistant media players back to Home Assistant (for rich metadata etc.)
-- Music Assistant 'Media Source' integration, allows browsing of your favorite media from Home Assistant's 'Media' panel.
+- Music Assistant 'Media Source' integration, allows browsing of your favourite media from Home Assistant's 'Media' panel.
 - Music Assistant panel: A rich user interface with more advanced features than the standard Media panel.
 
 ---
@@ -34,7 +34,7 @@ Music Assistant consists of multiple building blocks:
 - Keeps track of the entire music library in a compact database
 - All media players available in Home Assistant that support streaming from an url are supported, which is basically almost all targets.
 - Gapless, crossfade and volume normalization support for all players.
-- Truly hassle free streaming of your favorite music to players, no advanced knowledge required.
+- Truly hassle free streaming of your favourite music to players, no advanced knowledge required.
 - Rich User interface (Progressive Web App) hosted as panel directly in the Home Assistant user interface.
 
 ---
@@ -77,16 +77,23 @@ Music Assistant consists of multiple building blocks:
 
 - Music from your music sources will be automatically loaded into the Music Assistant library. If you have multiple sources, they will be merged as one library.
 - In this first implementation there's only support for "Library items", so your favourited artists, albums and playlists. In a later release we'll provide options to browse the recommendations of the various streaming providers.
+- Items on disk are not favourited by default. You can see all items if you deselect the "in library" filter (the heart) and decide for yourself what you want in your favourites.
 - Note that at the first startup it can take a while before data is available (first sync), the Music Assistant UI will notify you about tasks that are in progress.
 - Music sources are synced at integration (re)load and every 3 hours.
 - If a song is available on multiple providers (e.g. Spotify and a flac file on disk), the file/stream with the highest quality is always preferred when starting a stream.
 - Music Assistant uses a custom stream port (TCP 8095 by default) to stream audio to players. Players must be able to reach the Home Assistant instance and this port. If you're running one of the recommended Home Assistant installation methods, this is all handled for you, otherwise you will have to make sure you're running HA in HOST network mode. Note: If the default port 8095 is occupied, the next port will be tried, and so on.
 
-## Music provider specific notes
+## Spotfy and Tune-In Radio specific notes
 
 - When using Spotify as a music source please note that **only Spotify Premium accounts** are supported, free accounts will not work.
-- For Tune-In radio, make sure to fill in your username and not your email address. Be aware that only favorites in your Tune-In library will be visible in Music Assistant.
-- When using the file system provider, make sure that your audio files contain proper ID3 tag information and that the location can be reached from Home Assistant, for example /media/music. There is not (yet) direct support for remote file locations such as SMB, cloud drives etc however SMB shares can be mounted via the OS and then will be accessible. See here for the details https://github.com/music-assistant/hass-music-assistant/discussions/452
+- For Tune-In radio, make sure to fill in your username and not your email address. Be aware that only favourites in your Tune-In library will be visible in Music Assistant.
+
+## File System specific notes
+
+- When using the file system provider, make sure that your audio files can be reached from Home Assistant, for example /media/music. 
+- There is not (yet) direct support for remote file locations such as SMB, cloud drives etc however SMB shares can be mounted via the OS and then will be accessible. See here for the details https://github.com/music-assistant/hass-music-assistant/discussions/452
+- It is very important that all of your audio files contain proper ID3 tag information. The more comprehensive the tagging the better the results will be when using MA. For this reason it is strongly recommended that all files are tagged with MusicBrainz Picard. It is also important that the audio files are stored in a folder structure that is typical of other audio library applications. To minimise the chance of problems with MA you should follow the Kodi guidelines here https://kodi.wiki/view/Music_tagging Just about all the tips, tricks and suggestions on that page are applicable to MA and if you follow it all to the letter you will have a much better experience.
+- If you have local artwork then it is important that album names match exactly the tagged album name except characters that are not allowed in folder names are not parsed. Therefore, "The Big Chill: Soundtrack" will match "The Big Chill Soundtrack" but "Vika and Linda" will not match "Vika & Linda"
 
 ## Supported Media players
 
