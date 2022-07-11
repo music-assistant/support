@@ -28,7 +28,7 @@
     "@mdi/js": "^6.9.96",
     "@rushstack/eslint-patch": "^1.1.4",
     "@types/jsdom": "^16.2.14",
-    "@types/node": "^18.0.1",
+    "@types/node": "^18.0.3",
     "@types/webfontloader": "^1.0.0",
     "@vitejs/plugin-vue": "^2.3.3",
     "@vue/eslint-config-prettier": "^7.0.0",
