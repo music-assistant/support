@@ -18,6 +18,9 @@
           "qobuz_enabled": "Włącz Qobuz jako dostawcę muzyki",
           "qobuz_username": "Użytkownik Qobuz",
           "qobuz_password": "Hasło Qobuz",
+          "ytmusic_enabled": "Włącz Youtube Music jako dostawcę muzyki",
+          "ytmusic_username": "Użytkownik Youtube Music",
+          "ytmusic_password": "Ciąg autoryzacji z cookie Youtube Music",
           "tunein_enabled": "Włącz Tune-In jako dostawcę radia",
           "tunein_username": "Użytkownik Tune-In Radio",
           "filesystem_enabled": "Włącz obsługę muzyki z systemu plików",
@@ -25,6 +28,7 @@
         },
         "data_description": {
           "filesystem_directory": "Podaj pełną ścieżkę do katalog na dysku z muzyką (np. /media). Pamiętaj że Home Assistant musi mieć dostęp do tego katalogu."
+          "yt_no_cookie": "Youtube Music wymaga podania ciągu autoryzacji z cookie zamiast hasła, więcej na: https://github.com/music-assistant/hass-music-assistant/discussions/606"
         }
       }
     },
@@ -51,6 +55,9 @@
           "qobuz_enabled": "Włącz Qobuz jako dostawcę muzyki",
           "qobuz_username": "Użytkownik Qobuz",
           "qobuz_password": "Hasło Qobuz",
+          "ytmusic_enabled": "Włącz Youtube Music jako dostawcę muzyki",
+          "ytmusic_username": "Użytkownik Youtube Music",
+          "ytmusic_password": "Ciąg autoryzacji z cookie Youtube Music",
           "tunein_enabled": "Włącz Tune-In jako dostawcę radia",
           "tunein_username": "Użytkownik Tune-In Radio",
           "filesystem_enabled": "Włącz obsługę muzyki z systemu plików",
@@ -70,7 +77,8 @@
       }
     },
     "error": {
-      "directory_not_exists": "Katalog nie istnieje albo nie ma do niego dostępu"
+      "directory_not_exists": "Katalog nie istnieje albo nie ma do niego dostępu."
+      "yt_no_cookie": "Youtube Music wymaga podania ciągu autoryzacji z cookie zamiast hasła, więcej na: https://github.com/music-assistant/hass-music-assistant/discussions/606"
     }
   }
 }
