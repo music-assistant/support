@@ -42,6 +42,7 @@ async def async_register_panel(hass: HomeAssistant, title: str) -> Callable:
     hass.http.register_static_path(LIB_URL_BASE, index_path)
     hass.http.register_redirect(LIB_URL_BASE[:-1], LIB_URL_BASE)
     hass.http.register_view(MassImageView())
+    hass.http.register_view(MassPlaylistView())
 
     await panel_custom.async_register_panel(
         hass,
@@ -95,3 +96,40 @@ class MassImageView(HomeAssistantView):
 
         headers: LooseHeaders = {CACHE_CONTROL: "public, max-age=604800"}
         return web.Response(body=data, content_type="image/png", headers=headers)
+
+
+class MassPlaylistView(HomeAssistantView):
+    """Music Assistant Playlist proxy."""
+
+    name = "api:mass:playlist"
+    url = "/api/mass/{player_id}.m3u"
+    requires_auth = False
+
+    @staticmethod
+    async def get(request: web.Request, player_id: str) -> web.Response:
+        """Start a get request."""
+
+        hass: HomeAssistant = request.app["hass"]
+        mass: MusicAssistant = hass.data[DOMAIN]
+
+        if not player_id:
+            return web.Response(status=HTTPStatus.NOT_FOUND)
+
+        player = mass.players.get_player(player_id)
+        if not player:
+            return web.Response(status=HTTPStatus.NOT_FOUND)
+
+        if not player.active_queue.stream or player.active_queue.stream.done.is_set():
+            await player.active_queue.play_index(
+                player.active_queue.current_index or 0, passive=True
+            )
+
+        data = f"{player.active_queue.stream.url}\n"
+
+        if data is None:
+            return web.Response(status=HTTPStatus.SERVICE_UNAVAILABLE)
+
+        headers: LooseHeaders = {CACHE_CONTROL: "Cache-Control, no-cache"}
+        return web.Response(
+            body=data, content_type="application/x-mpegurl", headers=headers
+        )
