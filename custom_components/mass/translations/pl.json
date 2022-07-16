@@ -77,7 +77,7 @@
       }
     },
     "error": {
-      "directory_not_exists": "Katalog nie istnieje albo nie ma do niego dostępu."
+      "directory_not_exists": "Katalog nie istnieje albo nie ma do niego dostępu.",
       "yt_no_cookie": "Youtube Music wymaga podania ciągu autoryzacji z cookie zamiast hasła, więcej na: https://github.com/music-assistant/hass-music-assistant/discussions/606"
     }
   }
