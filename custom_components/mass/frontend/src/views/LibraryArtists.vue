@@ -8,6 +8,7 @@
 </template>
 
 <script setup lang="ts">
+import { mdiFileSync } from "@mdi/js";
 import { onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
@@ -16,19 +17,6 @@ import { store } from "../plugins/store";
 
 const { t } = useI18n();
 const items = ref<Artist[]>([]);
-
-store.topBarTitle = t("artists");
-store.topBarContextMenuItems = [
-  {
-    title: t("sync"),
-    link: () => {
-      api.startSync(MediaType.ARTIST);
-    },
-  },
-];
-onBeforeUnmount(() => {
-  store.topBarContextMenuItems = [];
-});
 
 const loadItems = async function (
   offset: number,
@@ -40,4 +28,20 @@ const loadItems = async function (
   const library = inLibraryOnly || undefined;
   return await api.getArtists(offset, limit, sort, library, search);
 };
+
+store.topBarTitle = t("artists");
+store.topBarContextMenuItems = [
+  {
+    label: "sync",
+    labelArgs:[],
+    action: () => {
+      api.startSync(MediaType.ARTIST);
+    },
+    icon: mdiFileSync,
+  },
+];
+onBeforeUnmount(() => {
+  store.topBarContextMenuItems = [];
+});
+
 </script>

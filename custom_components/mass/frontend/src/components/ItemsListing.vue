@@ -1,29 +1,46 @@
 <template>
   <section>
     <v-toolbar dense flat color="transparent" height="35">
-      <span v-if="!store.contextMenuItems.length && totalItems">{{
+      <span v-if="!selectedItems.length && totalItems">{{
         $t("items_total", [totalItems])
       }}</span>
-      <a
-        v-else-if="store.contextMenuItems.length"
-        @click="store.showContextMenu = true"
-        >{{ $t("items_selected", [store.contextMenuItems.length]) }}</a
-      >
+      <a v-else-if="selectedItems.length" @click="showContextMenu = true">{{
+        $t("items_selected", [selectedItems.length])
+      }}</a>
       <v-spacer></v-spacer>
 
-      <v-btn icon @click="toggleLibraryFilter" v-if="showLibrary !== false">
-        <v-icon :icon="inLibraryOnly ? mdiHeart : mdiHeartOutline"></v-icon>
-      </v-btn>
+      <v-tooltip location="bottom">
+        <template #activator="{ props }">
+          <v-btn
+            v-bind="props"
+            icon
+            @click="toggleLibraryFilter"
+            v-if="showLibrary !== false"
+          >
+            <v-icon :icon="inLibraryOnly ? mdiHeart : mdiHeartOutline"></v-icon>
+          </v-btn>
+        </template>
+        <span>{{ $t("tooltip.filter_library") }}</span>
+      </v-tooltip>
+
       <v-menu
         location="bottom end"
         :close-on-content-click="true"
         v-model="showSortMenu"
         v-if="sortKeys.length > 1"
       >
-        <template v-slot:activator="{ props }">
-          <v-btn icon v-bind="props">
-            <v-icon :icon="mdiSort"></v-icon>
-          </v-btn>
+        <template v-slot:activator="{ props: menu }">
+          <v-tooltip location="bottom">
+            <template v-slot:activator="{ props: tooltip }">
+              <v-btn icon v-bind="props">
+                <v-icon
+                  v-bind="mergeProps(menu, tooltip)"
+                  :icon="mdiSort"
+                ></v-icon>
+              </v-btn>
+            </template>
+            <span>{{ $t("tooltip.sort_options") }}</span>
+          </v-tooltip>
         </template>
         <v-card>
           <v-list>
@@ -42,15 +59,33 @@
         </v-card>
       </v-menu>
 
-      <v-btn icon @click="toggleSearch()">
-        <v-icon :icon="mdiMagnify"></v-icon>
-      </v-btn>
+      <v-tooltip location="bottom">
+        <template #activator="{ props }">
+          <v-btn v-bind="props" icon @click="toggleSearch()">
+            <v-icon :icon="mdiMagnify"></v-icon>
+          </v-btn>
+        </template>
+        <span>{{ $t("tooltip.search") }}</span>
+      </v-tooltip>
 
-      <v-btn icon @click="toggleViewMode()">
-        <v-icon v-if="viewMode == 'panel'" :icon="mdiViewList"></v-icon>
-        <v-icon v-if="viewMode == 'list'" :icon="mdiGrid"></v-icon>
-      </v-btn>
+      <v-tooltip location="bottom">
+        <template #activator="{ props }">
+          <v-btn
+            v-bind="props"
+            @click="toggleViewMode()"
+            :icon="viewMode == 'panel' ? mdiViewList : mdiGrid"
+          ></v-btn>
+        </template>
+        <span>{{ $t("tooltip.toggle_view_mode") }}</span>
+      </v-tooltip>
     </v-toolbar>
+    <MediaItemContextMenu
+      :items="selectedItems"
+      :parent-item="parentItem"
+      @clear="onClearSelection"
+      @delete="onDelete"
+      v-model="showContextMenu"
+    />
     <v-text-field
       v-model="search"
       id="searchInput"
@@ -72,10 +107,11 @@
 
     <div
       style="
-        padding-left: 15px;
-        padding-right: 15px;
-        padding-top: 20px;
-        padding-bottom: 20px;
+        margin-left: 15px;
+        margin-right: 15px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        padding: 0;
       "
     >
       <!-- loading animation -->
@@ -105,7 +141,7 @@
         <RecycleScroller
           v-slot="{ item }"
           :items="items"
-          :item-size="66"
+          :item-size="60"
           key-field="item_id"
           page-mode
         >
@@ -155,21 +191,30 @@ import {
 } from "@mdi/js";
 
 import {
-  watchEffect,
   ref,
   computed,
   onBeforeUnmount,
   nextTick,
   onMounted,
   watch,
+  mergeProps,
+  watchEffect,
 } from "vue";
 import { useDisplay } from "vuetify";
-import type { Album, MediaItemType, Track } from "../plugins/api";
+import {
+  MassEventType,
+  type Album,
+  type MassEvent,
+  type MediaItemType,
+  type PagedItems,
+  type Track,
+} from "../plugins/api";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import { store } from "../plugins/store";
 import ListviewItem from "./ListviewItem.vue";
 import PanelviewItem from "./PanelviewItem.vue";
+import MediaItemContextMenu from "./MediaItemContextMenu.vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { api } from "../plugins/api";
@@ -185,25 +230,25 @@ export interface Props {
   showMenu?: boolean;
   showLibrary?: boolean;
   showDuration?: boolean;
-  count?: number;
+  parentItem?: MediaItemType;
   loadData: (
     offset: number,
     limit: number,
     sort: string,
     search: string,
     library?: boolean
-  ) => Promise<MediaItemType[]>;
+  ) => Promise<PagedItems>;
 }
 const props = withDefaults(defineProps<Props>(), {
   sortKeys: () => ["sort_name", "timestamp DESC"],
   showTrackNumber: true,
-  showProviders: Object.keys(api.stats.providers).length > 1,
+  showProviders: Object.keys(api.providers).length > 1,
   showMenu: true,
   showLibrary: true,
   showDuration: true,
 });
 
-const defaultLimit = 50;
+const defaultLimit = 100;
 
 // global refs
 const router = useRouter();
@@ -222,6 +267,8 @@ const items = ref<MediaItemType[]>([]);
 const totalItems = ref<number>();
 const loading = ref(false);
 const inLibraryOnly = ref(false);
+const selectedItems = ref<MediaItemType[]>([]);
+const showContextMenu = ref(false);
 
 // computed properties
 const thumbSize = computed(() => {
@@ -253,25 +300,32 @@ const toggleLibraryFilter = function () {
 };
 
 const isSelected = function (item: MediaItemType) {
-  return store.contextMenuItems.includes(item);
+  return selectedItems.value.includes(item);
 };
 
 const onSelect = function (item: MediaItemType, selected: boolean) {
   if (selected) {
-    if (!store.contextMenuItems.includes(item))
-      store.contextMenuItems.push(item);
+    if (!selectedItems.value.includes(item)) selectedItems.value.push(item);
   } else {
-    for (let i = 0; i < store.contextMenuItems.length; i++) {
-      if (store.contextMenuItems[i] === item) {
-        store.contextMenuItems.splice(i, 1);
+    for (let i = 0; i < selectedItems.value.length; i++) {
+      if (selectedItems.value[i] === item) {
+        selectedItems.value.splice(i, 1);
       }
     }
   }
 };
 
+const onClearSelection = function () {
+  selectedItems.value = [];
+};
+
+const onDelete = function (item: MediaItemType) {
+  loadData(true);
+};
+
 const onMenu = function (item: MediaItemType) {
-  store.contextMenuItems = [item];
-  store.showContextMenu = true;
+  selectedItems.value = [item];
+  showContextMenu.value = true;
 };
 
 const onClick = function (mediaItem: MediaItemType) {
@@ -293,7 +347,7 @@ const onClick = function (mediaItem: MediaItemType) {
     });
   } else if (store.selectedPlayer) {
     // assume track (or radio) item
-    api.playMedia(store.selectedPlayer?.active_queue, mediaItem);
+    api.playMedia(mediaItem);
   }
 };
 
@@ -319,6 +373,37 @@ const loadNextPage = function ($state: any) {
   loadData().then(() => {
     $state.loaded();
   });
+};
+
+// watchers
+watch(
+  () => search.value,
+  (newVal) => {
+    loadData(true);
+  }
+);
+
+const loadData = async function (clear = false, limit = defaultLimit) {
+  if (clear) {
+    totalItems.value = undefined;
+    offset.value = 0;
+  }
+  loading.value = true;
+
+  const nextItems = await props.loadData(
+    offset.value,
+    limit,
+    sortBy.value,
+    search.value,
+    inLibraryOnly.value
+  );
+  if (offset.value) {
+    items.value.push(...nextItems.items);
+  } else {
+    items.value = nextItems.items;
+  }
+  totalItems.value = nextItems.total;
+  loading.value = false;
 };
 
 // get/set default settings at load
@@ -351,70 +436,56 @@ onMounted(() => {
       inLibraryOnly.value = true;
     }
   }
-
   loadData(true);
 });
 
-// watchers
-watch(
-  () => search.value,
-  (newVal) => {
-    loadData(true);
-  }
-);
-
-const loadData = async function (clear = false) {
-  if (clear) {
-    totalItems.value = props.count;
-    offset.value = 0;
-  }
-  loading.value = true;
-
-  if (!totalItems.value) {
-    if (props.itemtype == "artists" && inLibraryOnly.value)
-      totalItems.value = api.stats.library_count.artists;
-    else if (props.itemtype == "artists")
-      totalItems.value = api.stats.db_count.artists;
-    else if (props.itemtype == "albums" && inLibraryOnly.value)
-      totalItems.value = api.stats.library_count.albums;
-    else if (props.itemtype == "albums")
-      totalItems.value = api.stats.db_count.albums;
-    else if (props.itemtype == "tracks" && inLibraryOnly.value)
-      totalItems.value = api.stats.library_count.tracks;
-    else if (props.itemtype == "tracks")
-      totalItems.value = api.stats.db_count.tracks;
-    else if (props.itemtype == "playlists" && inLibraryOnly.value)
-      totalItems.value = api.stats.library_count.playlists;
-    else if (props.itemtype == "playlists")
-      totalItems.value = api.stats.db_count.playlists;
-    else if (props.itemtype == "radios" && inLibraryOnly.value)
-      totalItems.value = api.stats.library_count.radios;
-    else if (props.itemtype == "radios")
-      totalItems.value = api.stats.db_count.radios;
-  }
-  const nextItems = await props.loadData(
-    offset.value,
-    defaultLimit,
-    sortBy.value,
-    search.value,
-    inLibraryOnly.value
+onMounted(() => {
+  //reload if/when parent item updates
+  const unsub = api.subscribe_multi(
+    [
+      MassEventType.MEDIA_ITEM_ADDED,
+      MassEventType.MEDIA_ITEM_UPDATED,
+      MassEventType.MEDIA_ITEM_DELETED,
+    ],
+    (evt: MassEvent) => {
+      if (props.parentItem) {
+        // update details listing if parent updates
+        const updatedItem = evt.data as MediaItemType;
+        if (props.parentItem?.uri == updatedItem.uri) {
+          loadData(true);
+        } else {
+          for (const provId of updatedItem.provider_ids) {
+            if (
+              provId.prov_type == props.parentItem?.provider &&
+              provId.item_id == props.parentItem?.item_id
+            ) {
+              loadData(true);
+              break;
+            }
+          }
+        }
+      } else {
+        // reload library listing if relevant item changes
+        const itemInList = items.value.filter((x) => x.uri == evt.object_id);
+        if (
+          itemInList ||
+          (evt.event == MassEventType.MEDIA_ITEM_ADDED &&
+            items.value.length <= defaultLimit)
+        ) {
+          // simply reload the listing
+          loadData(true);
+        }
+      }
+    }
   );
-  if (offset.value) {
-    items.value.push(...nextItems);
-  } else {
-    items.value = nextItems;
-  }
-  if (nextItems.length < defaultLimit) {
-    totalItems.value = items.value.length;
-  }
-  loading.value = false;
-};
+  onBeforeUnmount(unsub);
+});
 
 // lifecycle hooks
 const keyListener = function (e: KeyboardEvent) {
   if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
-    store.contextMenuItems = items.value;
+    selectedItems.value = items.value;
   } else if (!searchHasFocus.value && e.key == "Backspace") {
     search.value = search.value.slice(0, -1);
   } else if (!searchHasFocus.value && e.key.length == 1) {
@@ -520,7 +591,15 @@ export const filteredItems = function (
     result = result.filter((x) => x.in_library);
   }
 
-  return result.slice(offset, offset + limit);
+  const totalItems = result.length;
+  const pagedItems = result.slice(offset, offset + limit);
+  return {
+    items: pagedItems,
+    count: pagedItems.length,
+    limit: limit,
+    offset: offset,
+    total: totalItems,
+  };
 };
 </script>
 

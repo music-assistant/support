@@ -4,13 +4,14 @@
       ripple
       @click.stop="emit('click', item)"
       @click.right.prevent="emit('menu', item)"
-      style="padding-right: 0px"
+      style="height: 60px"
+      :disabled="!itemIsAvailable(item)"
+      lines="two"
     >
       <template v-slot:prepend
         ><div v-if="item.media_type == MediaType.FOLDER" class="listitem-thumb">
           <v-btn variant="plain" icon
-            ><v-icon :icon="mdiFolder" size="50" style="align: center;">
-            </v-icon
+            ><v-icon :icon="mdiFolder" size="60" style="align: center"> </v-icon
           ></v-btn>
         </div>
         <div
@@ -36,7 +37,6 @@
         <span v-else>
           {{ item.name }}
           <span v-if="'version' in item && item.version">({{ item.version }})</span>
-          <b v-if="!itemIsAvailable(item)"> UNAVAILABLE</b>
         </span>
         <!-- explicit icon -->
         <v-tooltip location="bottom">
@@ -49,39 +49,24 @@
               v-if="parseBool(item.metadata.explicit || false)"
             />
           </template>
-          <span>{{ $t("explicit") }}</span>
+          <span>{{ $t("tooltip.explicit") }}</span>
         </v-tooltip>
       </template>
 
       <!-- subtitle -->
       <template v-slot:subtitle>
-        <!-- track artists + album name -->
-        <div v-if="'artists' in item && item.artists">
-          <span v-for="(artist, artistindex) in item.artists" :key="artist.uri">
-            <a color="primary" @click.stop="artistClick(artist)">{{ artist.name }}</a>
-            <label v-if="artistindex + 1 < item.artists.length" :key="artistindex"
-              >/</label
-            >
-          </span>
-          <!-- album -->
-          <a
-            v-if="!!item.album && !showTrackNumber"
-            style="color: grey"
-            @click.stop.stop="albumClick(item.album)"
-          >
-            - {{ item.album.name }}</a
-          >
-          <!-- track + disc number -->
-          <label v-if="showTrackNumber && item.track_number" style="color: grey">
-            - disc {{ item.disc_number }} track {{ item.track_number }}</label
-          >
-        </div>
-        <!-- album artist -->
-        <div v-if="'artist' in item && item.artist">
-          <a @click.stop="artistClick(item.artist)">{{ item.artist.name }}</a>
-        </div>
+        <!-- track: artists(s) + album -->
+        <div v-if="item.media_type == MediaType.TRACK && item.album && !showTrackNumber">{{ getArtistsString(item.artists) }} • {{ item.album.name }}</div>
+        <!-- albumtrack: artists(s) + disc/track number -->
+        <div v-else-if="item.media_type == MediaType.TRACK && item.track_number && showTrackNumber">{{ getArtistsString(item.artists) }} • disc {{ item.disc_number }} track {{ item.track_number }}</div>
+        <!-- album: albumtype + artists + year -->
+        <div v-else-if="item.media_type == MediaType.ALBUM && item.artists && item.year">{{ $t('album_type.' + item.album_type) }} • {{ getArtistsString(item.artists) }} • {{ item.year }}</div>
+        <!-- album: albumtype + artists -->
+        <div v-else-if="item.media_type == MediaType.ALBUM && item.artists">{{ $t('album_type.' + item.album_type) }} • {{ getArtistsString(item.artists) }}</div>
+        <!-- track/album falback: artist present -->
+        <div v-else-if="'artist' in item && item.artist">{{ item.artist.name }}</div>
         <!-- playlist owner -->
-        <div v-if="'owner' in item && item.owner">{{ item.owner }}</div>
+        <div v-else-if="'owner' in item && item.owner">{{ item.owner }}</div>
         <!-- radio description -->
         <div v-if="item.media_type == MediaType.RADIO && item.metadata.description">
           {{ item.metadata.description }}
@@ -134,8 +119,7 @@
                 >
                 </v-btn>
               </template>
-              <span v-if="item.in_library">{{ $t("remove_library") }}</span>
-              <span v-if="!item.in_library">{{ $t("add_library") }}</span>
+              <span>{{ $t("tooltip.library") }}</span>
             </v-tooltip>
           </div>
 
@@ -146,17 +130,15 @@
           >
             <span>{{ formatDuration(item.duration) }}</span>
           </div>
-
-          <!-- menu button/icon -->
-          <v-btn
-            class="listitem-action"
-            v-if="showMenu"
-            @click.stop="emit('menu', item)"
-            :icon="mdiDotsVertical"
-            variant="plain"
-            style="margin-right: -10px; margin-left: -10px"
-          ></v-btn>
         </div>
+        <!-- menu button/icon -->
+        <v-btn
+          v-if="showMenu"
+          @click.stop="emit('menu', item)"
+          :icon="mdiDotsVertical"
+          variant="plain"
+          style="position:absolute;right:-15px"
+        ></v-btn>
       </template>
     </v-list-item>
     <v-divider></v-divider>
@@ -245,58 +227,18 @@ const emit = defineEmits<{
 
 // methods
 
-const albumClick = function (item: Album | ItemMapping) {
-  // album entry clicked
-  if (actionInProgress.value) return;
-  actionInProgress.value = true;
-  router.push({
-    name: "album",
-    params: {
-      item_id: item.item_id,
-      provider: item.provider,
-    },
-  });
-  setTimeout(() => {
-    actionInProgress.value = false;
-  }, 500);
+const getArtistsString = function (artists: Artist[]) {
+  return artists.map((x) => {
+    return x.name;
+  }).join(" / ");
 };
-const artistClick = function (item: Artist | ItemMapping) {
-  // album entry clicked
-  router.push({
-    name: "artist",
-    params: {
-      item_id: item.item_id,
-      provider: item.provider,
-    },
-  });
-};
+
 const itemIsAvailable = function (item: MediaItem) {
   if (!props.item.provider_ids) return true;
   for (const x of item.provider_ids) {
-    if (x.available && x.prov_id in api.stats.providers) return true;
+    if (x.available && x.prov_id in api.providers) return true;
   }
   return false;
 };
 </script>
 
-<style scoped>
-.listitem-actions {
-  display: flex;
-  justify-content: end;
-  width: auto;
-  height: 50px;
-  vertical-align: middle;
-  align-items: center;
-  padding: 0px;
-}
-.listitem-action {
-  padding-left: 5px;
-}
-.listitem-thumb {
-  padding-left: 0px;
-  margin-right: 10px;
-  margin-left: -15px;
-  width: 50px;
-  height: 50px;
-}
-</style>

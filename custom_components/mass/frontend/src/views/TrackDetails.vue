@@ -1,12 +1,12 @@
 <template>
   <section>
-    <InfoHeader :item="track" />
+    <InfoHeader :item="itemDetails" />
     <v-tabs v-model="activeTab" show-arrows grow hide-slider>
       <v-tab
         :class="activeTab == 'versions' ? 'active-tab' : 'inactive-tab'"
         value="versions"
       >
-        {{ $t("track_versions") }} ({{ trackVersions.length }})</v-tab
+        {{ $t("track_versions") }}</v-tab
       >
       <v-tab
         :class="activeTab == 'details' ? 'active-tab' : 'inactive-tab'"
@@ -17,16 +17,14 @@
     </v-tabs>
     <v-divider />
     <ItemsListing
-      :items="trackVersions"
       itemtype="trackversions"
-      :loading="loading"
-      :parent-item="track"
+      :parent-item="itemDetails"
       :show-providers="true"
       :show-library="false"
+      :show-track-number="false"
       :load-data="loadTrackVersions"
-      :count="trackVersions.length"
       :sort-keys="['sort_name', 'duration']"
-      v-if="activeTab == 'versions' && trackVersions.length > 0"
+      v-if="activeTab == 'versions'"
     />
     <div v-if="activeTab == 'details'">
       <v-table style="width: 100%">
@@ -41,7 +39,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(item, index) of track?.provider_ids" :key="item.item_id">
+          <tr v-for="(item, index) of itemDetails?.provider_ids" :key="item.item_id">
             <td class="details-column">
               <v-img
                 width="25px"
@@ -58,7 +56,7 @@
                 :src="getQualityIcon(item.quality)"
                 :style="
                   $vuetify.theme.current.dark
-                    ? 'object-fit: contain;' 
+                    ? 'object-fit: contain;'
                     : 'object-fit: contain;filter: invert(100%);'
                 "
               ></v-img>
@@ -92,42 +90,28 @@ import {
   getQualityIcon,
 } from "../components/ProviderIcons.vue";
 import { watchEffect } from "vue";
-import { parseBool } from "../utils";
 
 export interface Props {
   item_id: string;
   provider: string;
-  lazy?: boolean | string;
-  refresh?: boolean | string;
 }
-const props = withDefaults(defineProps<Props>(), {
-  lazy: true,
-  refresh: false,
-});
-const activeTab = ref("versions");
+const props = defineProps<Props>();
+const activeTab = ref("");
 
-const track = ref<Track>();
-const trackVersions = ref<Track[]>([]);
-const loading = ref(true);
+const itemDetails = ref<Track>();
 const previewUrls = reactive<Record<number, string>>({});
 
-watchEffect(async () => {
-  api
-    .getTrack(
-      props.provider as ProviderType,
-      props.item_id,
-      parseBool(props.lazy),
-      parseBool(props.refresh)
-    )
-    .then(async (item) => {
-      track.value = item;
-      // fetch additional info once main info retrieved
-      trackVersions.value = await api.getTrackVersions(
-        props.provider as ProviderType,
-        props.item_id
-      );
-      loading.value = false;
-    });
+const loadItemDetails = async function () {
+  itemDetails.value = await api.getTrack(
+    props.provider as ProviderType,
+    props.item_id
+  );
+  activeTab.value = "versions";
+};
+
+watchEffect(() => {
+  // load info
+  loadItemDetails();
 });
 
 const fetchPreviewUrl = async function (
@@ -147,7 +131,18 @@ const loadTrackVersions = async function (
   search?: string,
   inLibraryOnly = true
 ) {
-  return filteredItems(trackVersions.value, offset, limit, sort, search, inLibraryOnly);
+  const trackVersions = await api.getTrackVersions(
+    props.provider as ProviderType,
+    props.item_id
+  );
+  return filteredItems(
+    trackVersions,
+    offset,
+    limit,
+    sort,
+    search,
+    inLibraryOnly
+  );
 };
 </script>
 

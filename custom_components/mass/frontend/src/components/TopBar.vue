@@ -5,7 +5,7 @@
       :icon="mdiArrowLeft"
       :color="store.topBarTextColor"
       @click="backButton"
-      style="margin-left: -15px"
+      style="margin-left: -10px"
     />
     <v-app-bar-nav-icon
       v-if="
@@ -15,7 +15,7 @@
       :icon="mdiMenu"
       :color="store.topBarTextColor"
       @click="toggleHAMenu"
-      style="margin-left: -15px"
+      style="margin-left: -10px"
     />
     <v-toolbar-title
       :style="`color: ${store.topBarTextColor}`"
@@ -23,12 +23,7 @@
     ></v-toolbar-title>
     <template v-slot:append>
       <div style="align-items: right; display: flex">
-        <v-dialog
-          v-model="dialog"
-          overlay-opacity="0.8"
-          fullscreen
-          :class="$vuetify.display.mobile ? '' : 'padded-overlay'"
-        >
+        <v-menu v-model="dialog" fullscreen>
           <template v-slot:activator="{ props: menu }">
             <v-tooltip location="top end" origin="end center">
               <template v-slot:activator="{ props: tooltip }">
@@ -49,9 +44,7 @@
                 ><b>{{ $t("jobs") }}</b></v-toolbar-title
               >
 
-              <v-btn :icon="mdiClose" dark text @click="dialog = !dialog">{{
-                $t("close")
-              }}</v-btn>
+              <v-btn :icon="mdiClose" dark text @click="dialog = !dialog"></v-btn>
             </v-toolbar>
 
             <v-list>
@@ -63,15 +56,7 @@
               </v-list-item>
             </v-list>
           </v-card>
-        </v-dialog>
-
-        <v-btn
-          :icon="mdiDotsVertical"
-          v-if="store.contextMenuParentItem || store.customContextMenuCallback"
-          :color="store.topBarTextColor"
-          @click="onContextMenuBtn"
-          style="margin-right: -8px"
-        ></v-btn>
+        </v-menu>
 
         <v-menu location="bottom end">
           <template v-slot:activator="{ props }">
@@ -79,7 +64,7 @@
               :icon="mdiDotsVertical"
               v-if="store.topBarContextMenuItems.length > 0"
               :color="store.topBarTextColor"
-              style="margin-right: -8px"
+              style="margin-right: -18px"
               v-bind="props"
             ></v-btn>
           </template>
@@ -88,9 +73,10 @@
             <v-list-item
               v-for="(item, index) in store.topBarContextMenuItems"
               :key="index"
-              @click="item.link"
+              @click="item.action"
             >
-              <v-list-item-title>{{ item.title }}</v-list-item-title>
+              <v-list-item-avatar :icon="item.icon"></v-list-item-avatar>
+              <v-list-item-title>{{ $t(item.label, item.labelArgs) }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -150,15 +136,6 @@ const backButton = function () {
         window.scrollTo(0, prevRoute.meta.scrollPos || 0);
       }, 400);
     });
-  }
-};
-
-const onContextMenuBtn = function () {
-  if (store.customContextMenuCallback) {
-    store.customContextMenuCallback();
-  } else if (store.contextMenuParentItem) {
-    store.contextMenuItems = [store.contextMenuParentItem];
-    store.showContextMenu = true;
   }
 };
 

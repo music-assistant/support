@@ -42,7 +42,7 @@
   "clear_selection": "Usuń zaznaczenie",
   "players": "Odtwarzacze",
   "play": "Graj",
-  "play_on": "Odtwara na:",
+  "play_on": "Odtwara na: {0}",
   "play_now": "Odtwarzaj teraz",
   "play_next": "Odtwarzaj później",
   "add_queue": "Dodaj do kolejki",

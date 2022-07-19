@@ -11,6 +11,7 @@
 </template>
 
 <script setup lang="ts">
+import { mdiFileSync } from "@mdi/js";
 import { onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ItemsListing from "../components/ItemsListing.vue";
@@ -23,10 +24,12 @@ const items = ref<Playlist[]>([]);
 store.topBarTitle = t("playlists");
 store.topBarContextMenuItems = [
   {
-    title: t("sync"),
-    link: () => {
+    label: "sync",
+    labelArgs: [],
+    action: () => {
       api.startSync(MediaType.ALBUM);
     },
+    icon: mdiFileSync
   },
 ];
 onBeforeUnmount(() => {

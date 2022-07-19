@@ -18,6 +18,7 @@
   "queue": "Queue",
   "tasks": "Tasks",
   "sync": "Run sync",
+  "sync_full": "Force fun full sync",
   "artist_toptracks": "Top tracks",
   "artist_albums": "Albums",
   "album_tracks": "Album tracks",
@@ -34,12 +35,14 @@
   "items_total": "{0} total item(s)",
   "items_selected": "{0} item(s) selected",
   "clear_selection": "Clear selection",
+  "delete_db": "Delete item from database",
   "players": "Players",
   "play": "Play",
-  "play_on": "Play on:",
+  "play_on": "Play on: {0}",
   "play_now": "Play Now",
   "play_next": "Play Next",
   "add_queue": "Add to Queue",
+  "start_radio": "Start Radio",
   "queue_clear": "Clear all items in queue",
   "show_info": "Show info",
   "queue_next_items": "Next items",
@@ -94,12 +97,29 @@
   "no_content": "No items found.",
   "no_content_filter": "No items found for the current filter/search conditions.",
   "details": "Details",
-  "explicit": "Explicit",
   "providers": {
     "spotify": "Spotify",
     "qobuz": "Qobuz",
     "file": "Filesystem",
     "tunein": "Tune-in",
     "ytmusic": "Youtube Music"
+  },
+  
+  "goto_artist": "Goto artist {0}",
+  "goto_album": "Goto album {0}",
+  "album_type": {
+    "unknown": "Unknown album type",
+    "album": "Album",
+    "single": "Single",
+    "compilation": "Compilation",
+    "ep": "EP"
+  },
+  "tooltip": {
+    "explicit": "Explicit",
+    "library": "Toggle in-library/favorite",
+    "filter_library": "Toggle in-library/favorite filter",
+    "sort_options": "Sort options",
+    "toggle_view_mode": "Toggle view mode list/thumbs",
+    "search": "Show/hide search input"
   }
 }

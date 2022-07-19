@@ -1,40 +1,38 @@
 <template>
   <section>
-    <InfoHeader :item="album" />
+    <InfoHeader :item="itemDetails" />
     <v-tabs v-model="activeTab" show-arrows grow hide-slider>
       <v-tab
         :class="activeTab == 'tracks' ? 'active-tab' : 'inactive-tab'"
         value="tracks"
       >
-        {{ $t("tracks") }} ({{ albumTracks.length }})</v-tab
+        {{ $t("tracks") }}</v-tab
       >
       <v-tab
         :class="activeTab == 'versions' ? 'active-tab' : 'inactive-tab'"
         value="versions"
       >
-        {{ $t("album_versions") }} ({{ albumVersions.length }})</v-tab
+        {{ $t("album_versions") }}</v-tab
       >
     </v-tabs>
     <v-divider />
     <ItemsListing
       itemtype="albumtracks"
-      :parent-item="album"
+      :parent-item="itemDetails"
       :show-providers="true"
       :show-library="false"
       :load-data="loadAlbumTracks"
-      :count="albumTracks.length"
       :sort-keys="['track_number', 'sort_name', 'duration']"
-      v-if="activeTab == 'tracks' && albumTracks.length > 0"
+      v-if="activeTab == 'tracks'"
     />
     <ItemsListing
       itemtype="albumversions"
-      :parent-item="album"
+      :parent-item="itemDetails"
       :show-providers="true"
       :show-library="false"
       :load-data="loadAlbumVersions"
-      :count="albumVersions.length"
       :sort-keys="['sort_name', 'year']"
-      v-if="activeTab == 'versions' && albumVersions.length > 0"
+      v-if="activeTab == 'versions'"
     />
   </section>
 </template>
@@ -43,71 +41,55 @@
 import ItemsListing from "../components/ItemsListing.vue";
 import { filteredItems } from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
-import type { Album, Track } from "../plugins/api";
+import { MassEventType, type Album, type MassEvent, type MediaItemType } from "../plugins/api";
 import { api, ProviderType } from "../plugins/api";
-import { watchEffect, ref, onBeforeUnmount } from "vue";
-import { useI18n } from "vue-i18n";
-import { store } from "../plugins/store";
+import { watchEffect, ref, onMounted, onBeforeUnmount } from "vue";
 
 export interface Props {
   item_id: string;
   provider: string;
-  lazy?: boolean | string;
-  refresh?: boolean | string;
 }
-const props = withDefaults(defineProps<Props>(), {
-  lazy: true,
-  refresh: false,
-});
-const activeTab = ref("tracks");
+const props = defineProps<Props>();
+const activeTab = ref("");
 
-const album = ref<Album>();
-const albumTracks = ref<Track[]>([]);
-const albumVersions = ref<Album[]>([]);
-const loading = ref(true);
-const { t } = useI18n();
+const itemDetails = ref<Album>();
 
-store.topBarContextMenuItems = [
-  {
-    title: t("refresh_item"),
-    link: () => {
-      albumTracks.value = [];
-      albumVersions.value = [];
-      loadItems(false, true);
-    },
-  },
-];
-onBeforeUnmount(() => {
-  store.topBarContextMenuItems = [];
-});
-
-
-const loadItems = async function (lazy: boolean, refresh = false) {
-  loading.value = true;
-  album.value = await api.getAlbum(
+const loadItemDetails = async function () {
+  itemDetails.value = await api.getAlbum(
     props.provider as ProviderType,
     props.item_id,
-    lazy,
-    refresh
   );
-  // fetch additional info once main info retrieved
-  albumTracks.value = await api.getAlbumTracks(
-    props.provider as ProviderType,
-    props.item_id
-  );
-  albumVersions.value = await api.getAlbumVersions(
-    props.provider as ProviderType,
-    props.item_id
-  );
-  loading.value = false;
-};
-
-watchEffect(async () => {
-  await loadItems(true);
-  if (album.value?.provider !== ProviderType.DATABASE) {
-    await loadItems(false);
-  }
   activeTab.value = "tracks";
+}
+
+watchEffect(() => {
+  // load info
+  loadItemDetails();
+});
+
+onMounted(() => {
+  //reload if/when item updates
+  const unsub = api.subscribe_multi(
+    [MassEventType.MEDIA_ITEM_ADDED, MassEventType.MEDIA_ITEM_UPDATED],
+    (evt: MassEvent) => {
+      // refresh info if we receive an update for this item
+      const updatedItem = evt.data as MediaItemType;
+      if (itemDetails.value?.uri == updatedItem.uri) {
+        loadItemDetails();
+      } else {
+        for (const provId of updatedItem.provider_ids) {
+          if (
+            provId.prov_type == itemDetails.value?.provider &&
+            provId.item_id == itemDetails.value?.item_id
+          ) {
+            loadItemDetails();
+            break;
+          }
+        }
+      }
+    }
+  );
+  onBeforeUnmount(unsub);
 });
 
 const loadAlbumTracks = async function (
@@ -117,8 +99,13 @@ const loadAlbumTracks = async function (
   search?: string,
   inLibraryOnly = true
 ) {
-  return filteredItems(albumTracks.value, offset, limit, sort, search, inLibraryOnly);
+  const albumTracks = await api.getAlbumTracks(
+    props.provider as ProviderType,
+    props.item_id
+  );
+  return filteredItems(albumTracks, offset, limit, sort, search, inLibraryOnly);
 };
+
 const loadAlbumVersions = async function (
   offset: number,
   limit: number,
@@ -126,6 +113,17 @@ const loadAlbumVersions = async function (
   search?: string,
   inLibraryOnly = true
 ) {
-  return filteredItems(albumVersions.value, offset, limit, sort, search, inLibraryOnly);
+  const albumVersions = await api.getAlbumVersions(
+    props.provider as ProviderType,
+    props.item_id
+  );
+  return filteredItems(
+    albumVersions,
+    offset,
+    limit,
+    sort,
+    search,
+    inLibraryOnly
+  );
 };
 </script>

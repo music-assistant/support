@@ -1,6 +1,6 @@
 <template>
   <section>
-    <InfoHeader :item="radio" />
+    <InfoHeader :item="itemDetails" />
     <v-tabs v-model="activeTab" show-arrows grow hide-slider>
       <v-tab
         :class="activeTab == 'details' ? 'active-tab' : 'inactive-tab'"
@@ -22,7 +22,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item of radio?.provider_ids" :key="item.item_id">
+          <tr v-for="item of itemDetails?.provider_ids" :key="item.item_id">
             <td class="details-column">
               <v-img
                 width="25px"
@@ -39,7 +39,7 @@
                 :src="getQualityIcon(item.quality)"
                 :style="
                   $vuetify.theme.current.dark
-                    ? 'object-fit: contain;' 
+                    ? 'object-fit: contain;'
                     : 'object-fit: contain;filter: invert(100%);'
                 "
               ></v-img>
@@ -54,42 +54,66 @@
 
 <script setup lang="ts">
 import InfoHeader from "../components/InfoHeader.vue";
-import { useTheme } from "vuetify";
 import { ref } from "@vue/reactivity";
-import type { ProviderType, Radio } from "../plugins/api";
+import {
+  MassEventType,
+  type ProviderType,
+  type Radio,
+  type MassEvent,
+  type MediaItemType,
+} from "../plugins/api";
 import { api } from "../plugins/api";
 import {
   getProviderIcon,
   getQualityIcon,
 } from "../components/ProviderIcons.vue";
-import { watchEffect } from "vue";
-import { parseBool } from "../utils";
+import { onBeforeUnmount, onMounted, watchEffect } from "vue";
 
 export interface Props {
   item_id: string;
   provider: string;
-  lazy?: boolean | string;
-  refresh?: boolean | string;
 }
-const props = withDefaults(defineProps<Props>(), {
-  lazy: true,
-  refresh: false,
-});
-const activeTab = ref("details");
+const props = defineProps<Props>();
+const activeTab = ref("");
 
-const radio = ref<Radio>();
-const loading = ref(true);
-const theme = useTheme();
+const itemDetails = ref<Radio>();
 
-watchEffect(async () => {
-  const item = await api.getRadio(
+const loadItemDetails = async function () {
+  itemDetails.value = await api.getRadio(
     props.provider as ProviderType,
-    props.item_id,
-    parseBool(props.lazy),
-    parseBool(props.refresh)
+    props.item_id
   );
-  radio.value = item;
-  loading.value = false;
+  activeTab.value = "details";
+};
+
+watchEffect(() => {
+  // load info
+  loadItemDetails();
+});
+
+onMounted(() => {
+  //reload if/when item updates
+  const unsub = api.subscribe_multi(
+    [MassEventType.MEDIA_ITEM_ADDED, MassEventType.MEDIA_ITEM_UPDATED],
+    (evt: MassEvent) => {
+      // refresh info if we receive an update for this item
+      const updatedItem = evt.data as MediaItemType;
+      if (itemDetails.value?.uri == updatedItem.uri) {
+        loadItemDetails();
+      } else {
+        for (const provId of updatedItem.provider_ids) {
+          if (
+            provId.prov_type == itemDetails.value?.provider &&
+            provId.item_id == itemDetails.value?.item_id
+          ) {
+            loadItemDetails();
+            break;
+          }
+        }
+      }
+    }
+  );
+  onBeforeUnmount(unsub);
 });
 </script>
 

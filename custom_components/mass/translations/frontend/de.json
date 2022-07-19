@@ -41,7 +41,7 @@
   "items_selected": "{0} Einträge ausgewählt",
   "players": "Mediaplayer",
   "play": "Wiedergeben",
-  "play_on": "Wiedergeben auf:",
+  "play_on": "Wiedergeben auf: {0}",
   "play_now": "Jetzt wiedergeben",
   "play_next": "Als nächstes wiedergeben",
   "add_queue": "Zur Warteschlange hinzufügen",

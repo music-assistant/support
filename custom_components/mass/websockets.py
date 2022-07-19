@@ -27,7 +27,9 @@ TYPE = "type"
 ID = "id"
 ITEM_ID = "item_id"
 PROVIDER = "provider"
+PROVIDER_ID = "provider_id"
 URI = "uri"
+NAME = "name"
 MEDIA = "media"
 POSITION = "position"
 PLAYER_ID = "player_id"
@@ -66,6 +68,7 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_playlist_tracks)
     websocket_api.async_register_command(hass, websocket_add_playlist_tracks)
     websocket_api.async_register_command(hass, websocket_remove_playlist_tracks)
+    websocket_api.async_register_command(hass, websocket_playlist_create)
     websocket_api.async_register_command(hass, websocket_radios)
     websocket_api.async_register_command(hass, websocket_radio)
     websocket_api.async_register_command(hass, websocket_players)
@@ -79,12 +82,13 @@ def async_register_websockets(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_thumb)
     websocket_api.async_register_command(hass, websocket_library_add)
     websocket_api.async_register_command(hass, websocket_library_remove)
+    websocket_api.async_register_command(hass, websocket_delete_db_item)
     websocket_api.async_register_command(hass, websocket_artist_tracks)
     websocket_api.async_register_command(hass, websocket_artist_albums)
     websocket_api.async_register_command(hass, websocket_search)
     websocket_api.async_register_command(hass, websocket_browse)
     websocket_api.async_register_command(hass, websocket_jobs)
-    websocket_api.async_register_command(hass, websocket_stats)
+    websocket_api.async_register_command(hass, websocket_providers)
     websocket_api.async_register_command(hass, websocket_subscribe_events)
 
 
@@ -130,19 +134,15 @@ async def websocket_artists(
     mass: MusicAssistant,
 ) -> None:
     """Return artists."""
-    result = [
-        item.to_dict()
-        for item in await mass.music.artists.db_items(
+    await connection.send_big_result(
+        msg[ID],
+        await mass.music.artists.db_items(
             msg.get(LIBRARY),
             msg.get(SEARCH),
             limit=msg[LIMIT],
             offset=msg[OFFSET],
             order_by=msg[SORT],
-        )
-    ]
-    await connection.send_big_result(
-        msg[ID],
-        result,
+        ),
     )
 
 
@@ -255,19 +255,15 @@ async def websocket_albums(
     mass: MusicAssistant,
 ) -> None:
     """Return albums."""
-    result = [
-        item.to_dict()
-        for item in await mass.music.albums.db_items(
+    await connection.send_big_result(
+        msg[ID],
+        await mass.music.albums.db_items(
             msg.get(LIBRARY),
             msg.get(SEARCH),
             limit=msg[LIMIT],
             offset=msg[OFFSET],
             order_by=msg[SORT],
-        )
-    ]
-    await connection.send_big_result(
-        msg[ID],
-        result,
+        ),
     )
 
 
@@ -382,19 +378,15 @@ async def websocket_tracks(
     mass: MusicAssistant,
 ) -> None:
     """Return tracks."""
-    result = [
-        item.to_dict()
-        for item in await mass.music.tracks.db_items(
+    await connection.send_big_result(
+        msg[ID],
+        await mass.music.tracks.db_items(
             msg.get(LIBRARY),
             msg.get(SEARCH),
             limit=msg[LIMIT],
             offset=msg[OFFSET],
             order_by=msg[SORT],
-        )
-    ]
-    await connection.send_big_result(
-        msg[ID],
-        result,
+        ),
     )
 
 
@@ -505,19 +497,15 @@ async def websocket_playlists(
     mass: MusicAssistant,
 ) -> None:
     """Return playlists."""
-    result = [
-        item.to_dict()
-        for item in await mass.music.playlists.db_items(
+    await connection.send_big_result(
+        msg[ID],
+        await mass.music.playlists.db_items(
             msg.get(LIBRARY),
             msg.get(SEARCH),
             limit=msg[LIMIT],
             offset=msg[OFFSET],
             order_by=msg[SORT],
-        )
-    ]
-    await connection.send_big_result(
-        msg[ID],
-        result,
+        ),
     )
 
 
@@ -586,7 +574,6 @@ async def websocket_playlist_tracks(
         vol.Required(TYPE): f"{DOMAIN}/playlist/tracks/add",
         vol.Required(ITEM_ID): str,
         vol.Required(URI): vol.Any(str, list),
-        vol.Optional(COMMAND, default=QueueOption.PLAY): vol.Coerce(QueueOption),
     }
 )
 @websocket_api.async_response
@@ -624,11 +611,35 @@ async def websocket_remove_playlist_tracks(
     msg: dict,
     mass: MusicAssistant,
 ) -> None:
-    """Add playlist tracks command."""
+    """Remove playlist track(s) command."""
     positions = msg[POSITION]
     if isinstance(msg[POSITION], int):
         positions = [msg[POSITION]]
     await mass.music.playlists.remove_playlist_tracks(msg[ITEM_ID], positions)
+
+    connection.send_result(
+        msg[ID],
+        "OK",
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/playlist/create",
+        vol.Required(NAME): str,
+        vol.Optional(PROVIDER_ID): str,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_playlist_create(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Create new playlist command."""
+    await mass.music.playlists.create(msg[NAME], msg.get(PROVIDER_ID))
 
     connection.send_result(
         msg[ID],
@@ -658,19 +669,15 @@ async def websocket_radios(
     mass: MusicAssistant,
 ) -> None:
     """Return radios."""
-    result = [
-        item.to_dict()
-        for item in await mass.music.radio.db_items(
+    await connection.send_big_result(
+        msg[ID],
+        await mass.music.radio.db_items(
             msg.get(LIBRARY),
             msg.get(SEARCH),
             limit=msg[LIMIT],
             offset=msg[OFFSET],
             order_by=msg[SORT],
-        )
-    ]
-    await connection.send_big_result(
-        msg[ID],
-        result,
+        ),
     )
 
 
@@ -810,6 +817,33 @@ async def websocket_library_remove(
         connection.send_error(msg[ID], ERR_NOT_FOUND, f"Item not found: {msg[URI]}")
 
     await mass.music.remove_from_library(item.media_type, item.item_id, item.provider)
+
+    connection.send_result(
+        msg[ID],
+        "OK",
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required(TYPE): f"{DOMAIN}/delete_db_item",
+        vol.Required("media_type"): vol.Coerce(MediaType),
+        vol.Required("db_id"): vol.Coerce(int),
+        vol.Optional("recursive"): bool,
+    }
+)
+@websocket_api.async_response
+@async_get_mass
+async def websocket_delete_db_item(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict,
+    mass: MusicAssistant,
+) -> None:
+    """Delete item from the database."""
+    await mass.music.delete_db_item(
+        msg["media_type"], msg["db_id"], msg.get("recursive", False)
+    )
 
     connection.send_result(
         msg[ID],
@@ -1122,11 +1156,15 @@ async def websocket_play_media(
     connection.send_error(msg[ID], ERR_NOT_FOUND, f"Queue not found: {msg[QUEUE_ID]}")
 
 
+# generic/other endpoints
+
+
 @websocket_api.websocket_command(
     {
         vol.Required(TYPE): f"{DOMAIN}/start_sync",
         vol.Optional("media_type"): vol.Coerce(MediaType),
         vol.Optional("prov_type"): vol.Coerce(ProviderType),
+        vol.Optional("clear_cache"): bool,
     }
 )
 @websocket_api.async_response
@@ -1146,6 +1184,8 @@ async def websocket_start_sync(
         prov_types = (prov_type,)
     else:
         prov_types = None
+    if media_type := msg.get("clear_cache"):
+        await mass.cache.clear()
     await mass.music.start_sync(media_types, prov_types)
 
 
@@ -1169,41 +1209,23 @@ async def websocket_jobs(
     )
 
 
-# generic stats endpoint
 @websocket_api.websocket_command(
     {
-        vol.Required(TYPE): f"{DOMAIN}/stats",
+        vol.Required(TYPE): f"{DOMAIN}/providers",
     }
 )
 @websocket_api.async_response
 @async_get_mass
-async def websocket_stats(
+async def websocket_providers(
     hass: HomeAssistant,
     connection: ActiveConnection,
     msg: dict,
     mass: MusicAssistant,
 ) -> None:
     """Return some statistics and generic info."""
-    result = {
-        "providers": {x.id: x.to_dict() for x in mass.music.providers},
-        "db_count": {
-            "artists": await mass.music.artists.count(),
-            "albums": await mass.music.albums.count(),
-            "tracks": await mass.music.tracks.count(),
-            "playlists": await mass.music.playlists.count(),
-            "radios": await mass.music.radio.count(),
-        },
-        "library_count": {
-            "artists": await mass.music.artists.count(True),
-            "albums": await mass.music.albums.count(True),
-            "tracks": await mass.music.tracks.count(True),
-            "playlists": await mass.music.playlists.count(True),
-            "radios": await mass.music.radio.count(True),
-        },
-    }
     connection.send_result(
         msg[ID],
-        result,
+        {x.id: x.to_dict() for x in mass.music.providers},
     )
 
 

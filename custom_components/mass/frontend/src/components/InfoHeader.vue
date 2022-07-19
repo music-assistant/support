@@ -6,6 +6,8 @@
       style="margin-top: -10px; z-index: 0"
       min-height="150"
     >
+      <!-- loading animation -->
+      <v-progress-linear indeterminate v-if="!item"></v-progress-linear>
       <v-img
         width="100%"
         height="100%"
@@ -115,18 +117,38 @@
           </div>
 
           <!-- play/info buttons -->
-          <div style="display:flex;margin-left: 14px; padding-bottom: 10px">
-            <v-btn
-              color="primary"
-              tile
-              :prepend-icon="mdiPlayCircle"
-              @click="
-                store.contextMenuItems = [item];
-                store.showContextMenu = true;
-              "
-            >
-              {{ $t("play") }}
-            </v-btn>
+          <div style="display: flex; margin-left: 14px; padding-bottom: 10px">
+            <v-menu location="bottom">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  color="primary"
+                  v-bind="props"
+                  :prepend-icon="mdiPlayCircle"
+                  :disabled="!activePlayerQueue"
+                >
+                  {{ $t("play") }}
+                </v-btn>
+              </template>
+
+              <v-card min-width="300">
+                <v-list lines="one" density="comfortable">
+                  <!-- play now -->
+                  <v-list-item
+                    v-for="menuItem in getPlayMenuItems([item])"
+                    :key="menuItem.label"
+                    @click="menuItem.action"
+                  >
+                    <v-list-item-avatar style="padding-right: 10px">
+                      <v-icon :icon="menuItem.icon"></v-icon>
+                    </v-list-item-avatar>
+                    <v-list-item-title>{{
+                      $t(menuItem.label, menuItem.labelArgs)
+                    }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-card>
+            </v-menu>
+
             <v-btn
               v-if="!$vuetify.display.mobile && !item.in_library"
               style="margin-left: 10px"
@@ -152,12 +174,12 @@
           <!-- Description/metadata -->
           <v-card-subtitle
             class="body-2 justify-left"
-            style="padding-bottom: 10px;white-space: pre-line; cursor: pointer;"
+            style="padding-bottom: 10px; white-space: pre-line; cursor: pointer"
             @click="showFullInfo = !showFullInfo"
             v-if="description"
             v-html="description"
           >
-            </v-card-subtitle>
+          </v-card-subtitle>
 
           <!-- genres/tags -->
           <div
@@ -201,15 +223,19 @@ import {
 
 import { store } from "../plugins/store";
 import { useDisplay } from "vuetify";
-import api from "../plugins/api";
+import { api } from "../plugins/api";
 import { ImageType } from "../plugins/api";
 import type { Album, Artist, ItemMapping, MediaItemType } from "../plugins/api";
-import { computed, ref, watchEffect } from "vue";
+import { computed, ref, watchEffect, onBeforeUnmount } from "vue";
 import MediaItemThumb from "./MediaItemThumb.vue";
 import { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { truncateString } from "@/utils";
+import {
+  getPlayMenuItems,
+  getContextMenuItems,
+} from "./MediaItemContextMenu.vue";
 
 // properties
 export interface Props {
@@ -226,6 +252,13 @@ const imgGradient = new URL("../assets/info_gradient.jpg", import.meta.url)
 const { t } = useI18n();
 const router = useRouter();
 
+const activePlayerQueue = computed(() => {
+  if (store.selectedPlayer) {
+    return api.queues[store.selectedPlayer.active_queue];
+  }
+  return undefined;
+});
+
 watchEffect(async () => {
   if (props.item) {
     if (mobile.value) {
@@ -240,7 +273,16 @@ watchEffect(async () => {
     fanartImage.value =
       (await getImageThumbForItem(props.item, ImageType.FANART)) ||
       (await getImageThumbForItem(props.item, ImageType.THUMB));
+
+    store.topBarContextMenuItems = getContextMenuItems(
+      [props.item],
+      props.item
+    );
   }
+});
+
+onBeforeUnmount(() => {
+  store.topBarContextMenuItems = [];
 });
 
 const albumClick = function (item: Album | ItemMapping) {

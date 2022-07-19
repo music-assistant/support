@@ -86,10 +86,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { store } from "../plugins/store";
-import PanelviewItem from "../components/PanelviewItem.vue";
-
 import {
   mdiAccountMusic,
   mdiAlbum,
@@ -97,19 +93,46 @@ import {
   mdiMagnify,
   mdiPlaylistMusic,
   mdiRadio,
-  mdiFolder
+  mdiFolder,
+  mdiFileSync,
+  mdiCached
 } from "@mdi/js";
-import api, { type MediaItemType } from "@/plugins/api";
+import { ref, computed, onBeforeUnmount } from "vue";
+import { store } from "../plugins/store";
+import PanelviewItem from "../components/PanelviewItem.vue";
+
+import { api } from "@/plugins/api";
 import { useDisplay } from "vuetify";
+import { useI18n } from "vue-i18n";
 
 const { mobile } = useDisplay();
-
-store.topBarTitle = store.defaultTopBarTitle;
-
 const searchHasFocus = ref(false);
 const loading = ref(false);
 const search = ref("");
+const { t } = useI18n();
 
+store.topBarTitle = store.defaultTopBarTitle;
+store.topBarContextMenuItems = [
+  {
+    label: "sync",
+    labelArgs: [],
+    action: () => {
+      api.startSync(undefined, undefined);
+    },
+    icon: mdiFileSync
+  },
+  {
+    label: "sync_full",
+    labelArgs: [],
+    action: () => {
+      api.startSync(undefined, undefined, true);
+    },
+    icon: mdiCached
+  },
+];
+onBeforeUnmount(() => {
+  store.topBarContextMenuItems = [];
+});
 
 const thumbSize = computed(() => {
   return mobile.value ? 150 : 225;

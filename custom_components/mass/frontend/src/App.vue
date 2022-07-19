@@ -9,7 +9,6 @@
         background: rgb(var(--v-theme-background));
       "
     ></div>
-    <ContextMenu />
     <player-select />
     <TopBar />
     <v-main id="cont">
@@ -38,7 +37,6 @@ import { useTheme } from "vuetify";
 import TopBar from "./components/TopBar.vue";
 import PlayerOSD from "./components/PlayerOSD.vue";
 import PlayerSelect from "./components/PlayerSelect.vue";
-import ContextMenu from "./components/ContextMenu.vue";
 import ReloadPrompt from "./components/ReloadPrompt.vue";
 import "vuetify/styles";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
@@ -180,5 +178,27 @@ div.v-navigation-drawer__scrim {
 }
 .v-overlay__scrim {
   opacity: 65%;
+}
+
+.listitem-actions {
+  display: flex;
+  justify-content: end;
+  width: auto;
+  height: 50px;
+  vertical-align: middle;
+  align-items: center;
+  padding: 0px;
+  padding-right: 0px;
+}
+.listitem-action {
+  padding-left: 5px;
+}
+.listitem-thumb {
+  padding-left: 0px;
+  margin-right: 10px;
+  margin-left: -15px;
+  margin-top: 5px;
+  width: 50px;
+  height: 50px;
 }
 </style>

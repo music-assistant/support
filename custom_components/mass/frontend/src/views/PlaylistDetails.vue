@@ -1,6 +1,6 @@
 <template>
   <section>
-    <InfoHeader :item="playlist" />
+    <InfoHeader :item="itemDetails" />
 
     <v-tabs v-model="activeTab" show-arrows grow hide-slider>
       <v-tab
@@ -11,76 +11,77 @@
       >
     </v-tabs>
     <v-divider />
-    <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
     <ItemsListing
       itemtype="playlisttracks"
-      :parent-item="playlist"
+      :parent-item="itemDetails"
       :show-providers="false"
       :show-library="false"
       :show-track-number="false"
       :load-data="loadPlaylistTracks"
-      :count="playlistTracks.length"
       :sort-keys="['position', 'sort_name', 'sort_artist', 'sort_album']"
-      v-if="activeTab == 'tracks' && playlistTracks.length > 0"
+      v-if="activeTab == 'tracks'"
     />
   </section>
 </template>
 
 <script setup lang="ts">
-import ItemsListing, { filteredItems } from "../components/ItemsListing.vue";
+import ItemsListing from "../components/ItemsListing.vue";
+import { filteredItems } from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
-import { api, ProviderType, type Playlist, type Track } from "../plugins/api";
-import { watchEffect, ref, onBeforeUnmount } from "vue";
-import { useI18n } from "vue-i18n";
-import { store } from "../plugins/store";
+import {
+  MassEventType,
+  type Playlist,
+  type MassEvent,
+  type MediaItemType,
+} from "../plugins/api";
+import { api, ProviderType } from "../plugins/api";
+import { watchEffect, ref, onMounted, onBeforeUnmount } from "vue";
 
 export interface Props {
   item_id: string;
   provider: string;
 }
 const props = defineProps<Props>();
-const activeTab = ref("tracks");
+const activeTab = ref("");
 
-const playlist = ref<Playlist>();
-const playlistTracks = ref<Track[]>([]);
-const loading = ref(true);
-const { t } = useI18n();
+const itemDetails = ref<Playlist>();
 
-store.topBarContextMenuItems = [
-  {
-    title: t("refresh_item"),
-    link: () => {
-      playlistTracks.value = [];
-      loadItems(false, true);
-    },
-  },
-];
-onBeforeUnmount(() => {
-  store.topBarContextMenuItems = [];
-});
-
-const loadItems = async function (lazy: boolean, refresh = false) {
-  loading.value = true;
-  const item = await api.getPlaylist(
-    props.provider as ProviderType,
-    props.item_id,
-    lazy,
-    refresh
-  );
-  playlist.value = item;
-  // fetch additional info once main info retrieved
-  playlistTracks.value = await api.getPlaylistTracks(
+const loadItemDetails = async function () {
+  itemDetails.value = await api.getPlaylist(
     props.provider as ProviderType,
     props.item_id
   );
-  loading.value = false;
+  activeTab.value = "tracks";
 };
 
-watchEffect(async () => {
-  await loadItems(true);
-  if (playlist.value?.provider !== ProviderType.DATABASE) {
-    await loadItems(false);
-  }
+watchEffect(() => {
+  // load info
+  loadItemDetails();
+});
+
+onMounted(() => {
+  //reload if/when item updates
+  const unsub = api.subscribe_multi(
+    [MassEventType.MEDIA_ITEM_ADDED, MassEventType.MEDIA_ITEM_UPDATED],
+    (evt: MassEvent) => {
+      // refresh info if we receive an update for this item
+      const updatedItem = evt.data as MediaItemType;
+      if (itemDetails.value?.uri == updatedItem.uri) {
+        loadItemDetails();
+      } else {
+        for (const provId of updatedItem.provider_ids) {
+          if (
+            provId.prov_type == itemDetails.value?.provider &&
+            provId.item_id == itemDetails.value?.item_id
+          ) {
+            loadItemDetails();
+            break;
+          }
+        }
+      }
+    }
+  );
+  onBeforeUnmount(unsub);
 });
 
 const loadPlaylistTracks = async function (
@@ -90,8 +91,12 @@ const loadPlaylistTracks = async function (
   search?: string,
   inLibraryOnly = true
 ) {
+  const playlistTracks = await api.getPlaylistTracks(
+    props.provider as ProviderType,
+    props.item_id
+  );
   return filteredItems(
-    playlistTracks.value,
+    playlistTracks,
     offset,
     limit,
     sort,

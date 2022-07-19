@@ -17,7 +17,8 @@
   "settings": "Instellingen",
   "queue": "Wachtrij",
   "tasks": "Taken",
-  "sync": "Synchroniseren",
+  "sync": "Nu synchroniseren",
+  "sync_full": "Forceer volledige sync",
   "artist_toptracks": "Top nummers",
   "artist_albums": "Albums",
   "album_tracks": "Album liedjes",
@@ -41,9 +42,10 @@
   "items_total": "{0} item(s) totaal",
   "items_selected": "{0} item(s) geselecteerd",
   "clear_selection": "Selectie leegmaken",
+  "delete_db": "Verwijder item in database",
   "players": "Spelers",
   "play": "Afspelen",
-  "play_on": "Afspelen op:",
+  "play_on": "Afspelen op: {0}",
   "play_now": "Nu afspelen",
   "play_next": "Speel als volgende af",
   "add_queue": "Voeg toe aan wachtrij",
@@ -101,11 +103,27 @@
   "no_content": "Geen items gevonden.",
   "no_content_filter": "Geen items gevonden voor de huidige zoek/filter instellingen.",
   "details": "Details",
-  "explicit": "Expliciet",
   "providers": {
     "spotify": "Spotify",
     "qobuz": "Qobuz",
     "file": "Bestandssysteem",
     "tunein": "Tune-in Radio"
+  },
+  "goto_artist": "Ga naar artiest {0}",
+  "goto_album": "Ga naar album {0}",
+  "album_type": {
+    "unknown": "Onbekend album type",
+    "album": "Album",
+    "single": "Single",
+    "compilation": "Compilatie",
+    "ep": "EP"
+  },
+  "tooltip": {
+    "explicit": "Expliciet",
+    "library": "Markeer als bibliotheek/favoriet",
+    "filter_library": "Het filter in/uitschakelen om enkel bibliotheek items te tonen",
+    "sort_options": "Sorteer opties",
+    "toggle_view_mode": "Wissel voorbeeld/lijst weergave",
+    "search": "Toon/verberg zoekinvoer"
   }
 }
