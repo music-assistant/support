@@ -1,3 +1,5 @@
+import type { Artist, BrowseFolder } from "./plugins/api";
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const parseBool = (val: string | boolean) => {
   if (val == undefined) return false;
@@ -74,3 +76,26 @@ export const kebabize = (str: string) => {
     })
     .join("");
 };
+
+
+export const getArtistsString = function (artists: Artist[]) {
+  return artists
+    .map((x) => {
+      return x.name;
+    })
+    .join(" / ");
+};
+
+export const getBrowseFolderName = function(browseItem: BrowseFolder, t:any) {
+  let browseTitle = '';
+  if (browseItem?.name && browseItem?.label) {
+    browseTitle = `${browseItem.name}: ${t(browseItem?.label)}`;
+  } else if (browseItem?.name) {
+    browseTitle = browseItem.name;
+  } else if (browseItem?.label) {
+    browseTitle = t(browseItem?.label);
+  } else {
+    browseTitle = browseItem.path || '';
+  }
+  return browseTitle;
+}

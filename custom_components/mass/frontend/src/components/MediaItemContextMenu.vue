@@ -3,18 +3,13 @@
     :model-value="modelValue"
     transition="dialog-bottom-transition"
     fullscreen
-    @change="
-      (e) => {
-        $emit('update:modelValue', !modelValue);
-      }
-    "
   >
     <v-card>
       <v-toolbar density="compact" dark color="primary">
         <v-icon :icon="mdiPlayCircleOutline"></v-icon>
         <v-toolbar-title style="padding-left: 10px"
           ><b>{{ header }}</b>
-          <span v-if="playlists.length > 0">
+          <span v-if="showPlaylistsMenu">
             | {{ $t("add_playlist") }}
           </span></v-toolbar-title
         >
@@ -92,7 +87,7 @@
             </v-list-item>
             <v-divider></v-divider>
           </div>
-
+          <!-- create playlist row(s) -->
           <div v-for="prov of api.providers" :key="prov.id">
             <div
               v-if="
@@ -101,22 +96,31 @@
                 )
               "
             >
-              <v-list-item ripple @click="addToPlaylist(playlist)">
+              <v-list-item ripple>
                 <template v-slot:prepend>
                   <div class="listitem-thumb">
-                    <v-icon :icon="mdiPlaylistPlus" size="50" />
+                    <img
+                      v-bind="props"
+                      :height="40"
+                      :src="getProviderIcon(prov.type)"
+                      style="margin-left: 5px; margin-top: 5px"
+                    />
                   </div>
                 </template>
                 <template v-slot:title>
-                  <v-text-field :label="$t('create_playlist')"></v-text-field>
-                </template>
-                <template v-slot:subtitle>
-                  <div>{{ prov.name }}</div>
-                </template>
-                <template v-slot:append>
-                  <div class="listitem-actions">
-                    <v-btn>Create</v-btn>
-                  </div>
+                  <v-text-field
+                    :label="$t('create_playlist', [prov.name])"
+                    :append-icon="mdiPlaylistPlus"
+                    variant="plain"
+                    hide-details
+                    @update:model-value="
+                      (txt) => {
+                        newPlaylistName = txt;
+                      }
+                    "
+                    @click:append="newPlaylist(prov.id)"
+                    @keydown.enter="newPlaylist(prov.id)"
+                  ></v-text-field>
                 </template>
               </v-list-item>
               <v-divider></v-divider>
@@ -146,6 +150,7 @@ import {
 } from "@mdi/js";
 import MediaItemThumb from "./MediaItemThumb.vue";
 import ProviderIcons from "./ProviderIcons.vue";
+import { getProviderIcon } from "./ProviderIcons.vue";
 import {
   MediaType,
   ProviderType,
@@ -173,6 +178,7 @@ const playMenuItems = ref<ContextMenuItem[]>([]);
 const header = ref("");
 const playlists = ref<Playlist[]>([]);
 const showPlaylistsMenu = ref(false);
+const newPlaylistName = ref("");
 // TEMP TODO // vuetify select has bug that object does not work so using plain text instead
 const queueName = ref("");
 
@@ -232,12 +238,15 @@ const fetchPlaylists = async function () {
 };
 const addToPlaylist = function (value: MediaItemType) {
   /// add track(s) to playlist
-  console.log("addToPlaylist", value);
   api.addPlaylistTracks(
     value.item_id,
     props.items.map((x) => x.uri)
   );
   close();
+};
+const newPlaylist = async function (provId: string) {
+  const newPlaylist = await api.createPlaylist(newPlaylistName.value, provId);
+  addToPlaylist(newPlaylist)
 };
 
 const itemClicked = async function (item: ContextMenuItem) {
@@ -245,11 +254,11 @@ const itemClicked = async function (item: ContextMenuItem) {
   if (item.actionStr == "add_playlist") {
     showPlaylistsMenu.value = true;
   } else if (item.actionStr == "clear") {
-    emit("update:items", []);
+    emit("clear");
     close();
   } else if (item.action) {
-    item.action();
     close();
+    item.action();
   }
 };
 

@@ -20,7 +20,7 @@
       itemtype="albumtracks"
       :parent-item="itemDetails"
       :show-providers="true"
-      :show-library="false"
+      :show-library="true"
       :load-data="loadAlbumTracks"
       :sort-keys="['track_number', 'sort_name', 'duration']"
       v-if="activeTab == 'tracks'"

@@ -12,6 +12,7 @@ from homeassistant.components.websocket_api.const import ERR_NOT_FOUND
 from homeassistant.core import HomeAssistant, callback
 from music_assistant import MusicAssistant
 from music_assistant.models.enums import (
+    ContentType,
     CrossFadeMode,
     MediaType,
     ProviderType,
@@ -639,11 +640,11 @@ async def websocket_playlist_create(
     mass: MusicAssistant,
 ) -> None:
     """Create new playlist command."""
-    await mass.music.playlists.create(msg[NAME], msg.get(PROVIDER_ID))
+    new_playlist = await mass.music.playlists.create(msg[NAME], msg.get(PROVIDER_ID))
 
     connection.send_result(
         msg[ID],
-        "OK",
+        new_playlist.to_dict(),
     )
 
 
@@ -876,7 +877,7 @@ async def websocket_search(
 
 
 @websocket_api.websocket_command(
-    {vol.Required(TYPE): f"{DOMAIN}/browse", vol.Optional(URI): str}
+    {vol.Required(TYPE): f"{DOMAIN}/browse", vol.Optional("path"): str}
 )
 @websocket_api.async_response
 @async_get_mass
@@ -887,12 +888,10 @@ async def websocket_browse(
     mass: MusicAssistant,
 ) -> None:
     """Return Browse items."""
-    result = await mass.music.browse(msg.get(URI))
-    result = [x.to_dict() for x in result]
 
     await connection.send_big_result(
         msg[ID],
-        result,
+        await mass.music.browse(msg.get("path")),
     )
 
 
@@ -1104,6 +1103,9 @@ async def websocket_playerqueue_command(
             vol.Optional("crossfade_duration"): vol.Coerce(int),
             vol.Optional("volume_normalization_enabled"): bool,
             vol.Optional("volume_normalization_target"): vol.Coerce(float),
+            vol.Optional("stream_type"): vol.Coerce(ContentType),
+            vol.Optional("max_sample_rate"): vol.Coerce(int),
+            vol.Optional("announce_volume_increase"): vol.Coerce(int),
         },
     }
 )

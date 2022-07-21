@@ -24,15 +24,18 @@
       :cover="true"
     />
     <div
-      v-if="isSelected"
-      style="position: absolute; top: 0; background-color: #82b1ff94"
+      v-if="showCheckboxes"
+      style="position: absolute; top: 0; background-color: #82b1ff94;height:50px;"
     >
-      <v-btn
-        variant="plain"
-        size="51"
-        :icon="mdiCheckboxMarkedOutline"
-        @click.stop="emit('select', item, !isSelected)"
-      ></v-btn>
+      <v-checkbox
+        :model-value="isSelected"
+        @click.stop
+        @update:model-value="
+          (x) => {
+            emit('select', item, x);
+          }
+        "
+      />
     </div>
     <div
       v-if="isHiRes"
@@ -123,9 +126,11 @@ export interface Props {
   item: MediaItemType;
   size?: number;
   isSelected: boolean;
+  showCheckboxes: boolean;
 }
 const props = withDefaults(defineProps<Props>(), {
   size: 200,
+  showCheckboxes: false,
 });
 
 // global refs

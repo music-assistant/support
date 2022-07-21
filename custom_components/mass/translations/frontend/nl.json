@@ -15,6 +15,8 @@
   "browse": "Bladeren",
   "search": "Zoeken",
   "settings": "Instellingen",
+  "basic_settings": "Basisinstellingen",
+  "advanced_settings": "Geavanceerde instellingen",
   "queue": "Wachtrij",
   "tasks": "Taken",
   "sync": "Nu synchroniseren",
@@ -111,6 +113,8 @@
   },
   "goto_artist": "Ga naar artiest {0}",
   "goto_album": "Ga naar album {0}",
+  "show_select_boxes": "Toon selectieboxen",
+  "perform_action": "Actie uitvoeren op {0} item(s)",
   "album_type": {
     "unknown": "Onbekend album type",
     "album": "Album",
@@ -124,6 +128,10 @@
     "filter_library": "Het filter in/uitschakelen om enkel bibliotheek items te tonen",
     "sort_options": "Sorteer opties",
     "toggle_view_mode": "Wissel voorbeeld/lijst weergave",
-    "search": "Toon/verberg zoekinvoer"
-  }
+    "search": "Toon/verberg zoekinvoer",
+    "refresh": "De lijst verversen",
+    "refresh_new_content": "Er is nieuwe inhoud beschikbaar, klik om te verversen",
+    "select_items": "Meerdere items selecteren"
+  },
+  "create_playlist": "Maak een nieuwe playlist aan op {0}"
 }

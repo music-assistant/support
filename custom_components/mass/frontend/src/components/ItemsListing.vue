@@ -1,12 +1,36 @@
 <template>
   <section>
     <v-toolbar dense flat color="transparent" height="35">
-      <span v-if="!selectedItems.length && totalItems">{{
-        $t("items_total", [totalItems])
-      }}</span>
-      <a v-else-if="selectedItems.length" @click="showContextMenu = true">{{
-        $t("items_selected", [selectedItems.length])
-      }}</a>
+      <v-tooltip location="bottom">
+        <template #activator="{ props }">
+          <v-btn
+            v-bind="props"
+            :icon="
+              selectedItems.length > 0
+                ? mdiCheckboxMultipleOutline
+                : mdiCheckboxMultipleBlankOutline
+            "
+            @click="toggleCheckboxes"
+          >
+          </v-btn>
+          <span v-if="!$vuetify.display.mobile">
+            <span
+              @click="toggleCheckboxes"
+              style="cursor: pointer"
+              v-if="!selectedItems.length && totalItems"
+              >{{ $t("items_total", [totalItems]) }}</span
+            >
+            <span
+              @click="toggleCheckboxes"
+              style="cursor: pointer"
+              v-else-if="selectedItems.length"
+              >{{ $t("items_selected", [selectedItems.length]) }}</span
+            >
+          </span>
+        </template>
+        <span>{{ $t("tooltip.select_items") }}</span>
+      </v-tooltip>
+
       <v-spacer></v-spacer>
 
       <v-tooltip location="bottom">
@@ -21,6 +45,20 @@
           </v-btn>
         </template>
         <span>{{ $t("tooltip.filter_library") }}</span>
+      </v-tooltip>
+
+      <v-tooltip location="bottom">
+        <template #activator="{ props }">
+          <v-btn v-bind="props" icon @click="loadData(true)">
+            <v-badge color="error" dot v-model="newContentAvailable">
+              <v-icon :icon="mdiRefresh"></v-icon>
+            </v-badge>
+          </v-btn>
+        </template>
+        <span v-if="newContentAvailable">{{
+          $t("tooltip.refresh_new_content")
+        }}</span>
+        <span v-else>{{ $t("tooltip.refresh") }}</span>
       </v-tooltip>
 
       <v-menu
@@ -129,6 +167,7 @@
             :item="item"
             :size="thumbSize"
             :is-selected="isSelected(item)"
+            :show-checkboxes="showCheckboxes"
             @select="onSelect"
             @menu="onMenu"
             @click="onClick"
@@ -152,6 +191,7 @@
             :show-library="showLibrary !== false && !inLibraryOnly"
             :show-menu="showMenu"
             :show-providers="showProviders"
+            :show-checkboxes="showCheckboxes"
             :is-selected="isSelected(item)"
             @select="onSelect"
             @menu="onMenu"
@@ -188,6 +228,10 @@ import {
   mdiCheck,
   mdiHeart,
   mdiHeartOutline,
+  mdiRefresh,
+  mdiCheckboxMultipleOutline,
+  mdiCheckboxMultipleBlankOutline,
+  mdiTune,
 } from "@mdi/js";
 
 import {
@@ -269,6 +313,9 @@ const loading = ref(false);
 const inLibraryOnly = ref(false);
 const selectedItems = ref<MediaItemType[]>([]);
 const showContextMenu = ref(false);
+const newContentAvailable = ref(false);
+const showCheckboxes = ref(false);
+const showSelectMenu = ref(false);
 
 // computed properties
 const thumbSize = computed(() => {
@@ -317,6 +364,15 @@ const onSelect = function (item: MediaItemType, selected: boolean) {
 
 const onClearSelection = function () {
   selectedItems.value = [];
+  showCheckboxes.value = false;
+};
+
+const toggleCheckboxes = function () {
+  if (selectedItems.value.length > 0) {
+    showContextMenu.value = true;
+  } else {
+    showCheckboxes.value = !showCheckboxes.value;
+  }
 };
 
 const onDelete = function (item: MediaItemType) {
@@ -387,6 +443,7 @@ const loadData = async function (clear = false, limit = defaultLimit) {
   if (clear) {
     totalItems.value = undefined;
     offset.value = 0;
+    newContentAvailable.value = false;
   }
   loading.value = true;
 
@@ -464,17 +521,17 @@ onMounted(() => {
             }
           }
         }
-      } else {
-        // reload library listing if relevant item changes
-        const itemInList = items.value.filter((x) => x.uri == evt.object_id);
-        if (
-          itemInList ||
-          (evt.event == MassEventType.MEDIA_ITEM_ADDED &&
-            items.value.length <= defaultLimit)
-        ) {
-          // simply reload the listing
-          loadData(true);
-        }
+      } else if (evt.event == MassEventType.MEDIA_ITEM_ADDED) {
+        // signal that there is new content
+        newContentAvailable.value = true;
+      } else if (evt.event == MassEventType.MEDIA_ITEM_DELETED) {
+        items.value = items.value.filter((x) => x.uri != evt.object_id);
+      } else if (evt.event == MassEventType.MEDIA_ITEM_UPDATED) {
+        // update listing if relevant item changes
+        const updatedItem = evt.data as MediaItemType;
+        items.value = items.value.map((x) =>
+          x.uri == updatedItem.uri ? updatedItem : x
+        );
       }
     }
   );
@@ -483,6 +540,7 @@ onMounted(() => {
 
 // lifecycle hooks
 const keyListener = function (e: KeyboardEvent) {
+  if (showContextMenu.value) return;
   if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     selectedItems.value = items.value;

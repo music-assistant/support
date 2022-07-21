@@ -18,185 +18,182 @@
           ? 'to bottom, rgba(0,0,0,.80), rgba(0,0,0,.75)'
           : 'to bottom, rgba(255,255,255,.85), rgba(255,255,255,.65)'
       "
-      style="position: absolute; background-size: 100%; padding: 0; margin-top: -10px"
+      style="
+        position: absolute;
+        background-size: 100%;
+        padding: 0;
+        margin-top: -10px;
+      "
     />
     <!-- now playing media -->
-    <div
-      class="mediadetails"
+    <v-list-item
+      style="height: 60px;width:100%;margin-top:-5px;padding-bottom:20px"
+      lines="two"
       v-if="activePlayerQueue?.active && (curMediaItem || curQueueItem)"
     >
-      <media-item-thumb
-        class="mediadetails-thumb"
-        :key="curMediaItem.item_id"
-        :item="curMediaItem"
-        :size="50"
-        :min-width="50"
-        :min-height="50"
-        :width="50"
-        :height="50"
-        :cover="true"
-        :border="true"
-        v-if="curMediaItem"
-      />
+      <template v-slot:prepend>
+        <div class="listitem-thumb">
+          <MediaItemThumb
+            :item="curMediaItem || curQueueItem"
+            :size="50"
+            width="50px"
+            height="50px"
+            @click="curMediaItem ? itemClick(curMediaItem) : ''" style="cursor:pointer"
+          /></div
+      ></template>
 
-      <v-list-item two-line class="mediadetails-title" v-if="curMediaItem">
-        <div>
-          <v-list-item-title v-if="$vuetify.display.mobile">
-            {{ truncateString(curMediaItem.name, 30) }}</v-list-item-title
+      <!-- title -->
+      <template v-slot:title>
+        <span v-if="curMediaItem" @click="curMediaItem ? itemClick(curMediaItem) : ''" style="cursor:pointer">
+          {{ curMediaItem.name }}
+          <span v-if="'version' in curMediaItem && curMediaItem.version"
+            >({{ curMediaItem.version }})</span
           >
-          <v-list-item-title v-else> {{ curMediaItem.name }}</v-list-item-title>
-          <v-list-item-subtitle
-            v-if="curMediaItem && 'artists' in curMediaItem && !$vuetify.display.mobile"
-            style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
-          >
-            <span
-              v-for="(artist, artistindex) in getTrackArtists(curMediaItem)"
-              :key="artistindex"
-            >
-              <a @click="artistClick(artist)">{{ artist.name }}</a>
-              <label
-                v-if="artistindex + 1 < getTrackArtists(curMediaItem).length"
-                :key="artistindex"
-              >
-                /
-              </label>
-            </span>
-          </v-list-item-subtitle>
-          <v-list-item-subtitle
-            v-else-if="curMediaItem && 'artists' in curMediaItem"
-            style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
-          >
-            <span
-              v-for="(artist, artistindex) in getTrackArtists(curMediaItem).slice(0, 1)"
-              :key="artistindex"
-            >
-              <a @click="artistClick(artist)">{{ artist.name }}</a>
-            </span>
-          </v-list-item-subtitle>
-          <v-list-item-subtitle
-            v-else-if="curQueueItem?.streamdetails?.stream_title"
-            style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
-            >{{ curQueueItem?.streamdetails?.stream_title }}</v-list-item-subtitle
-          >
-          <v-list-item-subtitle
-            v-else-if="curMediaItem.metadata.description"
-            style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
-            >{{ curMediaItem.metadata.description }}</v-list-item-subtitle
-          >
+        </span>
+        <span v-else-if="curQueueItem">
+          {{ curQueueItem.name }}
+        </span>
+      </template>
+
+      <!-- subtitle -->
+      <template v-slot:subtitle>
+        <!-- track: artists(s) + album -->
+        <div
+          v-if="
+            curMediaItem?.media_type == MediaType.TRACK && curMediaItem.album
+          "
+          @click="curMediaItem ? itemClick(curMediaItem) : ''" style="cursor:pointer"
+        >
+          {{ getArtistsString(curMediaItem.artists) }} •
+          {{ curMediaItem.album.name }}
         </div>
-      </v-list-item>
-      <v-list-item two-line class="mediadetails-title" v-else-if="curQueueItem">
-        <div>
-          <v-list-item-title>{{ activePlayerQueue.name }}</v-list-item-title>
-          <v-list-item-subtitle
-            style="margin-top: 5px; text-overflow: ellipsis; height: 30px"
-            >{{
-              curQueueItem?.streamdetails?.stream_title || curQueueItem.name
-            }}</v-list-item-subtitle
-          >
+        <!-- track/album falback: artist present -->
+        <div
+          v-else-if="
+            curMediaItem && 'artist' in curMediaItem && curMediaItem.artist
+          "
+        >
+          {{ curMediaItem.artist.name }}
         </div>
-      </v-list-item>
+        <!-- radio live metadata -->
+        <div v-else-if="curQueueItem?.streamdetails?.stream_title">
+          {{ curQueueItem?.streamdetails?.stream_title }}
+        </div>
+        <!-- other description -->
+        <div v-else-if="curMediaItem?.metadata.description">
+          {{ curMediaItem.metadata.description }}
+        </div>
+      </template>
+      <template v-slot:append>
+        <div class="listitem-actions">
+          <!-- streaming quality details -->
+          <v-menu location="bottom end" v-if="streamDetails">
+            <template v-slot:activator="{ props }">
+              <v-img
+                contain
+                :src="
+                  streamDetails.bit_depth > 16
+                    ? iconHiRes
+                    : getContentTypeIcon(streamDetails.content_type)
+                "
+                height="25"
+                :style="
+                  $vuetify.theme.current.dark ? '' : 'filter: invert(100%)'
+                "
+                class="v-list-item-subtitle mediadetails-streamdetails"
+                v-bind="props"
+              />
+            </template>
+            <v-card class="mx-auto" width="300">
+              <v-list style="overflow: hidden">
+                <span class="text-h5" style="padding: 10px">{{
+                  $t("stream_details")
+                }}</span>
+                <v-divider></v-divider>
+                <v-list-item
+                  style="height: 50px; display: flex; align-items: center"
+                >
+                  <img
+                    height="30"
+                    width="50"
+                    center
+                    :src="getProviderIcon(streamDetails.provider)"
+                    style="object-fit: contain; margin-left: -15px"
+                  />
+                  {{ $t("providers." + streamDetails.provider) }}
+                </v-list-item>
 
-      <!-- streaming quality details -->
+                <div style="height: 50px; display: flex; align-items: center">
+                  <img
+                    height="30"
+                    width="50"
+                    :src="getContentTypeIcon(streamDetails.content_type)"
+                    :style="
+                      $vuetify.theme.current.dark
+                        ? 'object-fit: contain;'
+                        : 'object-fit: contain;filter: invert(100%);'
+                    "
+                  />
+                  {{ streamDetails.sample_rate / 1000 }} kHz /
+                  {{ streamDetails.bit_depth }} bits
+                </div>
 
-      <v-menu location="bottom end" v-if="streamDetails">
-        <template v-slot:activator="{ props }">
-          <v-img
-            contain
-            :src="
-              streamDetails.bit_depth > 16
-                ? iconHiRes
-                : getContentTypeIcon(streamDetails.content_type)
+                <div
+                  style="height: 50px; display: flex; align-items: center"
+                  v-if="
+                    activePlayerQueue &&
+                    activePlayerQueue.settings.crossfade_duration > 0
+                  "
+                >
+                  <img
+                    height="30"
+                    width="50"
+                    contain
+                    :src="iconCrossfade"
+                    :style="
+                      $vuetify.theme.current.dark
+                        ? 'object-fit: contain;'
+                        : 'object-fit: contain;filter: invert(100%);'
+                    "
+                  />
+                  {{ $t("crossfade_enabled") }}
+                </div>
+
+                <div
+                  style="height: 50px; display: flex; align-items: center"
+                  v-if="streamDetails.gain_correct"
+                >
+                  <img
+                    height="30"
+                    width="50"
+                    contain
+                    :src="iconLevel"
+                    :style="
+                      $vuetify.theme.current.dark
+                        ? 'object-fit: contain;'
+                        : 'object-fit: contain;filter: invert(100%);'
+                    "
+                  />
+                  {{ streamDetails.gain_correct }} dB
+                </div>
+              </v-list>
+            </v-card>
+          </v-menu>
+
+          <!-- time details -->
+          <div
+            v-if="
+              !$vuetify.display.mobile &&
+              streamDetails &&
+              curMediaItem?.media_type !== MediaType.RADIO
             "
-            height="25"
-            :style="$vuetify.theme.current.dark ? '' : 'filter: invert(100%)'"
-            class="v-list-item-subtitle mediadetails-streamdetails"
-            v-bind="props"
-          />
-        </template>
-        <v-card class="mx-auto" width="300">
-          <v-list style="overflow: hidden">
-            <span class="text-h5" style="padding: 10px">{{ $t("stream_details") }}</span>
-            <v-divider></v-divider>
-            <v-list-item style="height: 50px; display: flex; align-items: center">
-              <img
-                height="30"
-                width="50"
-                center
-                :src="getProviderIcon(streamDetails.provider)"
-                style="object-fit: contain; margin-left: -15px"
-              />
-              {{ $t("providers." + streamDetails.provider) }}
-            </v-list-item>
-
-            <div style="height: 50px; display: flex; align-items: center">
-              <img
-                height="30"
-                width="50"
-                :src="getContentTypeIcon(streamDetails.content_type)"
-                :style="
-                  $vuetify.theme.current.dark
-                    ? 'object-fit: contain;'
-                    : 'object-fit: contain;filter: invert(100%);'
-                "
-              />
-              {{ streamDetails.sample_rate / 1000 }} kHz /
-              {{ streamDetails.bit_depth }} bits
-            </div>
-
-            <div
-              style="height: 50px; display: flex; align-items: center"
-              v-if="
-                activePlayerQueue && activePlayerQueue.settings.crossfade_duration > 0
-              "
-            >
-              <img
-                height="30"
-                width="50"
-                contain
-                :src="iconCrossfade"
-                :style="
-                  $vuetify.theme.current.dark
-                    ? 'object-fit: contain;'
-                    : 'object-fit: contain;filter: invert(100%);'
-                "
-              />
-              {{ $t("crossfade_enabled") }}
-            </div>
-
-            <div
-              style="height: 50px; display: flex; align-items: center"
-              v-if="streamDetails.gain_correct"
-            >
-              <img
-                height="30"
-                width="50"
-                contain
-                :src="iconLevel"
-                :style="
-                  $vuetify.theme.current.dark
-                    ? 'object-fit: contain;'
-                    : 'object-fit: contain;filter: invert(100%);'
-                "
-              />
-              {{ streamDetails.gain_correct }} dB
-            </div>
-          </v-list>
-        </v-card>
-      </v-menu>
-
-      <!-- time details -->
-      <div
-        v-if="
-          !$vuetify.display.mobile &&
-          streamDetails &&
-          curMediaItem?.media_type !== MediaType.RADIO
-        "
-        class="mediadetails-time text-caption"
-      >
-        {{ playerCurTimeStr }} / {{ playerTotalTimeStr }}
-      </div>
-    </div>
+            class="mediadetails-time text-caption"
+          >
+            {{ playerCurTimeStr }} / {{ playerTotalTimeStr }}
+          </div>
+        </div>
+      </template>
+    </v-list-item>
 
     <!-- progress bar -->
     <div
@@ -326,12 +323,16 @@
 
           <v-card min-width="300">
             <v-list style="overflow: hidden" lines="two">
-              <v-list-item style="padding: 0; margin-left: 9px; margin-bottom: 9px">
+              <v-list-item
+                style="padding: 0; margin-left: 9px; margin-bottom: 9px"
+              >
                 <template v-slot:prepend>
                   <v-icon
                     size="45"
                     :icon="
-                      store.selectedPlayer?.is_group ? mdiSpeakerMultiple : mdiSpeaker
+                      store.selectedPlayer?.is_group
+                        ? mdiSpeakerMultiple
+                        : mdiSpeaker
                     "
                     color="accent"
                   />
@@ -339,7 +340,9 @@
 
                 <template v-slot:title>
                   <div class="text-subtitle-1" style="margin-left: 10px">
-                    <b>{{ store.selectedPlayer?.group_name.substring(0, 25) }}</b>
+                    <b>{{
+                      store.selectedPlayer?.group_name.substring(0, 25)
+                    }}</b>
                   </div>
                 </template>
 
@@ -405,13 +408,23 @@ import type {
   Radio,
   Player,
 } from "../plugins/api";
-import { api, PlayerState, ContentType, MediaType, ImageType } from "../plugins/api";
+import {
+  api,
+  PlayerState,
+  ContentType,
+  MediaType,
+  ImageType,
+} from "../plugins/api";
 import { store } from "../plugins/store";
 import VolumeControl from "./VolumeControl.vue";
 import MediaItemThumb, { getImageThumbForItem } from "./MediaItemThumb.vue";
-import { formatDuration, truncateString } from "../utils";
+import { formatDuration, truncateString, getArtistsString } from "../utils";
 import { useRouter } from "vue-router";
-import { getContentTypeIcon, iconHiRes, getProviderIcon } from "./ProviderIcons.vue";
+import {
+  getContentTypeIcon,
+  iconHiRes,
+  getProviderIcon,
+} from "./ProviderIcons.vue";
 
 const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
 const iconLevel = new URL("../assets/level.png", import.meta.url).href;
@@ -454,15 +467,11 @@ const curQueueItemTime = computed(() => {
 });
 
 // methods
-const artistClick = function (item: Artist | ItemMapping) {
+const itemClick = function (item: MediaItemType) {
   router.push({
-    name: "artist",
+    name: item.media_type,
     params: { item_id: item.item_id, provider: item.provider },
   });
-};
-const getTrackArtists = function (item: Track) {
-  if (mobile.value) return item.artists.slice(0, 2);
-  return item.artists;
 };
 
 // watchers
@@ -536,41 +545,19 @@ watchEffect(async () => {
   background-size: cover;
 }
 
-.mediadetails {
-  display: inline-block;
-  width: 100%;
-  height: 55px;
-  margin-top: 0px;
-  margin-left: 0px;
-  margin-bottom: 6px;
-  padding-top: 5px;
-}
-
-.mediadetails-thumb {
-  width: 50px;
-  float: left;
-  height: 50px;
-}
-.mediadetails-title {
-  width: auto;
-  padding-left: 10px;
-  padding-top: 0px;
-  float: left;
-}
-
 .mediadetails-time {
   float: right;
   width: auto;
-  margin-top: 30px;
+  margin-top: 40px;
 
   position: absolute;
-  right: 15px;
+  right: 0px;
 }
 .mediadetails-streamdetails {
   float: right;
   width: 40px;
-  right: 10px;
-  margin-top: -2px;
+  right: -5px;
+  margin-top: -15px;
   position: absolute;
   cursor: pointer;
 }
@@ -602,9 +589,8 @@ watchEffect(async () => {
   float: right;
   padding-left: 10px;
   padding-right: 0px;
-  margin-top:-12px;
+  margin-top: -12px;
 }
-
 
 .mediacontrols-right div {
   position: absolute;

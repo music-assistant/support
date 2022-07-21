@@ -15,10 +15,12 @@
   "browse": "Browse",
   "search": "Search",
   "settings": "Settings",
+  "basic_settings": "Basic settings",
+  "advanced_settings": "Advanced settings",
   "queue": "Queue",
   "tasks": "Tasks",
   "sync": "Run sync",
-  "sync_full": "Force fun full sync",
+  "sync_full": "Force full sync",
   "artist_toptracks": "Top tracks",
   "artist_albums": "Albums",
   "album_tracks": "Album tracks",
@@ -60,6 +62,9 @@
   "crossfade": "Crossfade",
   "crossfade_duration": "{0} seconds",
   "crossfade_enabled": "Crossfade is enabled",
+  "stream_type": "Codec/type to use for the audio stream to the player",
+  "announce_volume_increase": "Relative volume increase for announcements",
+  "max_sample_rate": "Maximum sample rate to send to the player",
   "state": {
     "playing": "playing",
     "idle": "idle",
@@ -107,6 +112,8 @@
   
   "goto_artist": "Goto artist {0}",
   "goto_album": "Goto album {0}",
+  "show_select_boxes": "Show selection boxes",
+  "perform_action": "Perform action on {0} item(s)",
   "album_type": {
     "unknown": "Unknown album type",
     "album": "Album",
@@ -120,6 +127,10 @@
     "filter_library": "Toggle in-library/favorite filter",
     "sort_options": "Sort options",
     "toggle_view_mode": "Toggle view mode list/thumbs",
-    "search": "Show/hide search input"
-  }
+    "search": "Show/hide search input",
+    "refresh": "Refresh the items listing",
+    "refresh_new_content": "New content is available, click to refresh the listing",
+    "select_items": "Select multiple items"
+  },
+  "create_playlist": "Create new playlist on {0}"
 }

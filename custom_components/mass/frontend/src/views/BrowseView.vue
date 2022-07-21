@@ -1,6 +1,5 @@
 <template>
   <section>
-
     <div
       style="
         padding-left: 15px;
@@ -14,9 +13,9 @@
 
       <RecycleScroller
         v-slot="{ item }"
-        :items="browseItems"
+        :items="browseItem?.items || []"
         :item-size="66"
-        key-field="item_id"
+        key-field="uri"
         page-mode
       >
         <ListviewItem
@@ -33,19 +32,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect } from "vue";
+import { onMounted, ref, watch, watchEffect } from "vue";
 import { useDisplay } from "vuetify";
 import { useI18n } from "vue-i18n";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 import ListviewItem from "../components/ListviewItem.vue";
-import { api, MediaType, type MediaItemType } from "../plugins/api";
+import {
+  api,
+  MediaType,
+  type BrowseFolder,
+  type MediaItemType,
+} from "../plugins/api";
 import { store } from "../plugins/store";
 import { useRouter } from "vue-router";
+import { getBrowseFolderName } from "../utils";
 
 export interface Props {
-  uri?: string;
-  title?: string;
+  path?: string;
 }
 const props = defineProps<Props>();
 
@@ -53,34 +57,40 @@ const { t } = useI18n();
 const router = useRouter();
 const { mobile } = useDisplay();
 
-const browseItems = ref<MediaItemType[]>([]);
+const browseItem = ref<BrowseFolder>();
 const loading = ref(false);
 
-watchEffect(async () => {
-  console.log("browse", props);
+const loadData = async function () {
+  loading.value = true;
+  browseItem.value = await api.browse(props.path);
 
   // set header title to browse title
-  if (!props.title) store.topBarTitle = t("browse");
-  else if (mobile.value) store.topBarTitle = props.title;
-  else store.topBarTitle = t("browse") + " | " + props.title;
-
-  loading.value = true;
-  browseItems.value = await api.browse(props.uri);
+  if (!browseItem.value) store.topBarTitle = t("browse");
+  else {
+    if (mobile.value) store.topBarTitle = getBrowseFolderName(browseItem.value, t);
+    else
+      store.topBarTitle =
+        t("browse") + " | " + getBrowseFolderName(browseItem.value, t);
+  }
   loading.value = false;
+};
+
+onMounted(() => {
+  loadData();
 });
 
-const onClick = function (mediaItem: MediaItemType) {
-  console.log("onClick", mediaItem.uri);
+watch(
+  () => props.path,
+  () => {
+    loadData();
+  }
+);
 
+const onClick = function (mediaItem: MediaItemType) {
   if (mediaItem.media_type === MediaType.FOLDER) {
-    let title = props.title || "";
-    if (title) title = title + " | ";
-    if ("label" in mediaItem && mediaItem.label)
-      title = title + t(mediaItem.label);
-    else title = title + mediaItem.name;
-    router.replace({
+    router.push({
       name: "browse",
-      query: { uri: mediaItem.uri, title: title },
+      params: { path: mediaItem.path },
     });
   } else {
     router.push({
