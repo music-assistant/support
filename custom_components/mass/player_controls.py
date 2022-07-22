@@ -448,9 +448,14 @@ class KodiPlayer(HassPlayer):
 
     async def play_url(self, url: str) -> None:
         """Play the specified url on the player."""
+        if self.mass.streams.base_url not in url:
+            # use base implementation if 3rd party url provided...
+            await super().play_url(url)
+            return
+
+        self.logger.debug("play_url: %s", url)
         if not self.powered:
             await self.power(True)
-        self.logger.debug("play_url: %s", url)
 
         if self.state in (PlayerState.PLAYING, PlayerState.PAUSED):
             await self.stop()
@@ -508,6 +513,10 @@ class CastPlayer(HassPlayer):
 
     async def play_url(self, url: str) -> None:
         """Play the specified url on the player."""
+        if self.mass.streams.base_url not in url:
+            # use base implementation if 3rd party url provided...
+            await super().play_url(url)
+            return
         self._attr_powered = True
         if self._attr_use_mute_as_power:
             await self.volume_mute(False)
@@ -519,7 +528,7 @@ class CastPlayer(HassPlayer):
             "media_id": url,
             "media_type": f"audio/{self.active_queue.settings.stream_type.value}",
             "enqueue": False,
-            "stream_type": "LIVE",
+            "stream_type": "BUFFERED",
             "title": f" Streaming from {DEFAULT_NAME}",
         }
         await self.hass.async_add_executor_job(
@@ -632,6 +641,11 @@ class SonosPlayer(HassPlayer):
     async def play_url(self, url: str) -> None:
         """Play the specified url on the player."""
         self._sonos_paused = False
+        if self.mass.streams.base_url not in url:
+            # use base implementation if 3rd party url provided...
+            await super().play_url(url)
+            return
+
         self._attr_powered = True
         if self._attr_use_mute_as_power:
             await self.volume_mute(False)
@@ -683,6 +697,11 @@ class DlnaPlayer(HassPlayer):
 
     async def play_url(self, url: str) -> None:
         """Play the specified url on the player."""
+        if self.mass.streams.base_url not in url:
+            # use base implementation if 3rd party url provided...
+            await super().play_url(url)
+            return
+
         if not self.powered:
             await self.power(True)
         # pylint: disable=protected-access
