@@ -192,7 +192,8 @@ class MusicAssistentSource(MediaSource):
                 await asyncio.gather(
                     *[
                         self._build_item(mass, item, can_expand=True)
-                        for item in await mass.music.playlists.db_items(True)
+                        # we only grab the first page here becaus ethe HA media browser does not support paging
+                        for item in (await mass.music.playlists.db_items(True)).items
                     ],
                 ),
                 key=lambda x: x.title,
@@ -237,7 +238,8 @@ class MusicAssistentSource(MediaSource):
                 await asyncio.gather(
                     *[
                         self._build_item(mass, artist, can_expand=True)
-                        for artist in await mass.music.artists.db_items(True)
+                        # we only grab the first page here becaus ethe HA media browser does not support paging
+                        for artist in (await mass.music.artists.db_items(True)).items
                     ],
                 ),
                 key=lambda x: x.title,
@@ -280,7 +282,8 @@ class MusicAssistentSource(MediaSource):
                 await asyncio.gather(
                     *[
                         self._build_item(mass, album, can_expand=True)
-                        for album in await mass.music.albums.db_items(True)
+                        # we only grab the first page here becaus ethe HA media browser does not support paging
+                        for album in (await mass.music.albums.db_items(True)).items
                     ],
                 ),
                 key=lambda x: x.title,
@@ -323,7 +326,8 @@ class MusicAssistentSource(MediaSource):
                 await asyncio.gather(
                     *[
                         self._build_item(mass, track, can_expand=False)
-                        for track in await mass.music.tracks.db_items(True)
+                        # we only grab the first page here becaus ethe HA media browser does not support paging
+                        for track in (await mass.music.tracks.db_items(True)).items
                     ],
                 ),
                 key=lambda x: x.title,
@@ -347,7 +351,8 @@ class MusicAssistentSource(MediaSource):
                     self._build_item(
                         mass, track, can_expand=False, media_class=media_class
                     )
-                    for track in await mass.music.radio.db_items(True)
+                    # we only grab the first page here becaus ethe HA media browser does not support paging
+                    for track in (await mass.music.radio.db_items(True)).items
                 ],
             ),
         )
