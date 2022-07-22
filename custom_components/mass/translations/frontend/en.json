@@ -138,7 +138,8 @@
     "search": "Show/hide search input",
     "refresh": "Refresh the items listing",
     "refresh_new_content": "New content is available, click to refresh the listing",
-    "select_items": "Select multiple items"
+    "select_items": "Select multiple items",
+    "linked": "This provideritem is linked to the current itemdetails"
   },
   "create_playlist": "Create new playlist on {0}"
 }

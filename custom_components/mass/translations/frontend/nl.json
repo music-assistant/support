@@ -137,7 +137,8 @@
     "search": "Toon/verberg zoekinvoer",
     "refresh": "De lijst verversen",
     "refresh_new_content": "Er is nieuwe inhoud beschikbaar, klik om te verversen",
-    "select_items": "Meerdere items selecteren"
+    "select_items": "Meerdere items selecteren",
+    "linked": "Dit provideritem is gelinkt aan de itemdetails"
   },
   "create_playlist": "Maak een nieuwe playlist aan op {0}"
 }

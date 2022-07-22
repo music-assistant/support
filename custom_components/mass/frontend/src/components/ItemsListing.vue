@@ -177,6 +177,7 @@
             :show-checkboxes="showCheckboxes"
             :is-selected="isSelected(item)"
             :show-details="itemtype.includes('versions')"
+            :parent-item="parentItem"
             @select="onSelect"
             @menu="onMenu"
             @click="onClick"
