@@ -750,6 +750,16 @@ class HassGroupPlayer(HassPlayer):
         super().__init__(*args, **kwargs)
 
     @property
+    def default_stream_type(self) -> ContentType:
+        """Return the default content type to use for streaming."""
+        # if any of the players supports FLAC, prefer that
+        for child_player in self.get_child_players(False, False):
+            if child_player.default_stream_type == ContentType.FLAC:
+                return ContentType.FLAC
+        # fallback to MP3
+        return ContentType.MP3
+
+    @property
     def powered(self) -> bool:
         """Return power state."""
         return self.group_powered
