@@ -52,6 +52,7 @@ from .const import (
     SLIMPROTO_DOMAIN,
     SLIMPROTO_EVENT,
     SONOS_DOMAIN,
+    VOLUMIO_DOMAIN,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -928,6 +929,29 @@ class HassGroupPlayer(HassPlayer):
         super().on_child_update(player_id, changed_keys)
 
 
+class VolumioPlayer(HassPlayer):
+    """Representation of Hass player from Volumio integration."""
+
+    _attr_stream_type: ContentType = ContentType.MP3
+
+    async def play_url(self, url: str) -> None:
+        """Play the specified url on the player."""
+        # a lot of players do not power on at playback request so send power on from here
+        if not self.powered:
+            await self.power(True)
+        self.logger.debug("play_url: %s", url)
+        self._attr_current_url = url
+        await self.entity.async_play_media(
+            MEDIA_TYPE_MUSIC,
+            {
+                "service": "webradio",
+                "type": "webradio",
+                "title": DEFAULT_NAME,
+                "uri": url,
+            },
+        )
+
+
 PLAYER_MAPPING = {
     CAST_DOMAIN: CastPlayer,
     DLNA_DOMAIN: DlnaPlayer,
@@ -936,6 +960,7 @@ PLAYER_MAPPING = {
     SONOS_DOMAIN: SonosPlayer,
     GROUP_DOMAIN: HassGroupPlayer,
     KODI_DOMAIN: KodiPlayer,
+    VOLUMIO_DOMAIN: VolumioPlayer,
 }
 
 

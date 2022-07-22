@@ -51,5 +51,6 @@ ATV_DOMAIN = "apple_tv"
 KODI_DOMAIN = "kodi"
 GROUP_DOMAIN = "group"
 ALEXA_DOMAIN = "alexa_media"
+VOLUMIO_DOMAIN = "volumio"
 
 BLACKLIST_DOMAINS = (ATV_DOMAIN, ALEXA_DOMAIN)
