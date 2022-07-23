@@ -47,12 +47,12 @@
         <span>{{ $t("tooltip.filter_library") }}</span>
       </v-tooltip>
 
-      <v-tooltip location="bottom" v-if="albumArtistsOnly !== undefined">
+      <v-tooltip location="bottom" v-if="showAlbumArtistsOnlyFilter">
         <template #activator="{ props }">
           <v-btn v-bind="props" icon @click="toggleAlbumArtistsFilter">
             <v-icon
               :icon="
-                albumArtistsOnly ? mdiAccountMusic : mdiAccountMusicOutline
+                albumArtistsOnlyFilter ? mdiAccountMusic : mdiAccountMusicOutline
               "
             ></v-icon>
           </v-btn>
@@ -305,7 +305,7 @@ export interface Props {
   showLibrary?: boolean;
   showDuration?: boolean;
   parentItem?: MediaItemType;
-  albumArtistsOnly?: boolean;
+  showAlbumArtistsOnlyFilter?: boolean;
   loadData: (
     offset: number,
     limit: number,
@@ -346,6 +346,7 @@ const selectedItems = ref<MediaItemType[]>([]);
 const showContextMenu = ref(false);
 const newContentAvailable = ref(false);
 const showCheckboxes = ref(false);
+const albumArtistsOnlyFilter = ref(false);
 
 // computed properties
 const thumbSize = computed(() => {
@@ -381,13 +382,13 @@ const toggleLibraryFilter = function () {
 };
 
 const toggleAlbumArtistsFilter = function () {
-  const newAlbumArtistsOnly = !props.albumArtistsOnly;
-  const albumArtistsOnlyStr = newAlbumArtistsOnly ? "true" : "false";
+  albumArtistsOnlyFilter.value = !albumArtistsOnlyFilter.value;
+  const albumArtistsOnlyStr = albumArtistsOnlyFilter.value ? "true" : "false";
   localStorage.setItem(
     `albumArtistsFilter.${props.itemtype}`,
     albumArtistsOnlyStr
   );
-  emit("toggleAlbumArtistsOnly", newAlbumArtistsOnly);
+  emit("toggleAlbumArtistsOnly", albumArtistsOnlyFilter.value);
   loadData(true);
 };
 
@@ -548,12 +549,13 @@ onMounted(() => {
   }
 
   // get stored/default albumArtistsOnlyFilter for this itemtype
-  if (props.albumArtistsOnly !== undefined) {
+  if (props.showAlbumArtistsOnlyFilter !== false) {
     const albumArtistsOnlyStr = localStorage.getItem(
       `albumArtistsFilter.${props.itemtype}`
     );
     if (albumArtistsOnlyStr && albumArtistsOnlyStr == "true") {
-      emit("toggleAlbumArtistsOnly", true);
+      albumArtistsOnlyFilter.value = true;
+      emit("toggleAlbumArtistsOnly", albumArtistsOnlyFilter.value);
     }
   }
   // get stored searchquery

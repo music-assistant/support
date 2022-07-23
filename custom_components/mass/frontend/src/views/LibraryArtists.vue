@@ -4,7 +4,7 @@
     :items="items"
     :show-providers="true"
     :load-data="loadItems"
-    :album-artists-only="albumArtistsOnly"
+    :show-album-artists-only-filter="true"
     @toggle-album-artists-only="
       (e) => {
         albumArtistsOnly = e;
@@ -23,7 +23,7 @@ import { store } from "../plugins/store";
 
 const { t } = useI18n();
 const items = ref<Artist[]>([]);
-const albumArtistsOnly = ref();
+const albumArtistsOnly = ref(false);
 
 const loadItems = async function (
   offset: number,

@@ -3,6 +3,7 @@ import type { Artist, BrowseFolder } from "./plugins/api";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const parseBool = (val: string | boolean) => {
   if (val == undefined) return false;
+  if (!val) return false;
   if (typeof val === "boolean") return val;
   return !!JSON.parse(String(val).toLowerCase());
 };

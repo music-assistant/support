@@ -139,7 +139,7 @@ async def websocket_artists(
     mass: MusicAssistant,
 ) -> None:
     """Return artists."""
-    if msg["album_artists_only"]:
+    if msg.get("album_artists_only"):
         func = mass.music.artists.album_artists
     else:
         func = mass.music.artists.db_items
