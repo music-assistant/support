@@ -4,6 +4,12 @@
     :items="items"
     :show-providers="true"
     :load-data="loadItems"
+    :album-artists-only="albumArtistsOnly"
+    @toggle-album-artists-only="
+      (e) => {
+        albumArtistsOnly = e;
+      }
+    "
   />
 </template>
 
@@ -17,6 +23,7 @@ import { store } from "../plugins/store";
 
 const { t } = useI18n();
 const items = ref<Artist[]>([]);
+const albumArtistsOnly = ref();
 
 const loadItems = async function (
   offset: number,
@@ -26,14 +33,21 @@ const loadItems = async function (
   inLibraryOnly = true
 ) {
   const library = inLibraryOnly || undefined;
-  return await api.getArtists(offset, limit, sort, library, search);
+  return await api.getArtists(
+    offset,
+    limit,
+    sort,
+    library,
+    search,
+    albumArtistsOnly.value
+  );
 };
 
 store.topBarTitle = t("artists");
 store.topBarContextMenuItems = [
   {
     label: "sync",
-    labelArgs:[],
+    labelArgs: [],
     action: () => {
       api.startSync(MediaType.ARTIST);
     },
@@ -43,5 +57,4 @@ store.topBarContextMenuItems = [
 onBeforeUnmount(() => {
   store.topBarContextMenuItems = [];
 });
-
 </script>

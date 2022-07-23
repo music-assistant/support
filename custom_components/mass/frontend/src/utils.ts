@@ -79,6 +79,7 @@ export const kebabize = (str: string) => {
 
 
 export const getArtistsString = function (artists: Artist[]) {
+  if (!artists) return '';
   return artists
     .map((x) => {
       return x.name;

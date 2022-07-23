@@ -14,6 +14,8 @@
   "radios": "Radio",
   "browse": "Browse",
   "search": "Search",
+  "try_global_search": "Try global search",
+  "topresult": "Top result",
   "settings": "Settings",
   "basic_settings": "Basic settings",
   "advanced_settings": "Advanced settings",
@@ -139,7 +141,8 @@
     "refresh": "Refresh the items listing",
     "refresh_new_content": "New content is available, click to refresh the listing",
     "select_items": "Select multiple items",
-    "linked": "This provideritem is linked to the current itemdetails"
+    "linked": "This provideritem is linked to the current itemdetails",
+    "album_artist_filter": "Toggle album-artist filter"
   },
   "create_playlist": "Create new playlist on {0}"
 }

@@ -124,7 +124,7 @@
                   color="primary"
                   v-bind="props"
                   :prepend-icon="mdiPlayCircle"
-                  :disabled="!activePlayerQueue"
+                  :disabled="!store.selectedPlayer?.available"
                 >
                   {{ $t("play") }}
                 </v-btn>

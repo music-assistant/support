@@ -63,9 +63,10 @@ const loading = ref(false);
 const loadData = async function () {
   loading.value = true;
   browseItem.value = await api.browse(props.path);
+  console.log(browseItem.value)
 
   // set header title to browse title
-  if (!browseItem.value) store.topBarTitle = t("browse");
+  if (!browseItem.value || !props.path) store.topBarTitle = t("browse");
   else {
     if (mobile.value) store.topBarTitle = getBrowseFolderName(browseItem.value, t);
     else

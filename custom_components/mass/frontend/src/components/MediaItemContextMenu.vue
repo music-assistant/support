@@ -206,7 +206,12 @@ const showContextMenu = async function () {
   if (props.items.length === 1) header.value = props.items[0].name;
   else header.value = t("items_selected", [props.items.length]).toString();
 
-  playMenuItems.value = getPlayMenuItems(props.items);
+  if (store.selectedPlayer && store.selectedPlayer.available) {
+    playMenuItems.value = getPlayMenuItems(props.items);
+  } else {
+    playMenuItems.value = [];
+  }
+  
   // grab the full (lazy) fullItem so we have details about in-library etc.
   let firstItem: MediaItem = props.items[0];
   if (firstItem.provider !== ProviderType.DATABASE) {
@@ -249,10 +254,13 @@ const newPlaylist = async function (provId: string) {
 };
 
 const itemClicked = async function (item: ContextMenuItem) {
-  console.log("itemClicked", item);
   if (item.actionStr == "add_playlist") {
     showPlaylistsMenu.value = true;
   } else if (item.actionStr == "clear") {
+    emit("clear");
+    close();
+  } else if (item.action && item.actionStr == "play") {
+    item.action();
     emit("clear");
     close();
   } else if (item.action) {
@@ -297,10 +305,10 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
     label: "play_now",
     action: () => {
       api.playMedia(items, QueueOption.PLAY);
-      close();
     },
     icon: mdiPlayCircleOutline,
     labelArgs: [],
+    actionStr: "play"
   });
 
   // Play NEXT
@@ -309,10 +317,10 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
       label: "play_next",
       action: () => {
         api.playMedia(items, QueueOption.NEXT);
-        close();
       },
       icon: mdiSkipNextCircleOutline,
       labelArgs: [],
+      actionStr: "play"
     });
   }
   // Add to Queue
@@ -320,10 +328,10 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
     label: "add_queue",
     action: () => {
       api.playMedia(items, QueueOption.ADD);
-      close();
     },
     icon: mdiPlaylistPlus,
     labelArgs: [],
+    actionStr: "play"
   });
   return playMenuItems;
 };

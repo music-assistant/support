@@ -67,18 +67,6 @@
       ><b>{{ truncateString(item.name, 35) }}</b></v-card-text
     >
     <v-card-subtitle
-      v-if="'artist' in item && item.artist"
-      style="
-        padding: 8px;
-        position: absolute;
-        bottom: 0px;
-        display: flex;
-        align-items: flex-end;
-      "
-      @click.stop="artistClick(item.artist)"
-      v-text="item.artist.name"
-    />
-    <v-card-subtitle
       v-if="'artists' in item && item.artists"
       style="
         padding: 8px;
@@ -87,11 +75,10 @@
         display: flex;
         align-items: flex-end;
       "
-      @click.stop="artistClick(item.artists[0])"
-      v-text="item.artists[0].name"
+      v-text="getArtistsString(item.artists)"
     />
     <v-card-subtitle
-      v-if="'owner' in item && item.owner"
+      v-else-if="'owner' in item && item.owner"
       style="
         padding: 8px;
         position: absolute;
@@ -119,7 +106,7 @@ import type {
   MediaItemType,
 } from "../plugins/api";
 import { MediaType, MediaQuality } from "../plugins/api";
-import { truncateString } from "../utils";
+import { truncateString, getArtistsString } from "../utils";
 
 // properties
 export interface Props {

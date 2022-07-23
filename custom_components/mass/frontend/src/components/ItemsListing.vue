@@ -47,6 +47,19 @@
         <span>{{ $t("tooltip.filter_library") }}</span>
       </v-tooltip>
 
+      <v-tooltip location="bottom" v-if="albumArtistsOnly !== undefined">
+        <template #activator="{ props }">
+          <v-btn v-bind="props" icon @click="toggleAlbumArtistsFilter">
+            <v-icon
+              :icon="
+                albumArtistsOnly ? mdiAccountMusic : mdiAccountMusicOutline
+              "
+            ></v-icon>
+          </v-btn>
+        </template>
+        <span>{{ $t("tooltip.album_artist_filter") }}</span>
+      </v-tooltip>
+
       <v-tooltip location="bottom">
         <template #activator="{ props }">
           <v-btn v-bind="props" icon @click="loadData(true)">
@@ -55,7 +68,9 @@
             </v-badge>
           </v-btn>
         </template>
-        <span v-if="newContentAvailable">{{ $t("tooltip.refresh_new_content") }}</span>
+        <span v-if="newContentAvailable">{{
+          $t("tooltip.refresh_new_content")
+        }}</span>
         <span v-else>{{ $t("tooltip.refresh") }}</span>
       </v-tooltip>
 
@@ -69,7 +84,10 @@
           <v-tooltip location="bottom">
             <template v-slot:activator="{ props: tooltip }">
               <v-btn icon v-bind="props">
-                <v-icon v-bind="mergeProps(menu, tooltip)" :icon="mdiSort"></v-icon>
+                <v-icon
+                  v-bind="mergeProps(menu, tooltip)"
+                  :icon="mdiSort"
+                ></v-icon>
               </v-btn>
             </template>
             <span>{{ $t("tooltip.sort_options") }}</span>
@@ -79,7 +97,9 @@
           <v-list>
             <div v-for="key of sortKeys" :key="key">
               <v-list-item @click="changeSort(key)">
-                <v-list-item-title v-text="$t('sort.' + key)"></v-list-item-title>
+                <v-list-item-title
+                  v-text="$t('sort.' + key)"
+                ></v-list-item-title>
                 <template v-slot:append>
                   <v-icon v-if="sortBy == key" :icon="mdiCheck"></v-icon>
                 </template>
@@ -125,7 +145,12 @@
       :label="$t('search')"
       hide-details
       variant="filled"
-      style="width: auto; margin-left: 15px; margin-right: 15px; margin-top: 10px"
+      style="
+        width: auto;
+        margin-left: 15px;
+        margin-right: 15px;
+        margin-top: 10px;
+      "
       v-if="showSearch"
       @focus="searchHasFocus = true"
       @blur="searchHasFocus = false"
@@ -144,7 +169,12 @@
       <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
 
       <!-- panel view -->
-      <v-row dense align-content="start" align="start" v-if="viewMode == 'panel'">
+      <v-row
+        dense
+        align-content="start"
+        align="start"
+        v-if="viewMode == 'panel'"
+      >
         <v-col v-for="item in items" :key="item.uri" align-self="start">
           <PanelviewItem
             :item="item"
@@ -193,12 +223,26 @@
         <v-alert
           type="info"
           v-if="!loading && items.length == 0 && (search || inLibraryOnly)"
-          >{{ $t("no_content_filter") }}</v-alert
+          >{{ $t("no_content_filter")
+          }}<v-btn
+            v-if="search"
+            style="margin-top: 15px"
+            @click="redirectSearch"
+            >{{ $t("try_global_search") }}</v-btn
+          ></v-alert
         >
         <v-alert type="info" v-else-if="!loading && items.length == 0">{{
           $t("no_content")
         }}</v-alert>
       </div>
+      <v-snackbar :model-value="selectedItems.length > 1">
+        <span>{{ $t("items_selected", [selectedItems.length]) }}</span>
+        <template v-slot:actions>
+          <v-btn color="primary" variant="text" @click="showContextMenu = true">
+            {{ $t("actions") }}
+          </v-btn>
+        </template>
+      </v-snackbar>
     </div>
   </section>
 </template>
@@ -216,7 +260,8 @@ import {
   mdiRefresh,
   mdiCheckboxMultipleOutline,
   mdiCheckboxMultipleBlankOutline,
-  mdiTune,
+  mdiAccountMusic,
+  mdiAccountMusicOutline,
 } from "@mdi/js";
 
 import {
@@ -260,6 +305,7 @@ export interface Props {
   showLibrary?: boolean;
   showDuration?: boolean;
   parentItem?: MediaItemType;
+  albumArtistsOnly?: boolean;
   loadData: (
     offset: number,
     limit: number,
@@ -306,6 +352,10 @@ const thumbSize = computed(() => {
   return mobile.value ? 140 : 150;
 });
 
+const emit = defineEmits<{
+  (e: "toggleAlbumArtistsOnly", value: boolean): void;
+}>();
+
 // methods
 const toggleSearch = function () {
   if (showSearch.value) showSearch.value = false;
@@ -327,6 +377,17 @@ const toggleLibraryFilter = function () {
   inLibraryOnly.value = !inLibraryOnly.value;
   const inLibraryOnlyStr = inLibraryOnly.value ? "true" : "false";
   localStorage.setItem(`libraryFilter.${props.itemtype}`, inLibraryOnlyStr);
+  loadData(true);
+};
+
+const toggleAlbumArtistsFilter = function () {
+  const newAlbumArtistsOnly = !props.albumArtistsOnly;
+  const albumArtistsOnlyStr = newAlbumArtistsOnly ? "true" : "false";
+  localStorage.setItem(
+    `albumArtistsFilter.${props.itemtype}`,
+    albumArtistsOnlyStr
+  );
+  emit("toggleAlbumArtistsOnly", newAlbumArtistsOnly);
   loadData(true);
 };
 
@@ -374,7 +435,8 @@ const onClick = function (mediaItem: MediaItemType) {
 
   if (
     ["artist", "album", "playlist"].includes(mediaItem.media_type) ||
-    force_provider_version == "true"
+    force_provider_version == "true" ||
+    !store.selectedPlayer?.available
   ) {
     router.push({
       name: mediaItem.media_type,
@@ -414,10 +476,16 @@ const loadNextPage = function ($state: any) {
   });
 };
 
+const redirectSearch = function () {
+  localStorage.setItem("globalsearch", search.value);
+  router.push({ name: "home" });
+};
+
 // watchers
 watch(
   () => search.value,
   (newVal) => {
+    if (newVal) showSearch.value = true;
     loadData(true);
   }
 );
@@ -443,6 +511,9 @@ const loadData = async function (clear = false, limit = defaultLimit) {
   }
   totalItems.value = nextItems.total;
   loading.value = false;
+  let storKey = `search.${props.itemtype}`;
+  if (props.parentItem) storKey += props.parentItem.item_id;
+  localStorage.setItem(storKey, search.value);
 };
 
 // get/set default settings at load
@@ -475,6 +546,23 @@ onMounted(() => {
       inLibraryOnly.value = true;
     }
   }
+
+  // get stored/default albumArtistsOnlyFilter for this itemtype
+  if (props.albumArtistsOnly !== undefined) {
+    const albumArtistsOnlyStr = localStorage.getItem(
+      `albumArtistsFilter.${props.itemtype}`
+    );
+    if (albumArtistsOnlyStr && albumArtistsOnlyStr == "true") {
+      emit("toggleAlbumArtistsOnly", true);
+    }
+  }
+  // get stored searchquery
+  let storKey = `search.${props.itemtype}`;
+  if (props.parentItem) storKey += props.parentItem.item_id;
+  const savedSearch = localStorage.getItem(storKey);
+  if (savedSearch) {
+    search.value = savedSearch;
+  }
   loadData(true);
 });
 
@@ -487,25 +575,11 @@ onMounted(() => {
       MassEventType.MEDIA_ITEM_DELETED,
     ],
     (evt: MassEvent) => {
-      if (props.parentItem) {
-        // update details listing if parent updates
-        const updatedItem = evt.data as MediaItemType;
-        if (props.parentItem?.uri == updatedItem.uri) {
-          loadData(true);
-        } else {
-          for (const provId of updatedItem.provider_ids) {
-            if (
-              provId.prov_type == props.parentItem?.provider &&
-              provId.item_id == props.parentItem?.item_id
-            ) {
-              loadData(true);
-              break;
-            }
-          }
+      if (evt.event == MassEventType.MEDIA_ITEM_ADDED) {
+        if (props.itemtype.includes((evt.data as MediaItemType).media_type)) {
+          // signal that there is new content
+          newContentAvailable.value = true;
         }
-      } else if (evt.event == MassEventType.MEDIA_ITEM_ADDED) {
-        // signal that there is new content
-        newContentAvailable.value = true;
       } else if (evt.event == MassEventType.MEDIA_ITEM_DELETED) {
         items.value = items.value.filter((x) => x.uri != evt.object_id);
       } else if (evt.event == MassEventType.MEDIA_ITEM_UPDATED) {
@@ -567,7 +641,10 @@ export const filteredItems = function (
         item.artist?.name.toLowerCase().includes(searchStr)
       ) {
         result.push(item);
-      } else if ("album" in item && item.album?.name.toLowerCase().includes(searchStr)) {
+      } else if (
+        "album" in item &&
+        item.album?.name.toLowerCase().includes(searchStr)
+      ) {
         result.push(item);
       } else if (
         "artists" in item &&
@@ -582,7 +659,9 @@ export const filteredItems = function (
   }
   // sort
   if (sortBy == "sort_name") {
-    result.sort((a, b) => (a.sort_name || a.name).localeCompare(b.sort_name || b.name));
+    result.sort((a, b) =>
+      (a.sort_name || a.name).localeCompare(b.sort_name || b.name)
+    );
   }
   if (sortBy == "sort_album") {
     result.sort((a, b) =>
@@ -596,14 +675,18 @@ export const filteredItems = function (
   }
   if (sortBy == "track_number") {
     result.sort(
-      (a, b) => ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
+      (a, b) =>
+        ((a as Track).track_number || 0) - ((b as Track).track_number || 0)
     );
     result.sort(
-      (a, b) => ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
+      (a, b) =>
+        ((a as Track).disc_number || 0) - ((b as Track).disc_number || 0)
     );
   }
   if (sortBy == "position") {
-    result.sort((a, b) => ((a as Track).position || 0) - ((b as Track).position || 0));
+    result.sort(
+      (a, b) => ((a as Track).position || 0) - ((b as Track).position || 0)
+    );
   }
   if (sortBy == "year") {
     result.sort((a, b) => ((a as Album).year || 0) - ((b as Album).year || 0));
@@ -613,7 +696,9 @@ export const filteredItems = function (
   }
 
   if (sortBy == "duration") {
-    result.sort((a, b) => ((a as Track).duration || 0) - ((b as Track).duration || 0));
+    result.sort(
+      (a, b) => ((a as Track).duration || 0) - ((b as Track).duration || 0)
+    );
   }
 
   if (sortBy == "provider") {

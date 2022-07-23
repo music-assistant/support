@@ -14,6 +14,8 @@
   "radios": "Radio",
   "browse": "Bladeren",
   "search": "Zoeken",
+  "try_global_search": "Try global search",
+  "topresult": "Top resultaat",
   "settings": "Instellingen",
   "basic_settings": "Basisinstellingen",
   "advanced_settings": "Geavanceerde instellingen",
@@ -138,7 +140,8 @@
     "refresh": "De lijst verversen",
     "refresh_new_content": "Er is nieuwe inhoud beschikbaar, klik om te verversen",
     "select_items": "Meerdere items selecteren",
-    "linked": "Dit provideritem is gelinkt aan de itemdetails"
+    "linked": "Dit provideritem is gelinkt aan de itemdetails",
+    "album_artist_filter": "Schakel filter in/uit om enkel albumartiesten te tonen"
   },
   "create_playlist": "Maak een nieuwe playlist aan op {0}"
 }

@@ -62,7 +62,6 @@ const activeTab = ref("");
 const itemDetails = ref<Album>();
 
 const loadItemDetails = async function () {
-  console.log(props);
   itemDetails.value = await api.getAlbum(
     props.provider as ProviderType,
     props.item_id,

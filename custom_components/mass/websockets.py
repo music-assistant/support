@@ -127,6 +127,7 @@ def async_get_mass(orig_func: Callable) -> Callable:
         vol.Optional(SORT, default="sort_name"): str,
         vol.Optional(LIBRARY): bool,
         vol.Optional(SEARCH): str,
+        vol.Optional("album_artists_only"): bool,
     }
 )
 @websocket_api.async_response
@@ -138,9 +139,14 @@ async def websocket_artists(
     mass: MusicAssistant,
 ) -> None:
     """Return artists."""
+    if msg["album_artists_only"]:
+        func = mass.music.artists.album_artists
+    else:
+        func = mass.music.artists.db_items
+
     await connection.send_big_result(
         msg[ID],
-        await mass.music.artists.db_items(
+        await func(
             msg.get(LIBRARY),
             msg.get(SEARCH),
             limit=msg[LIMIT],
@@ -878,7 +884,12 @@ async def websocket_delete_db_item(
 
 
 @websocket_api.websocket_command(
-    {vol.Required(TYPE): f"{DOMAIN}/search", vol.Required("query"): str}
+    {
+        vol.Required(TYPE): f"{DOMAIN}/search",
+        vol.Required("query"): str,
+        vol.Optional("media_types", default=MediaType.ALL): list,
+        vol.Optional("limit", default=5): int,
+    }
 )
 @websocket_api.async_response
 @async_get_mass
@@ -889,7 +900,9 @@ async def websocket_search(
     mass: MusicAssistant,
 ) -> None:
     """Return Browse items."""
-    result = await mass.music.search(msg.get(URI))
+    result = await mass.music.search(
+        msg["query"], media_types=msg["media_types"], limit=msg["limit"]
+    )
     result = [x.to_dict() for x in result]
 
     await connection.send_big_result(
