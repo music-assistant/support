@@ -24,7 +24,7 @@
     "webfontloader": "^1.0.0"
   },
   "devDependencies": {
-    "@intlify/vite-plugin-vue-i18n": "^5.0.0",
+    "@intlify/vite-plugin-vue-i18n": "^5.0.1",
     "@mdi/js": "^7.0.96",
     "@rushstack/eslint-patch": "^1.1.4",
     "@types/jsdom": "^16.2.14",
