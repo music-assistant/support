@@ -932,7 +932,42 @@ class HassGroupPlayer(HassPlayer):
 class VolumioPlayer(HassPlayer):
     """Representation of Hass player from Volumio integration."""
 
-    _attr_stream_type: ContentType = ContentType.MP3
+    _attr_stream_type: ContentType = ContentType.FLAC
+    _attr_media_pos_updated_at: Optional[datetime] = None
+
+    @property
+    def elapsed_time(self) -> float:
+        """Return elapsed time of current playing media in seconds."""
+        if self.state == PlayerState.PLAYING:
+            last_upd = self._attr_media_pos_updated_at
+            media_pos = self._attr_elapsed_time
+            if last_upd is None or media_pos is None:
+                return 0
+            diff = (utcnow() - last_upd).seconds
+            return media_pos + diff
+        if self.state == PlayerState.PAUSED:
+            return self._attr_elapsed_time
+        return 0
+
+    @callback
+    def on_state_changed(self, old_state: State, new_state: State) -> None:
+        """Call when state changes from HA player."""
+        super().on_state_changed(old_state, new_state)
+        # Workaround alert!
+        # Volumio strips duration/position if media type is webradio so we fake the media position
+        old_state = old_state.state
+        new_state = new_state.state
+        if old_state == STATE_PAUSED and new_state == STATE_PLAYING:
+            self._attr_media_pos_updated_at = utcnow()
+        elif new_state == STATE_PAUSED:
+            last_upd = self._attr_media_pos_updated_at
+            media_pos = self._attr_elapsed_time
+            if last_upd is not None and media_pos is not None:
+                diff = (utcnow() - last_upd).seconds
+                self._attr_elapsed_time = media_pos + diff
+        elif old_state != STATE_PLAYING and new_state == STATE_PLAYING:
+            self._attr_media_pos_updated_at = utcnow()
+            self._attr_elapsed_time = 0
 
     async def play_url(self, url: str) -> None:
         """Play the specified url on the player."""
@@ -941,15 +976,20 @@ class VolumioPlayer(HassPlayer):
             await self.power(True)
         self.logger.debug("play_url: %s", url)
         self._attr_current_url = url
-        await self.entity.async_play_media(
-            MEDIA_TYPE_MUSIC,
+        # pylint: disable=protected-access
+        await self.entity._volumio.replace_and_play(
             {
-                "service": "webradio",
-                "type": "webradio",
-                "title": DEFAULT_NAME,
                 "uri": url,
-            },
+                "service": "webradio",
+                "title": "Music Assistant",
+                "artist": "",
+                "album": "",
+                "type": "webradio",
+                "trackType": "flac",
+            }
         )
+        self._attr_media_pos_updated_at = utcnow()
+        self._attr_elapsed_time = 0
 
 
 PLAYER_MAPPING = {
