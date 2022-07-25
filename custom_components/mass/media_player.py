@@ -257,6 +257,8 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
     async def async_on_update(self) -> None:
         """Handle player updates."""
+        if not self.available:
+            return
         self._attr_media_position = self.player.active_queue.elapsed_time
         self._attr_media_position_updated_at = utcnow()
         self._prev_time = self.player.active_queue.elapsed_time
