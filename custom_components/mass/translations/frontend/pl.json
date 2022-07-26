@@ -64,14 +64,14 @@
     "crossfade": "Crossfade",
     "crossfade_duration": "{0} sekund",
     "crossfade_enabled": "Crossfade aktywny",  
-    "stream_type": "Codec/type to use for the audio stream to the player",
-    "announce_volume_increase": "Relative volume increase for announcements",
-    "max_sample_rate": "Maximum sample rate to send to the player",
+    "stream_type": "Kodek/typ do użycia w strumieniu audio do odtwarzacza",
+    "announce_volume_increase": "Względny wzrost głośności ogłoszeń",
+    "max_sample_rate": "Maksymalna częstotliwość próbkowania przesyłana do odtwarzacza",
     "metadata_mode": {
-       "title": "ICY Metadata mode",
-       "disabled": "Disabled: Do not report ICY metadata support to player",
-       "default": "Send ICY metadata if player requests/supports it with default (large) chunksize",
-       "legacy": "Send ICY metadata if player requests/supports it with legacy (very small) chunksize"
+       "title": "Tryb metadanych ICY",
+       "disabled": "Wyłączone: Nie zgłaszaj odtwarzaczowi obsługi metadanych ICY",
+       "default": "Wysyłaj metadane ICY, jeśli odtwarzacz o to poprosi/obsługuje z domyślnym (dużym) rozmiarem",
+       "legacy": "Wysyłaj metadane ICY, jeśli  odtwarzacz o to poprosi/obsługuje ze starszym (bardzo małym) rozmiarem"
     },
     "state": {
       "playing": "odtwarza",
@@ -86,9 +86,9 @@
     },
     "crossfademode": {
       "disabled": "Crossfade nie aktywny",
-      "strict": "Strict: Do not crossfade tracks of same album or different sample rate",
-      "smart": "Smart: Crossfade tracks when possible (without downsampling)",
-      "always": "Crossfade all tracks (resamples all audio to fixed rate)"
+      "strict": "Strict: nie używaj Crossfade dla utworów z tego samego albumu lub o różnej częstotliwości próbkowania",
+      "smart": "Smart: używaj Crossfade, gdy to możliwe (bez próbkowania w dół)",
+      "always": "używaj Crossfade zawsze (ponownie próbkuje dźwięk do stałej szybkości)"
     },
     "sort": {
         "sort_name": "Alfabetycznie",
@@ -128,21 +128,21 @@
     "unknown": "Nieznany typ albumu",
     "album": "Album",
     "single": "Singiel",
-    "compilation": "Compilation",
+    "compilation": "Kompilacja",
     "ep": "EP"
-  },
+  }Ten dostawca jest połączony z aktualnymi szczegółami przedmiotu,
   "tooltip": {
     "explicit": "Explicit",
     "library": "Przełącz między ulubionymi a wszystkimi",
     "filter_library": "Przełącz między ulubionymi a wszystkimi filter",
     "sort_options": "Opcje sortowania",
     "toggle_view_mode": "Przełacz między widokiem listy a miniaturek",
-    "search": "Show/hide search input",
+    "search": "Pokaż/ukryj dane wyszukiwania",
     "refresh": "Odśwież listę",
     "refresh_new_content": "Nowe zawartość jest dostępna, kliknij aby odświeżyć listę",
     "select_items": "Wybierz wiele elementów",
-    "linked": "This provideritem is linked to the current itemdetails",
-    "album_artist_filter": "Toggle album-artist filter"
+    "linked": "Ten dostawca jest połączony z aktualnymi szczegółami przedmiotu",
+    "album_artist_filter": "Przełącz filtr wykonawcy albumu"
   },
   "create_playlist": "Utwórz nową playlistę na {0}"
 }
