@@ -11,7 +11,7 @@
     ></div>
     <player-select />
     <TopBar />
-    <v-main id="cont">
+    <v-main id="cont" v-if="store.apiInitialized">
       <v-container fluid style="padding: 0">
         <router-view app v-slot="{ Component }">
           <transition name="fade" mode="out-in">
@@ -57,7 +57,7 @@ interface HassPanelPropEvent extends Event {
 document.addEventListener("forward-hass-prop", function (e) {
   const hass = (e as HassPropEvent).detail;
   if (!hass) return;
-  if (!api.initialized) {
+  if (!store.apiInitialized) {
     api.initialize(hass.connection);
     locale.value = hass.selectedLanguage;
   }
@@ -107,7 +107,7 @@ const setTheme = async function (hassData: HassData) {
 };
 
 setTimeout(() => {
-  if (!api.initialized) {
+  if (!store.apiInitialized) {
     console.log("Activating stand-alone mode...");
     store.isInStandaloneMode = true;
     api.initialize();

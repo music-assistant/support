@@ -20,13 +20,21 @@
             "
           />
         </div>
-        <div v-else-if="item.media_type == MediaType.FOLDER" class="listitem-thumb">
+        <div
+          v-else-if="item.media_type == MediaType.FOLDER"
+          class="listitem-thumb"
+        >
           <v-btn variant="plain" icon
             ><v-icon :icon="mdiFolder" size="60" style="align: center"> </v-icon
           ></v-btn>
         </div>
         <div v-else class="listitem-thumb">
-          <MediaItemThumb :item="item" :size="50" width="50px" height="50px" /></div
+          <MediaItemThumb
+            :item="item"
+            :size="50"
+            width="50px"
+            height="50px"
+          /></div
       ></template>
 
       <!-- title -->
@@ -36,7 +44,9 @@
         </span>
         <span v-else>
           {{ item.name }}
-          <span v-if="'version' in item && item.version">({{ item.version }})</span>
+          <span v-if="'version' in item && item.version"
+            >({{ item.version }})</span
+          >
         </span>
         <!-- explicit icon -->
         <v-tooltip location="bottom">
@@ -56,20 +66,31 @@
       <!-- subtitle -->
       <template v-slot:subtitle>
         <!-- track: artists(s) + album -->
-        <div v-if="item.media_type == MediaType.TRACK && item.album && !showTrackNumber">
+        <div
+          v-if="
+            item.media_type == MediaType.TRACK && item.album && !showTrackNumber
+          "
+        >
           {{ getArtistsString(item.artists) }} • {{ item.album.name }}
         </div>
         <!-- albumtrack: artists(s) + disc/track number -->
         <div
           v-else-if="
-            item.media_type == MediaType.TRACK && item.track_number && showTrackNumber
+            item.media_type == MediaType.TRACK &&
+            item.track_number &&
+            showTrackNumber
           "
         >
-          {{ getArtistsString(item.artists) }} • disc {{ item.disc_number }} track
+          {{ getArtistsString(item.artists) }} • disc
+          {{ item.disc_number }} track
           {{ item.track_number }}
         </div>
         <!-- album: albumtype + artists + year -->
-        <div v-else-if="item.media_type == MediaType.ALBUM && item.artists && item.year">
+        <div
+          v-else-if="
+            item.media_type == MediaType.ALBUM && item.artists && item.year
+          "
+        >
           {{ $t("album_type." + item.album_type) }} •
           {{ getArtistsString(item.artists) }} • {{ item.year }}
         </div>
@@ -85,7 +106,9 @@
         <!-- playlist owner -->
         <div v-else-if="'owner' in item && item.owner">{{ item.owner }}</div>
         <!-- radio description -->
-        <div v-if="item.media_type == MediaType.RADIO && item.metadata.description">
+        <div
+          v-if="item.media_type == MediaType.RADIO && item.metadata.description"
+        >
           {{ item.metadata.description }}
         </div>
       </template>
@@ -112,7 +135,9 @@
 
           <!-- provider icons -->
           <ProviderIcons
-            v-if="item.provider_ids && showProviders && !$vuetify.display.mobile"
+            v-if="
+              item.provider_ids && showProviders && !$vuetify.display.mobile
+            "
             :provider-ids="item.provider_ids"
             :height="20"
             class="listitem-actions"
@@ -121,7 +146,9 @@
           <!-- in library (heart) icon -->
           <div
             class="listitem-action"
-            v-if="'in_library' in item && showLibrary && !$vuetify.display.mobile"
+            v-if="
+              'in_library' in item && showLibrary && !$vuetify.display.mobile
+            "
           >
             <v-tooltip location="bottom">
               <template #activator="{ props }">
@@ -150,7 +177,9 @@
                 size="30"
                 v-if="
                   parentItem &&
-                  parentItem.provider_ids.find((x) => x.item_id === item.item_id)
+                  parentItem.provider_ids.find(
+                    (x) => x.item_id === item.item_id
+                  )
                 "
               />
             </template>
@@ -160,7 +189,11 @@
           <!-- track duration -->
           <div
             class="listitem-action"
-            v-if="showDuration && 'duration' in item && !$vuetify.display.mobile"
+            v-if="
+              showDuration &&
+              item.media_type == MediaType.TRACK &&
+              !$vuetify.display.mobile
+            "
           >
             <span>{{ formatDuration(item.duration) }}</span>
           </div>
@@ -172,7 +205,7 @@
               :icon="mdiInformationOutline"
               size="30"
               class="listitem-action"
-              style="margin-left: 10px; margin-right: 0px"
+              style="margin-left: 10px; margin-right: 5px"
               v-bind="props"
             />
           </template>
@@ -183,7 +216,9 @@
               }}</span>
               <v-divider></v-divider>
               <!-- provider icon + name -->
-              <v-list-item style="height: 50px; display: flex; align-items: center">
+              <v-list-item
+                style="height: 50px; display: flex; align-items: center"
+              >
                 <img
                   height="30"
                   width="50"
@@ -191,11 +226,18 @@
                   :src="getProviderIcon(item.provider)"
                   style="object-fit: contain; margin-left: -15px"
                 />
-                {{ truncateString(api.providers[item.provider_ids[0].prov_id].name, 25) }}
+                {{
+                  truncateString(
+                    api.providers[item.provider_ids[0].prov_id].name,
+                    25
+                  )
+                }}
               </v-list-item>
 
               <!-- item ID -->
-              <v-list-item style="height: 50px; display: flex; align-items: center">
+              <v-list-item
+                style="height: 50px; display: flex; align-items: center"
+              >
                 <v-icon
                   size="40"
                   :icon="mdiIdentifier"
@@ -207,7 +249,9 @@
               <!-- link to web location of item (provider share link -->
               <v-list-item
                 style="height: 50px; display: flex; align-items: center"
-                v-if="item.provider_ids[0].url && !item.provider.includes('file')"
+                v-if="
+                  item.provider_ids[0].url && !item.provider.includes('file')
+                "
               >
                 <v-icon
                   size="40"
@@ -391,7 +435,10 @@ const itemIsAvailable = function (item: MediaItem) {
   return false;
 };
 
-const fetchPreviewUrl = async function (provider: ProviderType, item_id: string) {
+const fetchPreviewUrl = async function (
+  provider: ProviderType,
+  item_id: string
+) {
   const key = `${provider}.${item_id}`;
   if (key in previewUrls) return;
   const url = await api.getTrackPreviewUrl(provider, item_id);

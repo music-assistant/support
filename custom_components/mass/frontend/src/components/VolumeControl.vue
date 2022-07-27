@@ -66,7 +66,7 @@
         <span
         class="text-body-2"
         style="position: absolute; margin-left: 65px;margin-top:-25px"
-        >{{ childPlayer.group_name }}</span
+        >{{ childPlayer.name }}</span
       >
       </span>
       <div

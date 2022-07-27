@@ -9,6 +9,7 @@ export const parseBool = (val: string | boolean) => {
 };
 
 export const formatDuration = function (totalSeconds: number) {
+  totalSeconds = Math.floor(totalSeconds); // round to whole seconds
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds - hours * 3600) / 60);
   const seconds = totalSeconds - hours * 3600 - minutes * 60;
