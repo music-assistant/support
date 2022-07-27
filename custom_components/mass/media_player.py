@@ -277,14 +277,14 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             media_title = media_item.name
             media_content_id = current_item.uri
             media_duration = current_item.duration
-            media_image_url = current_item.image
+            media_image_url = current_item.image.url
             if media_item.media_type == MediaType.TRACK:
                 media_artist = ", ".join([x.name for x in media_item.artists])
                 if media_item.version:
                     media_title += f" ({media_item.version})"
                 if media_item.album:
                     media_album_name = media_item.album.name
-                    if media_item.album.artist:
+                    if getattr(media_item.album, "artist", None):
                         media_album_artist = media_item.album.artist.name
         # Music Assistant is NOT the active source
         elif not self.player.active_queue.active:
