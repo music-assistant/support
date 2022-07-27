@@ -83,9 +83,9 @@ Music Assistant consists of multiple building blocks:
 - If a song is available on multiple providers (e.g. Spotify and a flac file on disk), the file/stream with the highest quality is always preferred when starting a stream.
 - Music Assistant uses a custom stream port (TCP 8095 by default) to stream audio to players. Players must be able to reach the Home Assistant instance and this port. If you're running one of the recommended Home Assistant installation methods, this is all handled for you, otherwise you will have to make sure you're running HA in HOST network mode. Note: If the default port 8095 is occupied, the next port will be tried, and so on.
 
-## Spotify, YT Music and Tune-In Radio specific notes
+## Spotify, Youtube Music and Tune-In Radio specific notes
 
-- When using Spotify or YT Music as a music source please note that **only Premium accounts** are supported, free accounts will not work.
+- When using Spotify or Youtube Music as a music source please note that **only Premium accounts** are supported, free accounts will not work.
 - For Tune-In radio, make sure to fill in your username and not your email address. Be aware that only favourites in your Tune-In library will be visible in Music Assistant.
 
 ## File System specific notes
