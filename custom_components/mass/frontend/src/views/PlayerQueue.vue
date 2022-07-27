@@ -32,12 +32,9 @@
             @click.right.prevent="onClick(item)"
             :disabled="item.item_id == curQueueItem?.item_id"
           >
-            <template v-slot:prepend
-              ><v-list-item-avatar rounded="0" class="listitem-thumb">
-                <MediaItemThumb
-                  :item="item.media_item || item"
-                  :size="50"
-                /> </v-list-item-avatar
+            <template v-slot:prepend>
+              <div class="listitem-thumb">
+                <MediaItemThumb :item="item" :size="50" width="50px" height="50px" /></div
             ></template>
 
             <!-- title -->
@@ -66,7 +63,10 @@
             <template v-slot:append>
               <div class="listitem-actions">
                 <!-- item duration -->
-                <div class="listitem-action" v-if="item.duration">
+                <div
+                  class="listitem-action"
+                  v-if="item.duration && item.media_item?.media_type != MediaType.RADIO"
+                >
                   <span>{{ formatDuration(item.duration) }}</span>
                 </div>
 
@@ -123,34 +123,23 @@
           <v-divider></v-divider>
         </div>
       </RecycleScroller>
-      <v-alert
-        type="info"
-        v-if="!loading && items.length == 0"
-        style="margin: 20px"
-        >{{ $t("no_content") }}</v-alert
-      >
+      <v-alert type="info" v-if="!loading && items.length == 0" style="margin: 20px">{{
+        $t("no_content")
+      }}</v-alert>
     </div>
 
     <!-- contextmenu -->
-    <v-dialog
-      v-model="showContextMenu"
-      transition="dialog-bottom-transition"
-      fullscreen
-    >
+    <v-dialog v-model="showContextMenu" transition="dialog-bottom-transition" fullscreen>
       <v-card>
         <v-toolbar sense dark color="primary">
           <v-icon :icon="mdiPlayCircleOutline"></v-icon>
           <v-toolbar-title v-if="selectedItem" style="padding-left: 10px"
             ><b>{{
-              truncateString(
-                selectedItem?.name || "",
-                $vuetify.display.mobile ? 20 : 150
-              )
+              truncateString(selectedItem?.name || "", $vuetify.display.mobile ? 20 : 150)
             }}</b></v-toolbar-title
           >
           <v-toolbar-title v-else style="padding-left: 10px"
-            ><b>{{ $t("settings") }}</b> |
-            {{ activePlayerQueue?.name }}</v-toolbar-title
+            ><b>{{ $t("settings") }}</b> | {{ activePlayerQueue?.name }}</v-toolbar-title
           >
           <v-btn :icon="mdiClose" dark text @click="closeContextMenu()"></v-btn>
         </v-toolbar>
@@ -351,16 +340,11 @@
                       :min="1"
                       :max="10"
                       :step="1"
-                      :model-value="
-                        activePlayerQueue?.settings.crossfade_duration
-                      "
+                      :model-value="activePlayerQueue?.settings.crossfade_duration"
                       @update:model-value="
-                        api.playerQueueSettings(
-                          activePlayerQueue?.queue_id || '',
-                          {
-                            crossfade_duration: $event,
-                          }
-                        )
+                        api.playerQueueSettings(activePlayerQueue?.queue_id || '', {
+                          crossfade_duration: $event,
+                        })
                       "
                     >
                       <template v-slot:append>
@@ -377,8 +361,8 @@
 
                   <!-- announce volume increase -->
                   <v-list-item>
-                    <div style="width:100%;margin-top:-15px">
-                      <div class="text-caption" style="margin-left:40px">
+                    <div style="width: 100%; margin-top: -15px">
+                      <div class="text-caption" style="margin-left: 40px">
                         {{ $t("announce_volume_increase") }}
                       </div>
 
@@ -394,12 +378,9 @@
                           activePlayerQueue?.settings.announce_volume_increase
                         "
                         @update:model-value="
-                          api.playerQueueSettings(
-                            activePlayerQueue?.queue_id || '',
-                            {
-                              announce_volume_increase: $event,
-                            }
-                          )
+                          api.playerQueueSettings(activePlayerQueue?.queue_id || '', {
+                            announce_volume_increase: $event,
+                          })
                         "
                       >
                       </v-slider>
@@ -445,8 +426,7 @@
                         margin-top: -40px;
                       "
                       :disabled="
-                        !activePlayerQueue?.settings
-                          .volume_normalization_enabled
+                        !activePlayerQueue?.settings.volume_normalization_enabled
                       "
                       color="primary"
                       :min="-40"
@@ -465,8 +445,7 @@
                         <div class="text-caption">
                           {{
                             $t("volume_normalization_target", [
-                              activePlayerQueue?.settings
-                                .volume_normalization_target,
+                              activePlayerQueue?.settings.volume_normalization_target,
                             ])
                           }}
                         </div>
@@ -495,7 +474,16 @@
                       :model-value="activePlayerQueue?.settings.max_sample_rate"
                       :label="$t('max_sample_rate')"
                       :prepend-icon="mdiCastConnected"
-                      :items="['44100', '48000', '88200', '96000', '176000', '192000', '352000', '384000']"
+                      :items="[
+                        '44100',
+                        '48000',
+                        '88200',
+                        '96000',
+                        '176000',
+                        '192000',
+                        '352000',
+                        '384000',
+                      ]"
                       @update:model-value="
                         api.playerQueueSettings(activePlayerQueue?.queue_id, {
                           max_sample_rate: $event,
@@ -511,8 +499,14 @@
                       :label="$t('metadata_mode.title')"
                       :prepend-icon="mdiCastConnected"
                       :items="[
-                        { title: $t('metadata_mode.disabled'), value: 'disabled' },
-                        { title: $t('metadata_mode.default'), value: 'default' },
+                        {
+                          title: $t('metadata_mode.disabled'),
+                          value: 'disabled',
+                        },
+                        {
+                          title: $t('metadata_mode.default'),
+                          value: 'default',
+                        },
                         { title: $t('metadata_mode.legacy'), value: 'legacy' },
                       ]"
                       @update:model-value="
@@ -522,7 +516,6 @@
                       "
                     ></v-select>
                   </v-list-item>
-
                 </v-list>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -549,7 +542,7 @@ import {
   mdiCancel,
   mdiCogOutline,
   mdiCastConnected,
-  mdiVolumePlus
+  mdiVolumePlus,
 } from "@mdi/js";
 import { ref } from "@vue/reactivity";
 import { RecycleScroller } from "vue-virtual-scroller";
@@ -611,14 +604,11 @@ const tabItems = computed(() => {
 });
 
 // listen for item updates to refresh items when that happens
-const unsub = api.subscribe(
-  MassEventType.QUEUE_ITEMS_UPDATED,
-  (evt: MassEvent) => {
-    if (evt.object_id == activePlayerQueue.value?.queue_id) {
-      loadItems();
-    }
+const unsub = api.subscribe(MassEventType.QUEUE_ITEMS_UPDATED, (evt: MassEvent) => {
+  if (evt.object_id == activePlayerQueue.value?.queue_id) {
+    loadItems();
   }
-);
+});
 onBeforeUnmount(unsub);
 
 store.topBarContextMenuItems = [
@@ -648,9 +638,7 @@ const loadItems = async function () {
   loading.value = true;
   if (activePlayerQueue.value) {
     store.topBarTitle = t("queue") + ": " + activePlayerQueue.value.name;
-    items.value = await api.getPlayerQueueItems(
-      activePlayerQueue.value.queue_id
-    );
+    items.value = await api.getPlayerQueueItems(activePlayerQueue.value.queue_id);
   } else {
     store.topBarTitle = t("queue");
     items.value = [];
