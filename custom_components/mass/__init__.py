@@ -51,8 +51,6 @@ PLATFORMS = ("media_player", "switch", "number", "select")
 FORWARD_EVENTS = (
     EventType.QUEUE_ADDED,
     EventType.QUEUE_UPDATED,
-    EventType.QUEUE_ITEMS_UPDATED,
-    EventType.QUEUE_TIME_UPDATED,
 )
 
 
@@ -92,6 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # databases is really chatty with logging at info level
     logging.getLogger("databases").setLevel(logging.WARNING)
+    logging.getLogger("music_assistant").setLevel(logging.getLogger(__name__).level)
 
     conf = entry.options
 
