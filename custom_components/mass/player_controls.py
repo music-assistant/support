@@ -385,7 +385,6 @@ class SlimprotoPlayer(HassPlayer):
     @callback
     def on_squeezebox_event(self, event: Event) -> None:
         """Handle special events from squeezebox players."""
-        print(event)
         if event.data["entity_id"] != self.entity_id:
             return
         cmd = event.data["command_str"]
@@ -468,6 +467,8 @@ class KodiPlayer(HassPlayer):
 class CastPlayer(HassPlayer):
     """Representation of Hass player from cast integration."""
 
+    # pylint: disable=protected-access
+
     _attr_max_sample_rate: int = 96000
     _attr_stream_type: ContentType = ContentType.FLAC
     _attr_use_mute_as_power = True
@@ -512,42 +513,58 @@ class CastPlayer(HassPlayer):
         self._attr_is_group = is_group = len(group_members) > 0
         self._attr_use_mute_as_power = not is_group
 
-    # async def play_url(self, url: str) -> None:
-    #     """Play the specified url on the player."""
-    #     if self.mass.streams.base_url not in url:
-    #         # use base implementation if 3rd party url provided...
-    #         await super().play_url(url)
-    #         return
-    #     self._attr_powered = True
-    #     if self._attr_use_mute_as_power:
-    #         await self.volume_mute(False)
-    #     # pylint: disable=import-outside-toplevel,protected-access
-    #     from homeassistant.components.cast.media_player import quick_play
+    async def play_url(self, url: str) -> None:
+        """Play the specified url on the player."""
+        if self.mass.streams.base_url not in url or "announce" in url:
+            # use base implementation if 3rd party url provided...
+            await super().play_url(url)
+            return
+        self._attr_powered = True
+        if self._attr_use_mute_as_power:
+            await self.volume_mute(False)
 
-    #     cast = self.entity._chromecast
-    #     app_data = {
-    #         "media_id": url,
-    #         "media_type": f"audio/{self.active_queue.settings.stream_type.value}",
-    #         "enqueue": False,
-    #         "stream_type": "BUFFERED",
-    #         "title": f" Streaming from {DEFAULT_NAME}",
-    #     }
-    #     await self.hass.async_add_executor_job(
-    #         quick_play, cast, "default_media_receiver", app_data
-    #     )
-    #     # enqueue second item to allow on-player control of next
-    #     # (or shout next track from google assistant)
-    #     await asyncio.sleep(1)
-    #     if self.active_queue.stream and len(self.active_queue.items) < 2:
-    #         return
-    #     enqueue_data = {**app_data}
-    #     enqueue_data["enqueue"] = True
-    #     enqueue_data["media_id"] = self.mass.streams.get_control_url(
-    #         self.active_queue.queue_id
-    #     )
-    #     await self.hass.async_add_executor_job(
-    #         quick_play, cast, "default_media_receiver", enqueue_data
-    #     )
+        # create (fake) CC queue wih repeat enabled to allow on-player control of next
+        # (or shout next track from google assistant)
+        cast = self.entity._chromecast
+        fmt = url.rsplit(".", 1)[-1]
+        queuedata = {
+            "type": "QUEUE_LOAD",
+            "repeatMode": "REPEAT_ALL",
+            "shuffle": False,  # handled by our queue controller
+            "queueType": "PLAYLIST",
+            "startIndex": 0,
+            "items": [
+                {
+                    "opt_itemId": url,
+                    "autoplay": True,
+                    "preloadTime": 0,
+                    "startTime": 0,
+                    "activeTrackIds": [],
+                    "media": {
+                        "contentId": url,
+                        "contentType": f"audio/{fmt}",
+                        "streamType": "LIVE",
+                        "metadata": {
+                            "title": f"Streaming from {DEFAULT_NAME}",
+                        },
+                    },
+                }
+            ],
+        }
+        media_controller = cast.media_controller
+        queuedata["mediaSessionId"] = media_controller.status.media_session_id
+
+        def launched_callback():
+            media_controller.send_message(queuedata, False)
+
+        receiver_ctrl = media_controller._socket_client.receiver_controller
+        await self.hass.loop.run_in_executor(
+            None,
+            receiver_ctrl.launch_app,
+            media_controller.supporting_app_id,
+            False,
+            launched_callback,
+        )
 
     async def volume_set(self, volume_level: int) -> None:
         """Send volume level (0..100) command to player."""
@@ -684,7 +701,7 @@ class SonosPlayer(HassPlayer):
         async def poll():
             if not self.entity.speaker.is_coordinator:
                 return
-            self.logger.debug("poll_media")
+            self.logger.debug("polling sonos media")
             await self.hass.loop.run_in_executor(None, self.entity.media.poll_media)
 
         self.hass.loop.call_later(delay, self.hass.create_task, poll())
@@ -921,10 +938,10 @@ class HassGroupPlayer(HassPlayer):
             if child_player := self.mass.players.get_player(player_id):
                 # resume queue if a child player turns on while this queue is playing
                 if child_player.powered:
-                    self.mass.create_task(self.active_queue.resume())
+                    self.hass.create_task(self.active_queue.resume())
                 # make sure that stop is called on the player
                 else:
-                    self.mass.create_task(child_player.stop())
+                    self.hass.create_task(child_player.stop())
 
         super().on_child_update(player_id, changed_keys)
 
