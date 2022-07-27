@@ -158,7 +158,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # initialize platforms
     if conf.get(CONF_CREATE_MASS_PLAYERS, True):
-        hass.config_entries.async_setup_platforms(entry, PLATFORMS)
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def on_hass_start(*args, **kwargs):
         """Start sync actions when Home Assistant is started."""

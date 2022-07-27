@@ -13,6 +13,8 @@ from .const import DEFAULT_NAME, DOMAIN
 class MassBaseEntity(Entity):
     """Base Entity from Music Assistant Player."""
 
+    _attr_has_entity_name = True
+
     def __init__(self, mass: MusicAssistant, player: Player) -> None:
         """Initialize MediaPlayer entity."""
         self.mass = mass
@@ -58,14 +60,6 @@ class MassBaseEntity(Entity):
     def available(self) -> bool:
         """Return availability of entity."""
         return self.player.available
-
-    @property
-    def name(self) -> str | None:
-        """Return default entity name."""
-        _base = self.player.name
-        if hasattr(self, "entity_description"):
-            return f"{_base} {self.entity_description.name}"
-        return _base
 
     async def __on_mass_update(self, event: MassEvent) -> None:
         """Call when we receive an event from MusicAssistant."""

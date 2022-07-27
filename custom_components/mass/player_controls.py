@@ -119,6 +119,8 @@ class HassPlayer(Player):
     @property
     def name(self) -> str:
         """Return player name."""
+        if self.entity.has_entity_name:
+            return self.entity.device_info.get("name", self.entity_id)
         if reg_entry := self.entity.registry_entry:
             return reg_entry.name or self.entity.name
         return self.entity_id

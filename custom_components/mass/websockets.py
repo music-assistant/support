@@ -144,7 +144,7 @@ async def websocket_artists(
     else:
         func = mass.music.artists.db_items
 
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         await func(
             msg.get(LIBRARY),
@@ -211,7 +211,7 @@ async def websocket_artist_tracks(
         item.to_dict()
         for item in await mass.music.artists.toptracks(msg[ITEM_ID], msg[PROVIDER])
     ]
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -237,7 +237,7 @@ async def websocket_artist_albums(
         item.to_dict()
         for item in await mass.music.artists.albums(msg[ITEM_ID], msg[PROVIDER])
     ]
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -265,7 +265,7 @@ async def websocket_albums(
     mass: MusicAssistant,
 ) -> None:
     """Return albums."""
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         await mass.music.albums.db_items(
             msg.get(LIBRARY),
@@ -330,7 +330,7 @@ async def websocket_album_tracks(
         item.to_dict()
         for item in await mass.music.albums.tracks(msg[ITEM_ID], msg[PROVIDER])
     ]
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -357,7 +357,7 @@ async def websocket_album_versions(
         item.to_dict()
         for item in await mass.music.albums.versions(msg[ITEM_ID], msg[PROVIDER])
     ]
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -385,7 +385,7 @@ async def websocket_tracks(
     mass: MusicAssistant,
 ) -> None:
     """Return tracks."""
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         await mass.music.tracks.db_items(
             msg.get(LIBRARY),
@@ -417,7 +417,7 @@ async def websocket_track_versions(
         item.to_dict()
         for item in await mass.music.tracks.versions(msg[ITEM_ID], msg[PROVIDER])
     ]
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -500,7 +500,7 @@ async def websocket_playlists(
     mass: MusicAssistant,
 ) -> None:
     """Return playlists."""
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         await mass.music.playlists.db_items(
             msg.get(LIBRARY),
@@ -566,7 +566,7 @@ async def websocket_playlist_tracks(
         item.to_dict()
         for item in await mass.music.playlists.tracks(msg[ITEM_ID], msg[PROVIDER])
     ]
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -672,7 +672,7 @@ async def websocket_radios(
     mass: MusicAssistant,
 ) -> None:
     """Return radios."""
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         await mass.music.radio.db_items(
             msg.get(LIBRARY),
@@ -739,7 +739,7 @@ async def websocket_radio_versions(
         item.to_dict()
         for item in await mass.music.radio.versions(msg[ITEM_ID], msg[PROVIDER])
     ]
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -905,7 +905,7 @@ async def websocket_search(
     )
     result = [x.to_dict() for x in result]
 
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
@@ -924,7 +924,7 @@ async def websocket_browse(
 ) -> None:
     """Return Browse items."""
 
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         await mass.music.browse(msg.get("path")),
     )
@@ -1023,7 +1023,7 @@ async def websocket_playerqueue_items(
         return
     result = [x.to_dict() for x in queue.items]
 
-    await connection.send_result(
+    connection.send_result(
         msg[ID],
         result,
     )
