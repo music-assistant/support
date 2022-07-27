@@ -5,7 +5,7 @@ import {
   type Connection,
   createConnection,
   ERR_HASS_HOST_REQUIRED,
-  getAuth
+  getAuth,
 } from "home-assistant-js-websocket";
 import { reactive, ref } from "vue";
 
@@ -16,7 +16,7 @@ export enum MediaType {
   PLAYLIST = "playlist",
   RADIO = "radio",
   FOLDER = "folder",
-  UNKNOWN = "unknown"
+  UNKNOWN = "unknown",
 }
 
 export enum MediaQuality {
@@ -29,7 +29,7 @@ export enum MediaQuality {
   LOSSLESS_HI_RES_1 = 20, // 44.1/48khz 24 bits HI-RES
   LOSSLESS_HI_RES_2 = 21, // 88.2/96khz 24 bits HI-RES
   LOSSLESS_HI_RES_3 = 22, // 176/192khz 24 bits HI-RES
-  LOSSLESS_HI_RES_4 = 23 // above 192khz 24 bits HI-RES
+  LOSSLESS_HI_RES_4 = 23, // above 192khz 24 bits HI-RES
 }
 
 export enum ProviderType {
@@ -42,7 +42,7 @@ export enum ProviderType {
   TUNEIN = "tunein",
   YTMUSIC = "ytmusic",
   DATABASE = "database",
-  URL = "url"
+  URL = "url",
 }
 export interface MediaItemProviderId {
   item_id: string;
@@ -65,7 +65,7 @@ export enum LinkType {
   TIKTOK = "tiktok",
   DISCOGS = "discogs",
   WIKIPEDIA = "wikipedia",
-  ALLMUSIC = "allmusic"
+  ALLMUSIC = "allmusic",
 }
 
 export enum ImageType {
@@ -79,7 +79,7 @@ export enum ImageType {
   BACK = "back",
   CDART = "cdart",
   EMBEDDED_THUMB = "embedded_thumb",
-  OTHER = "other"
+  OTHER = "other",
 }
 
 export interface MediaItemLink {
@@ -141,7 +141,7 @@ export enum AlbumType {
   ALBUM = "album",
   SINGLE = "single",
   COMPILATION = "compilation",
-  UNKNOWN = "unknown"
+  UNKNOWN = "unknown",
 }
 
 export interface Album extends MediaItem {
@@ -209,7 +209,7 @@ export enum ContentType {
   PCM_S32LE = "s32le", // PCM signed 32-bit little-endian
   PCM_F32LE = "f32le", // PCM 32-bit floating-point little-endian
   PCM_F64LE = "f64le", // PCM 64-bit floating-point little-endian
-  UNKNOWN = "?"
+  UNKNOWN = "?",
 }
 
 export interface StreamDetails {
@@ -234,7 +234,7 @@ export enum PlayerState {
   IDLE = "idle",
   PAUSED = "paused",
   PLAYING = "playing",
-  OFF = "off"
+  OFF = "off",
 }
 
 export interface DeviceInfo {
@@ -254,23 +254,22 @@ export interface Player {
   is_group: boolean;
   group_members: string[];
   is_passive: boolean;
+  is_group_leader: boolean;
   group_name: string;
   group_powered: boolean;
   group_volume_level: number;
+  group_leader: string;
   device_info: DeviceInfo;
   active_queue: string;
 }
 
 export interface QueueItem {
-  uri: string;
   name: string;
   duration: number;
   item_id: string;
   sort_index: number;
   streamdetails?: StreamDetails;
-  media_type: MediaType;
-  image?: string;
-  available?: boolean;
+  image?: MediaItemImage;
   media_item?: Track | Radio;
 }
 
@@ -278,19 +277,19 @@ export enum CrossFadeMode {
   DISABLED = "disabled", // no crossfading at all
   STRICT = "strict", // do not crossfade tracks of same album
   SMART = "smart", // crossfade if possible (do not crossfade different sample rates)
-  ALWAYS = "always" // all tracks - resample to fixed sample rate
+  ALWAYS = "always", // all tracks - resample to fixed sample rate
 }
 
 export enum RepeatMode {
   OFF = "off", // no repeat at all
   ONE = "one", // repeat current/single track
-  ALL = "all" // repeat entire queue
+  ALL = "all", // repeat entire queue
 }
 
 export enum MetadataMode {
   DISABLED = "disabled", // do not notify icy support
   DEFAULT = "default", // enable icy if player requests it, default chunksize
-  LEGACY = "legacy" // enable icy but with legacy 8kb chunksize, requires mp3
+  LEGACY = "legacy", // enable icy but with legacy 8kb chunksize, requires mp3
 }
 
 export interface QueueSettings {
@@ -346,7 +345,7 @@ export enum QueueCommand {
   MOVE_NEXT = "move_next",
   DELETE = "delete",
   GROUP_POWER = "group_power",
-  GROUP_VOLUME = "group_volume"
+  GROUP_VOLUME = "group_volume",
 }
 
 export enum MassEventType {
@@ -365,14 +364,14 @@ export enum MassEventType {
   MEDIA_ITEM_UPDATED = "media_item_updated",
   MEDIA_ITEM_DELETED = "media_item_deleted",
   // special types for local subscriptions only
-  ALL = "*"
+  ALL = "*",
 }
 
 export enum QueueOption {
   PLAY = "play",
   REPLACE = "replace",
   NEXT = "next",
-  ADD = "add"
+  ADD = "add",
 }
 
 export type MassEvent = {
@@ -386,7 +385,7 @@ export enum JobStatus {
   RUNNING = "running",
   CANCELLED = "cancelled",
   FINISHED = "success",
-  ERROR = "error"
+  ERROR = "error",
 }
 
 export type BackgroundJob = {
@@ -418,7 +417,7 @@ export enum MusicProviderFeature {
   LIBRARY_RADIOS_EDIT = "library_radios_edit",
   // playlist-specific features
   PLAYLIST_TRACKS_EDIT = "playlist_tracks_edit",
-  PLAYLIST_CREATE = "playlist_create"
+  PLAYLIST_CREATE = "playlist_create",
 }
 
 export interface MusicProvider {
@@ -453,7 +452,6 @@ export class MusicAssistantApi {
   // eslint-disable-next-line prettier/prettier
   private _conn?: Connection;
   private _lastId: number;
-  private _initialized: boolean;
   private _throttleId?: any;
   public players = reactive<{ [player_id: string]: Player }>({});
   public queues = reactive<{ [queue_id: string]: PlayerQueue }>({});
@@ -462,22 +460,27 @@ export class MusicAssistantApi {
   private _wsEventCallbacks: Array<[string, CallableFunction]>;
 
   constructor(conn?: Connection) {
-    this._initialized = false;
     this._conn = conn;
     this._lastId = 0;
     this._wsEventCallbacks = [];
   }
 
-  public get initialized() {
-    return this._initialized;
-  }
-
   public async initialize(conn?: Connection) {
+    if (this._conn) throw "already connected";
     if (conn) this._conn = conn;
     else if (!this._conn) {
       this._conn = await this.connectHassStandalone();
     }
-    this._initialized = true;
+    if (this._conn?.socket?.url) {
+      store.apiBaseUrl = this._conn?.socket?.url
+        .replace("ws://", "http://")
+        .replace("wss://", "https://")
+        .replace("/websocket", "");
+    }
+    console.log("store.apiBaseUrl", store.apiBaseUrl)
+
+    store.apiInitialized = true;
+    console.log("conn", this._conn);
 
     // load initial data from api
     this._fetchState();
@@ -487,7 +490,7 @@ export class MusicAssistantApi {
         this.handleMassEvent(msg);
       },
       {
-        type: "mass/subscribe"
+        type: "mass/subscribe",
       }
     );
   }
@@ -563,7 +566,7 @@ export class MusicAssistantApi {
       item_id,
       lazy,
       refresh,
-      force_provider_version
+      force_provider_version,
     });
   }
 
@@ -580,7 +583,7 @@ export class MusicAssistantApi {
   ): Promise<string> {
     return this.getData("track/preview", {
       provider,
-      item_id
+      item_id,
     });
   }
 
@@ -598,7 +601,7 @@ export class MusicAssistantApi {
       limit,
       library,
       search,
-      album_artists_only: albumArtistsOnly
+      album_artists_only: albumArtistsOnly,
     });
   }
 
@@ -647,7 +650,7 @@ export class MusicAssistantApi {
       item_id,
       lazy,
       refresh,
-      force_provider_version
+      force_provider_version,
     });
   }
 
@@ -869,7 +872,7 @@ export class MusicAssistantApi {
       this.executeCmd("playerqueue/command", {
         queue_id,
         command,
-        command_arg
+        command_arg,
       });
     }, 200);
   }
@@ -913,9 +916,9 @@ export class MusicAssistantApi {
               return undefined;
             }
           },
-          saveTokens: (tokens) => {
+          saveTokens: (tokens: any) => {
             localStorage.hassTokens = JSON.stringify(tokens);
-          }
+          },
         }
       : {};
     try {
@@ -923,7 +926,7 @@ export class MusicAssistantApi {
     } catch (err) {
       if (err === ERR_HASS_HOST_REQUIRED) {
         authOptions.hassUrl = prompt(
-          "What host to connect to?",
+          "Please enter the URL to Home Assistant",
           "http://localhost:8123"
         );
         if (!authOptions.hassUrl) return;
@@ -990,7 +993,7 @@ export class MusicAssistantApi {
     return (this._conn as Connection).sendMessagePromise({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args
+      ...args,
     });
   }
 
@@ -1000,7 +1003,7 @@ export class MusicAssistantApi {
     (this._conn as Connection).sendMessage({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args
+      ...args,
     });
   }
 }

@@ -15,6 +15,8 @@ interface Store {
   defaultTopBarTitle: string;
   topBarContextMenuItems: ContextMenuItem[];
   alwaysShowMenuButton: boolean;
+  apiInitialized: boolean;
+  apiBaseUrl: string;
   prevRoutes: Array<{
     name: string;
     params: RouteParams;
@@ -33,5 +35,7 @@ export const store: Store = reactive({
   defaultTopBarTitle: "Music Assistant",
   topBarContextMenuItems: [],
   alwaysShowMenuButton: false,
+  apiInitialized: false,
+  apiBaseUrl: "",
   prevRoutes: [],
 });

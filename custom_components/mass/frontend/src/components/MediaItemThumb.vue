@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { watchEffect, ref, computed } from "vue";
-import type { ItemMapping, MediaItemType, QueueItem } from "../plugins/api";
+import type { ItemMapping, MediaItemImage, MediaItemType, QueueItem } from "../plugins/api";
 import { ImageType } from "../plugins/api";
 import { store } from "../plugins/store";
 
@@ -77,18 +77,18 @@ watchEffect(async () => {
 <script lang="ts">
 //// utility functions for images
 
-export const getImageUrl = function (
+export const getMediaItemImage = function (
   mediaItem?: MediaItemType | ItemMapping | QueueItem,
   type: ImageType = ImageType.THUMB,
   includeFileBased = false
-) {
+): MediaItemImage | undefined {
   // get imageurl for mediaItem
-  if (!mediaItem || !mediaItem.media_type) return "";
+  if (!mediaItem) return undefined;
   if ("image" in mediaItem && mediaItem.image) return mediaItem.image; // queueItem
   if ("metadata" in mediaItem && mediaItem.metadata.images) {
     for (const img of mediaItem.metadata.images) {
       if (img.is_file && !includeFileBased) continue;
-      if (img.type == type) return img.url;
+      if (img.type == type) return img;
     }
   }
   // retry with album of track
@@ -101,7 +101,7 @@ export const getImageUrl = function (
   ) {
     for (const img of mediaItem.album.metadata.images) {
       if (img.is_file && !includeFileBased) continue;
-      if (img.type == type) return img.url;
+      if (img.type == type) return img;
     }
   }
   // retry with album artist
@@ -113,7 +113,7 @@ export const getImageUrl = function (
   ) {
     for (const img of mediaItem.artist.metadata.images) {
       if (img.is_file && !includeFileBased) continue;
-      if (img.type == type) return img.url;
+      if (img.type == type) return img;
     }
   }
   // retry with track artist
@@ -122,7 +122,7 @@ export const getImageUrl = function (
       if ("metadata" in artist && artist.metadata.images) {
         for (const img of artist.metadata.images) {
           if (img.is_file && !includeFileBased) continue;
-          if (img.type == type) return img.url;
+          if (img.type == type) return img;
         }
       }
     }
@@ -135,23 +135,23 @@ export const getImageThumbForItem = async function (
   size?: number
 ): Promise<string | undefined> {
   if (!mediaItem) return;
-  let url = getImageUrl(mediaItem, type, true);
-  if (!url) return undefined;
-  if (url.startsWith("http") && size) {
+  let img = getMediaItemImage(mediaItem, type, true);
+  if (!img) return undefined;
+  if (!img.is_file && size) {
     // get url to resized image(thumb) from weserv service
-    return `https://images.weserv.nl/?url=${url}&w=200`;
-  } else if (url.startsWith("https://")) {
-    return url;
+    return `https://images.weserv.nl/?url=${img.url}&w=200`;
+  } else if (img.url.startsWith("https://")) {
+    return img.url;
   } else if (
-    url.startsWith("http://") &&
+    img.url.startsWith("http://") &&
     window.location.protocol == "https:"
   ) {
     // require https images if we're hosted as https...
-    return url.replace("http://", "https://");
+    return img.url.replace("http://", "https://");
   } else {
     // use image proxy in HA integration to grab thumb
-    const encUrl = encodeURIComponent(url);
-    return `/api/mass/image_proxy?size=${size || 0}&url=${encUrl}`;
+    const encUrl = encodeURIComponent(img.url);
+    return `${store.apiBaseUrl}/mass/image_proxy?size=${size || 0}&url=${encUrl}`;
   }
 };
 </script>
