@@ -27,9 +27,9 @@
 import ItemsListing, { filteredItems } from "../components/ItemsListing.vue";
 import InfoHeader from "../components/InfoHeader.vue";
 import { ref, reactive } from "@vue/reactivity";
-import type { ProviderType, Track } from "../plugins/api";
+import { MassEventType, type ProviderType, type Track, type MassEvent, type MediaItemType } from "../plugins/api";
 import { api } from "../plugins/api";
-import { watchEffect } from "vue";
+import { onBeforeUnmount, onMounted, watchEffect } from "vue";
 
 export interface Props {
   item_id: string;
@@ -51,6 +51,31 @@ const loadItemDetails = async function () {
 watchEffect(() => {
   // load info
   loadItemDetails();
+});
+
+onMounted(() => {
+  //reload if/when item updates
+  const unsub = api.subscribe_multi(
+    [MassEventType.MEDIA_ITEM_ADDED, MassEventType.MEDIA_ITEM_UPDATED],
+    (evt: MassEvent) => {
+      // refresh info if we receive an update for this item
+      const updatedItem = evt.data as MediaItemType;
+      if (itemDetails.value?.uri == updatedItem.uri) {
+        loadItemDetails();
+      } else {
+        for (const provId of updatedItem.provider_ids) {
+          if (
+            provId.prov_type == itemDetails.value?.provider &&
+            provId.item_id == itemDetails.value?.item_id
+          ) {
+            loadItemDetails();
+            break;
+          }
+        }
+      }
+    }
+  );
+  onBeforeUnmount(unsub);
 });
 
 const loadTrackVersions = async function (
