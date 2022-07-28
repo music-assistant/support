@@ -10,7 +10,7 @@
       },
       "music": {
         "title": "Proveedores de música",
-        "description": "Configura que proveedores de musica quieres habilitar. Para cada uno de ellos, introduce el usuario y contraseña aqui abajo.",
+        "description": "Configura los proveedores de musica que quieres habilitar. Para cada uno de ellos, introduce el usuario y contraseña aqui abajo.",
         "data": {
           "spotify_enabled": "Habilita el proveedor Spotify",
           "spotify_username": "Usuario para Spotify",
@@ -47,7 +47,7 @@
       },
       "music": {
         "title": "Proveedores de música",
-        "description": "Configura que proveedores de musica quieres habilitar. Para cada uno de ellos, introduce el usuario y contraseña aqui abajo.",
+        "description": "Configura los proveedores de musica que quieres habilitar. Para cada uno de ellos, introduce el usuario y contraseña aqui abajo.",
         "data": {
           "spotify_enabled": "Habilita el proveedor Spotify",
           "spotify_username": "Usuario para Spotify",
