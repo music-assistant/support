@@ -1,0 +1,84 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Lecteurs multimédias",
+        "description": "Configurez les lecteurs multimédias Home Assistant que vous souhaitez utiliser avec Music Assistant.",
+        "data": {
+          "player_entities": "Lecteurs"
+        }
+      },
+      "music": {
+        "title": "Configurer les fournisseurs de musique",
+        "description": "Veuillez configurer les fournisseurs de musique que vous souhaitez activer. Pour chaque fournisseur de musique activé, saisissez vos informations d'identification ci-dessous.",
+        "data": {
+          "spotify_enabled": "Activer le fournisseur de musique Spotify",
+          "spotify_username": "Nom d'utilisateur pour Spotify",
+          "spotify_password": "Mot de passe pour Spotify",
+          "qobuz_enabled": "Activer le fournisseur de musique Qobuz",
+          "qobuz_username": "Nom d'utilisateur pour Qobuz",
+          "qobuz_password": "Mot de passe pour Qobuz",
+          "ytmusic_enabled": "Activer le fournisseur de musique Youtube",
+          "ytmusic_username": "Nom d'utilisateur pour Youtube Music",
+          "ytmusic_password": "Cookie de connexion pour Youtube Music",
+          "tunein_enabled": "Activer le fournisseur de musique Tune-In Radio",
+          "tunein_username": "Nom d'utilisateur pour Tune-In Radio",
+          "filesystem_enabled": "Activer le fournisseur de système de fichiers",
+          "filesystem_directory": "Répertoire sur disque vers vos fichiers musicaux."
+        },
+        "data_description": {
+          "filesystem_directory": "Spécifiez le chemin complet sur le disque où vos fichiers multimédias sont stockés (par exemple, /media). Notez que Home Assistant doit avoir accès à cet emplacement."
+        }
+      }
+    },
+    "error": {
+      "directory_not_exists": "Le répertoire n'existe pas ou n'est pas accessible",
+      "yt_no_cookie": "Youtube Music nécessite un cookie dans le champ du mot de passe, voir ici : https://github.com/music-assistant/hass-music-assistant/discussions/606"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Lecteurs multimédias",
+        "description": "Configurez les lecteurs multimédias Home Assistant que vous souhaitez utiliser avec Music Assistant.",
+        "data": {
+          "player_entities": "Lecteurs"
+        }
+      },
+      "music": {
+        "title": "Fournisseurs de musique",
+        "description": "Configurez les fournisseurs de musique que vous souhaitez activer. Pour chaque fournisseur de musique activé, saisissez vos informations d'identification ci-dessous.",
+        "data": {
+          "spotify_enabled": "Activer le fournisseur de musique Spotify",
+          "spotify_username": "Nom d'utilisateur pour Spotify",
+          "spotify_password": "Mot de passe pour Spotify",
+          "qobuz_enabled": "Activer le fournisseur de musique Qobuz",
+          "qobuz_username": "Nom d'utilisateur pour Qobuz",
+          "qobuz_password": "Mot de passe pour Qobuz",
+          "ytmusic_enabled": "Activer le fournisseur de musique Youtube",
+          "ytmusic_username": "Nom d'utilisateur pour Youtube Music",
+          "ytmusic_password": "Cookie de connexion pour Youtube Music",
+          "tunein_enabled": "Activer le fournisseur de musique Tune-In Radio",
+          "tunein_username": "Nom d'utilisateur pour Tune-In Radio",
+          "filesystem_enabled": "Activer le fournisseur de système de fichiers",
+          "filesystem_directory": "Répertoire sur disque vers vos fichiers musicaux."
+        },
+        "data_description": {
+          "filesystem_directory": "Spécifiez le chemin complet sur le disque où vos fichiers multimédias sont stockés (par exemple, /media). Notez que Home Assistant doit avoir accès à cet emplacement."
+        }
+      },
+      "adv": {
+        "title": "Avancée",
+        "description": "Configurez les options avancées de Music Assistant.",
+        "data": {
+          "hide_source_players": "Masquez les lecteurs sources dans l'interface utilisateur de Home Assistant.",
+          "create_mass_players": "Créez des lecteurs multimédias pour les lecteurs Music Assistant dans Home Assistant."
+        }
+      }
+    },
+    "error": {
+      "directory_not_exists": "Le répertoire n'existe pas ou n'est pas accessible",
+      "yt_no_cookie": "Youtube Music nécessite un cookie dans le champ du mot de passe, voir ici : https://github.com/music-assistant/hass-music-assistant/discussions/606"
+    }
+  }
+}
