@@ -45,6 +45,7 @@
   "play_on": "Play on: {0}",
   "play_now": "Play Now",
   "play_next": "Play Next",
+  "play_radio": "Start Radio",
   "add_queue": "Add to Queue",
   "start_radio": "Start Radio",
   "queue_clear": "Clear all items in queue",

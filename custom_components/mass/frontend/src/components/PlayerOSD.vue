@@ -478,13 +478,8 @@ const itemClick = function (item: MediaItemType) {
 watchEffect(async () => {
   if (curQueueItem.value == undefined) {
     curMediaItem.value = undefined;
-  } else if (
-    curQueueItem.value.media_item &&
-    curQueueItem.value.media_item.provider == "database"
-  ) {
-    curMediaItem.value = await api?.getItem(curQueueItem.value.uri);
-  } else {
-    curMediaItem.value = curQueueItem.value.media_item;
+  } else if (curQueueItem.value.media_item){
+    curMediaItem.value = await api?.getItem(curQueueItem.value.media_item?.uri);
   }
   if (curMediaItem.value) {
     fanartImage.value =
