@@ -478,9 +478,10 @@ const itemClick = function (item: MediaItemType) {
 watchEffect(async () => {
   if (curQueueItem.value == undefined) {
     curMediaItem.value = undefined;
-  } else if (curQueueItem.value.media_item){
-    curMediaItem.value = await api?.getItem(curQueueItem.value.media_item?.uri);
+  } else if (curQueueItem.value.media_item) {
+    curMediaItem.value = await api?.getItem(curQueueItem.value.media_item.uri);
   }
+  
   if (curMediaItem.value) {
     fanartImage.value =
       (await getImageThumbForItem(curMediaItem.value, ImageType.FANART)) ||
