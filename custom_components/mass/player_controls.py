@@ -196,7 +196,6 @@ class HassPlayer(Player):
     @callback
     def on_hass_event(self, event: Event) -> None:
         """Call on Home Assistant event."""
-        self.logger.debug("on_hass_event")
         if event.event_type == "state_changed":
             old_state = event.data.get("old_state")
             new_state = event.data.get("new_state")

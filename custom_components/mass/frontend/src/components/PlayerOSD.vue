@@ -482,7 +482,7 @@ watchEffect(async () => {
     curQueueItem.value.media_item &&
     curQueueItem.value.media_item.provider == "database"
   ) {
-    curMediaItem.value = await api?.getItem(curQueueItem.value.uri);
+    curMediaItem.value = await api?.getItem(curQueueItem.value.media_item.uri);
   } else {
     curMediaItem.value = curQueueItem.value.media_item;
   }
