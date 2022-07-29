@@ -5,7 +5,7 @@
         "title": "Reproductores",
         "description": "Configura que reproductores de Home Assistant quieres utilizar desde Music Assistant.",
         "data": {
-          "player_entities": "Entidades de Reproductores"
+          "player_entities": "Entidades"
         }
       },
       "music": {
@@ -42,7 +42,7 @@
         "title": "Reproductores",
         "description": "Configura que reproductores de Home Assistant quieres utilizar desde Music Assistant.",
         "data": {
-          "player_entities": "Entidades de Reproductores"
+          "player_entities": "Entidades"
         }
       },
       "music": {
