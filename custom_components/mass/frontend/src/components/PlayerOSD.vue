@@ -24,16 +24,16 @@
     <v-list-item
       style="height: 60px; width: 100%; margin-top: -5px; padding-bottom: 20px"
       lines="two"
-      v-if="activePlayerQueue?.active && (curMediaItem || curQueueItem)"
+      v-if="activePlayerQueue?.active && curQueueItem"
     >
       <template v-slot:prepend>
         <div class="listitem-thumb">
           <MediaItemThumb
-            :item="curMediaItem || curQueueItem"
+            :item="curQueueItem.media_item || curQueueItem"
             :size="50"
             width="50px"
             height="50px"
-            @click="curMediaItem ? itemClick(curMediaItem) : ''"
+            @click="curQueueItem?.media_item ? itemClick(curQueueItem.media_item) : ''"
             style="cursor: pointer"
           /></div
       ></template>
@@ -41,13 +41,13 @@
       <!-- title -->
       <template v-slot:title>
         <span
-          v-if="curMediaItem"
-          @click="curMediaItem ? itemClick(curMediaItem) : ''"
+          v-if="curQueueItem.media_item"
+          @click="curQueueItem?.media_item ? itemClick(curQueueItem.media_item) : ''"
           style="cursor: pointer"
         >
-          {{ curMediaItem.name }}
-          <span v-if="'version' in curMediaItem && curMediaItem.version"
-            >({{ curMediaItem.version }})</span
+          {{ curQueueItem.media_item.name }}
+          <span v-if="'version' in curQueueItem.media_item && curQueueItem.media_item.version"
+            >({{ curQueueItem.media_item.version }})</span
           >
         </span>
         <span v-else-if="curQueueItem">
@@ -59,24 +59,24 @@
       <template v-slot:subtitle>
         <!-- track: artists(s) + album -->
         <div
-          v-if="curMediaItem?.media_type == MediaType.TRACK && curMediaItem.album"
-          @click="curMediaItem ? itemClick(curMediaItem) : ''"
+          v-if="curQueueItem.media_item?.media_type == MediaType.TRACK && curQueueItem.media_item.album"
+          @click="curQueueItem?.media_item ? itemClick(curQueueItem.media_item) : ''"
           style="cursor: pointer"
         >
-          {{ getArtistsString(curMediaItem.artists) }} •
-          {{ curMediaItem.album.name }}
+          {{ getArtistsString(curQueueItem.media_item.artists) }} •
+          {{ curQueueItem.media_item.album.name }}
         </div>
         <!-- track/album falback: artist present -->
-        <div v-else-if="curMediaItem && 'artist' in curMediaItem && curMediaItem.artist">
-          {{ curMediaItem.artist.name }}
+        <div v-else-if="curQueueItem.media_item && 'artist' in curQueueItem.media_item && curQueueItem.media_item.artist">
+          {{ curQueueItem.media_item.artist.name }}
         </div>
         <!-- radio live metadata -->
         <div v-else-if="curQueueItem?.streamdetails?.stream_title">
           {{ curQueueItem?.streamdetails?.stream_title }}
         </div>
         <!-- other description -->
-        <div v-else-if="curMediaItem?.metadata.description">
-          {{ curMediaItem.metadata.description }}
+        <div v-else-if="curQueueItem.media_item?.metadata.description">
+          {{ curQueueItem.media_item.metadata.description }}
         </div>
       </template>
       <template v-slot:append>
@@ -175,7 +175,7 @@
             v-if="
               !$vuetify.display.mobile &&
               streamDetails &&
-              curMediaItem?.media_type !== MediaType.RADIO
+              curQueueItem.media_item?.media_type !== MediaType.RADIO
             "
             class="mediadetails-time text-caption"
           >
@@ -191,7 +191,7 @@
       v-if="
         activePlayerQueue?.active &&
         curQueueItem &&
-        curQueueItem.media_type != MediaType.RADIO
+        curQueueItem.media_item?.media_type == MediaType.TRACK
       "
     >
       <v-slider
@@ -202,7 +202,7 @@
         :max="curQueueItem.duration"
         :thumb-size="10"
         @update:model-value="
-          api.queueCommandSeek(activePlayerQueue?.queue_id, Math.round($event))
+          api.queueCommandSeek(activePlayerQueue?.queue_id || '', Math.round($event))
         "
         style="margin-left: 0; margin-right: 0"
       />
@@ -449,19 +449,25 @@ const itemClick = function (item: MediaItemType) {
 };
 
 // watchers
-watchEffect(async () => {
-  if (curQueueItem.value && curQueueItem.value.media_item) {
-    curMediaItem.value = await api?.getItem(curQueueItem.value.media_item.uri);
-  } else {
-    curMediaItem.value = undefined;
-  }
 
-  if (curMediaItem.value) {
-    fanartImage.value =
-      (await getImageThumbForItem(curMediaItem.value, ImageType.FANART)) ||
-      (await getImageThumbForItem(curMediaItem.value, ImageType.THUMB));
+watch(
+  () => curQueueItem.value,
+  async (newVal) => {
+    if (newVal == undefined) {
+      curMediaItem.value = undefined;
+    } else if (newVal.media_item) {
+      curMediaItem.value = newVal.media_item;
+      // request full track info
+      curMediaItem.value = await api?.getItem(newVal.media_item.uri);
+    }
+
+    if (curMediaItem.value) {
+      fanartImage.value =
+        (await getImageThumbForItem(newVal, ImageType.FANART)) ||
+        (await getImageThumbForItem(newVal, ImageType.THUMB));
+    }
   }
-});
+);
 
 watch(
   () => store.selectedPlayer,
