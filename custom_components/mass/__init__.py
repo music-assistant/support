@@ -1,17 +1,22 @@
 """Music Assistant (music-assistant.github.io) integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import pathlib
 import socket
 from urllib.parse import urlparse
 
+from awesomeversion import AwesomeVersion, AwesomeVersionStrategy
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import Event, HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.json import json_loads
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 from homeassistant.helpers.start import async_at_start
 from music_assistant import MusicAssistant
@@ -54,6 +59,19 @@ FORWARD_EVENTS = (
 )
 
 
+async def read_manifest() -> dict:
+    """Read manifest file."""
+
+    def _read_manifest():
+        manifest_path = (
+            pathlib.Path(__file__).parent.resolve().joinpath("manifest.json")
+        )
+        return json_loads(manifest_path.read_text("utf-8"))
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _read_manifest)
+
+
 def get_local_ip_from_internal_url(hass: HomeAssistant):
     """Get the stream ip address from the internal_url."""
     try:
@@ -86,7 +104,17 @@ def get_local_ip_from_internal_url(hass: HomeAssistant):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up from a config entry."""
     http_session = async_get_clientsession(hass, verify_ssl=False)
-    db_file = hass.config.path("music_assistant.db")
+
+    # compare version in manifest with HA version
+    manifest = await read_manifest()
+    ha_vers = AwesomeVersion(HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
+    ma_vers = AwesomeVersion(manifest["version"], AwesomeVersionStrategy.SEMVER, True)
+    # for now, just raise at mismatch of major/minor because in 99% of the cases
+    # there are breaking changes between HA releases
+    if not (ha_vers.major == ma_vers.major and ha_vers.minor == ma_vers.minor):
+        raise ConfigEntryAuthFailed(
+            "Not compatible with this version of Home Assistant"
+        )
 
     # databases is really chatty with logging at info level
     logging.getLogger("databases").setLevel(logging.WARNING)
@@ -137,6 +165,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 password=conf.get(CONF_YTMUSIC_PASSWORD),
             )
         )
+
+    db_file = hass.config.path("music_assistant.db")
     stream_ip = get_local_ip_from_internal_url(hass)
     mass_conf = MassConfig(
         database_url=f"sqlite:///{db_file}", providers=providers, stream_ip=stream_ip
