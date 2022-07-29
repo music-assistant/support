@@ -325,7 +325,7 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
       },
       icon: mdiRadioTower,
       labelArgs: [],
-      actionStr: "play_radio",
+      actionStr: "play",
     });
   }
 

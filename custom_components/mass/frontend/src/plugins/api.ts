@@ -321,6 +321,7 @@ export interface PlayerQueue {
   next_item?: QueueItem;
   items: number;
   settings: QueueSettings;
+  radio_source: MediaItemType[];
 }
 
 export enum QueueCommand {

@@ -144,5 +144,7 @@
     "linked": "Dit provideritem is gelinkt aan de itemdetails",
     "album_artist_filter": "Schakel filter in/uit om enkel albumartiesten te tonen"
   },
-  "create_playlist": "Maak een nieuwe playlist aan op {0}"
+  "create_playlist": "Maak een nieuwe playlist aan op {0}",
+  "queue_radio_enabled": "Radio modus is ingeschakeld",
+  "queue_radio_based_on": "De wachtrij wordt dynamisch gevuld met nummers gebaseerd op {0}:"
 }

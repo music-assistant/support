@@ -18,6 +18,34 @@
       "
     >
       <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
+      <v-alert
+        v-if="activePlayerQueue && activePlayerQueue?.radio_source.length > 0"
+        color="primary"
+        theme="dark"
+        :icon="mdiRadioTower"
+        prominent
+        style="margin-right:10px;"
+      >
+        <b>{{ $t("queue_radio_enabled") }}</b>
+        <br />
+        {{
+          $t("queue_radio_based_on", [
+            $t(activePlayerQueue?.radio_source[0].media_type),
+          ])
+        }}
+        <b
+          ><a
+            @click="
+              activePlayerQueue
+                ? gotoItem(activePlayerQueue?.radio_source[0])
+                : ''
+            "
+            >{{ activePlayerQueue?.radio_source[0].name }}</a
+          ></b
+        ><span v-if="activePlayerQueue?.radio_source.length > 1">
+          (+{{ activePlayerQueue?.radio_source.length - 1 }})</span
+        >
+      </v-alert>
       <RecycleScroller
         v-slot="{ item }"
         :items="tabItems"
@@ -34,7 +62,12 @@
           >
             <template v-slot:prepend>
               <div class="listitem-thumb">
-                <MediaItemThumb :item="item" :size="50" width="50px" height="50px" /></div
+                <MediaItemThumb
+                  :item="item"
+                  :size="50"
+                  width="50px"
+                  height="50px"
+                /></div
             ></template>
 
             <!-- title -->
@@ -65,7 +98,10 @@
                 <!-- item duration -->
                 <div
                   class="listitem-action"
-                  v-if="item.duration && item.media_item?.media_type != MediaType.RADIO"
+                  v-if="
+                    item.duration &&
+                    item.media_item?.media_type != MediaType.RADIO
+                  "
                 >
                   <span>{{ formatDuration(item.duration) }}</span>
                 </div>
@@ -123,23 +159,34 @@
           <v-divider></v-divider>
         </div>
       </RecycleScroller>
-      <v-alert type="info" v-if="!loading && items.length == 0" style="margin: 20px">{{
-        $t("no_content")
-      }}</v-alert>
+      <v-alert
+        type="info"
+        v-if="!loading && items.length == 0"
+        style="margin: 20px"
+        >{{ $t("no_content") }}</v-alert
+      >
     </div>
 
     <!-- contextmenu -->
-    <v-dialog v-model="showContextMenu" transition="dialog-bottom-transition" fullscreen>
+    <v-dialog
+      v-model="showContextMenu"
+      transition="dialog-bottom-transition"
+      fullscreen
+    >
       <v-card>
         <v-toolbar sense dark color="primary">
           <v-icon :icon="mdiPlayCircleOutline"></v-icon>
           <v-toolbar-title v-if="selectedItem" style="padding-left: 10px"
             ><b>{{
-              truncateString(selectedItem?.name || "", $vuetify.display.mobile ? 20 : 150)
+              truncateString(
+                selectedItem?.name || "",
+                $vuetify.display.mobile ? 20 : 150
+              )
             }}</b></v-toolbar-title
           >
           <v-toolbar-title v-else style="padding-left: 10px"
-            ><b>{{ $t("settings") }}</b> | {{ activePlayerQueue?.name }}</v-toolbar-title
+            ><b>{{ $t("settings") }}</b> |
+            {{ activePlayerQueue?.name }}</v-toolbar-title
           >
           <v-btn :icon="mdiClose" dark text @click="closeContextMenu()"></v-btn>
         </v-toolbar>
@@ -229,8 +276,12 @@
 
             <!-- show info (track only) -->
             <v-list-item
-              @click="gotoTrack((selectedItem as QueueItem).uri)"
-              v-if="selectedItem?.media_type == MediaType.TRACK"
+              @click="
+                selectedItem?.media_item
+                  ? gotoItem(selectedItem.media_item)
+                  : ''
+              "
+              v-if="selectedItem?.media_item?.media_type == MediaType.TRACK"
             >
               <v-list-item-avatar style="padding-right: 10px">
                 <v-icon :icon="mdiInformationOutline"></v-icon>
@@ -340,11 +391,16 @@
                       :min="1"
                       :max="10"
                       :step="1"
-                      :model-value="activePlayerQueue?.settings.crossfade_duration"
+                      :model-value="
+                        activePlayerQueue?.settings.crossfade_duration
+                      "
                       @update:model-value="
-                        api.playerQueueSettings(activePlayerQueue?.queue_id || '', {
-                          crossfade_duration: $event,
-                        })
+                        api.playerQueueSettings(
+                          activePlayerQueue?.queue_id || '',
+                          {
+                            crossfade_duration: $event,
+                          }
+                        )
                       "
                     >
                       <template v-slot:append>
@@ -378,9 +434,12 @@
                           activePlayerQueue?.settings.announce_volume_increase
                         "
                         @update:model-value="
-                          api.playerQueueSettings(activePlayerQueue?.queue_id || '', {
-                            announce_volume_increase: $event,
-                          })
+                          api.playerQueueSettings(
+                            activePlayerQueue?.queue_id || '',
+                            {
+                              announce_volume_increase: $event,
+                            }
+                          )
                         "
                       >
                       </v-slider>
@@ -426,7 +485,8 @@
                         margin-top: -40px;
                       "
                       :disabled="
-                        !activePlayerQueue?.settings.volume_normalization_enabled
+                        !activePlayerQueue?.settings
+                          .volume_normalization_enabled
                       "
                       color="primary"
                       :min="-40"
@@ -445,7 +505,8 @@
                         <div class="text-caption">
                           {{
                             $t("volume_normalization_target", [
-                              activePlayerQueue?.settings.volume_normalization_target,
+                              activePlayerQueue?.settings
+                                .volume_normalization_target,
                             ])
                           }}
                         </div>
@@ -543,11 +604,12 @@ import {
   mdiCogOutline,
   mdiCastConnected,
   mdiVolumePlus,
+  mdiRadioTower,
 } from "@mdi/js";
 import { ref } from "@vue/reactivity";
 import { RecycleScroller } from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import type { QueueItem, MassEvent } from "../plugins/api";
+import type { QueueItem, MassEvent, MediaItemType } from "../plugins/api";
 import {
   RepeatMode,
   CrossFadeMode,
@@ -604,11 +666,14 @@ const tabItems = computed(() => {
 });
 
 // listen for item updates to refresh items when that happens
-const unsub = api.subscribe(MassEventType.QUEUE_ITEMS_UPDATED, (evt: MassEvent) => {
-  if (evt.object_id == activePlayerQueue.value?.queue_id) {
-    loadItems();
+const unsub = api.subscribe(
+  MassEventType.QUEUE_ITEMS_UPDATED,
+  (evt: MassEvent) => {
+    if (evt.object_id == activePlayerQueue.value?.queue_id) {
+      loadItems();
+    }
   }
-});
+);
 onBeforeUnmount(unsub);
 
 store.topBarContextMenuItems = [
@@ -638,7 +703,9 @@ const loadItems = async function () {
   loading.value = true;
   if (activePlayerQueue.value) {
     store.topBarTitle = t("queue") + ": " + activePlayerQueue.value.name;
-    items.value = await api.getPlayerQueueItems(activePlayerQueue.value.queue_id);
+    items.value = await api.getPlayerQueueItems(
+      activePlayerQueue.value.queue_id
+    );
   } else {
     store.topBarTitle = t("queue");
     items.value = [];
@@ -652,12 +719,11 @@ const onClick = function (item: QueueItem) {
   showContextMenu.value = true;
 };
 
-const gotoTrack = function (trackUri: string) {
-  const provider = trackUri.split(":")[0];
-  const item_id = trackUri.split("/").pop();
+const gotoItem = function (item: MediaItemType) {
+  closeContextMenu();
   router.push({
-    name: "track",
-    params: { item_id, provider },
+    name: item.media_type,
+    params: { item_id: item.item_id, provider: item.provider },
   });
 };
 

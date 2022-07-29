@@ -18,16 +18,11 @@
           ? 'to bottom, rgba(0,0,0,.80), rgba(0,0,0,.75)'
           : 'to bottom, rgba(255,255,255,.85), rgba(255,255,255,.65)'
       "
-      style="
-        position: absolute;
-        background-size: 100%;
-        padding: 0;
-        margin-top: -10px;
-      "
+      style="position: absolute; background-size: 100%; padding: 0; margin-top: -10px"
     />
     <!-- now playing media -->
     <v-list-item
-      style="height: 60px;width:100%;margin-top:-5px;padding-bottom:20px"
+      style="height: 60px; width: 100%; margin-top: -5px; padding-bottom: 20px"
       lines="two"
       v-if="activePlayerQueue?.active && (curMediaItem || curQueueItem)"
     >
@@ -38,13 +33,18 @@
             :size="50"
             width="50px"
             height="50px"
-            @click="curMediaItem ? itemClick(curMediaItem) : ''" style="cursor:pointer"
+            @click="curMediaItem ? itemClick(curMediaItem) : ''"
+            style="cursor: pointer"
           /></div
       ></template>
 
       <!-- title -->
       <template v-slot:title>
-        <span v-if="curMediaItem" @click="curMediaItem ? itemClick(curMediaItem) : ''" style="cursor:pointer">
+        <span
+          v-if="curMediaItem"
+          @click="curMediaItem ? itemClick(curMediaItem) : ''"
+          style="cursor: pointer"
+        >
           {{ curMediaItem.name }}
           <span v-if="'version' in curMediaItem && curMediaItem.version"
             >({{ curMediaItem.version }})</span
@@ -59,20 +59,15 @@
       <template v-slot:subtitle>
         <!-- track: artists(s) + album -->
         <div
-          v-if="
-            curMediaItem?.media_type == MediaType.TRACK && curMediaItem.album
-          "
-          @click="curMediaItem ? itemClick(curMediaItem) : ''" style="cursor:pointer"
+          v-if="curMediaItem?.media_type == MediaType.TRACK && curMediaItem.album"
+          @click="curMediaItem ? itemClick(curMediaItem) : ''"
+          style="cursor: pointer"
         >
           {{ getArtistsString(curMediaItem.artists) }} •
           {{ curMediaItem.album.name }}
         </div>
         <!-- track/album falback: artist present -->
-        <div
-          v-else-if="
-            curMediaItem && 'artist' in curMediaItem && curMediaItem.artist
-          "
-        >
+        <div v-else-if="curMediaItem && 'artist' in curMediaItem && curMediaItem.artist">
           {{ curMediaItem.artist.name }}
         </div>
         <!-- radio live metadata -->
@@ -97,9 +92,7 @@
                     : getContentTypeIcon(streamDetails.content_type)
                 "
                 height="25"
-                :style="
-                  $vuetify.theme.current.dark ? '' : 'filter: invert(100%)'
-                "
+                :style="$vuetify.theme.current.dark ? '' : 'filter: invert(100%)'"
                 class="v-list-item-subtitle mediadetails-streamdetails"
                 v-bind="props"
               />
@@ -110,9 +103,7 @@
                   $t("stream_details")
                 }}</span>
                 <v-divider></v-divider>
-                <v-list-item
-                  style="height: 50px; display: flex; align-items: center"
-                >
+                <v-list-item style="height: 50px; display: flex; align-items: center">
                   <img
                     height="30"
                     width="50"
@@ -141,8 +132,7 @@
                 <div
                   style="height: 50px; display: flex; align-items: center"
                   v-if="
-                    activePlayerQueue &&
-                    activePlayerQueue.settings.crossfade_duration > 0
+                    activePlayerQueue && activePlayerQueue.settings.crossfade_duration > 0
                   "
                 >
                   <img
@@ -323,16 +313,12 @@
 
           <v-card min-width="300">
             <v-list style="overflow: hidden" lines="two">
-              <v-list-item
-                style="padding: 0; margin-left: 9px; margin-bottom: 9px"
-              >
+              <v-list-item style="padding: 0; margin-left: 9px; margin-bottom: 9px">
                 <template v-slot:prepend>
                   <v-icon
                     size="45"
                     :icon="
-                      store.selectedPlayer?.is_group
-                        ? mdiSpeakerMultiple
-                        : mdiSpeaker
+                      store.selectedPlayer?.is_group ? mdiSpeakerMultiple : mdiSpeaker
                     "
                     color="accent"
                   />
@@ -340,9 +326,7 @@
 
                 <template v-slot:title>
                   <div class="text-subtitle-1" style="margin-left: 10px">
-                    <b>{{
-                      store.selectedPlayer?.group_name.substring(0, 25)
-                    }}</b>
+                    <b>{{ store.selectedPlayer?.group_name.substring(0, 25) }}</b>
                   </div>
                 </template>
 
@@ -408,23 +392,13 @@ import type {
   Radio,
   Player,
 } from "../plugins/api";
-import {
-  api,
-  PlayerState,
-  ContentType,
-  MediaType,
-  ImageType,
-} from "../plugins/api";
+import { api, PlayerState, ContentType, MediaType, ImageType } from "../plugins/api";
 import { store } from "../plugins/store";
 import VolumeControl from "./VolumeControl.vue";
 import MediaItemThumb, { getImageThumbForItem } from "./MediaItemThumb.vue";
 import { formatDuration, truncateString, getArtistsString } from "../utils";
 import { useRouter } from "vue-router";
-import {
-  getContentTypeIcon,
-  iconHiRes,
-  getProviderIcon,
-} from "./ProviderIcons.vue";
+import { getContentTypeIcon, iconHiRes, getProviderIcon } from "./ProviderIcons.vue";
 
 const iconCrossfade = new URL("../assets/crossfade.png", import.meta.url).href;
 const iconLevel = new URL("../assets/level.png", import.meta.url).href;
@@ -476,12 +450,12 @@ const itemClick = function (item: MediaItemType) {
 
 // watchers
 watchEffect(async () => {
-  if (curQueueItem.value == undefined) {
-    curMediaItem.value = undefined;
-  } else if (curQueueItem.value.media_item) {
+  if (curQueueItem.value && curQueueItem.value.media_item) {
     curMediaItem.value = await api?.getItem(curQueueItem.value.media_item.uri);
+  } else {
+    curMediaItem.value = undefined;
   }
-  
+
   if (curMediaItem.value) {
     fanartImage.value =
       (await getImageThumbForItem(curMediaItem.value, ImageType.FANART)) ||

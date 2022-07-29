@@ -145,5 +145,7 @@
     "linked": "This provideritem is linked to the current itemdetails",
     "album_artist_filter": "Toggle album-artist filter"
   },
-  "create_playlist": "Create new playlist on {0}"
+  "create_playlist": "Create new playlist on {0}",
+  "queue_radio_enabled": "Radio mode is enabled",
+  "queue_radio_based_on": "The queue is dynamically filled with tracks based on {0}:"
 }
