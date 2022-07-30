@@ -52,6 +52,7 @@
   "play_on": "Afspelen op: {0}",
   "play_now": "Nu afspelen",
   "play_next": "Speel als volgende af",
+  "play_radio": "Start radio",
   "add_queue": "Voeg toe aan wachtrij",
   "queue_clear": "Wachtrij leegmaken",
   "show_info": "Bekijk informatie",
@@ -143,5 +144,7 @@
     "linked": "Dit provideritem is gelinkt aan de itemdetails",
     "album_artist_filter": "Schakel filter in/uit om enkel albumartiesten te tonen"
   },
-  "create_playlist": "Maak een nieuwe playlist aan op {0}"
+  "create_playlist": "Maak een nieuwe playlist aan op {0}",
+  "queue_radio_enabled": "Radio modus is ingeschakeld",
+  "queue_radio_based_on": "De wachtrij wordt dynamisch gevuld met nummers gebaseerd op {0}:"
 }

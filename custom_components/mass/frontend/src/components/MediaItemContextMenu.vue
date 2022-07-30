@@ -1,9 +1,5 @@
 <template>
-  <v-dialog
-    :model-value="modelValue"
-    transition="dialog-bottom-transition"
-    fullscreen
-  >
+  <v-dialog :model-value="modelValue" transition="dialog-bottom-transition" fullscreen>
     <v-card>
       <v-toolbar density="compact" dark color="primary">
         <v-icon :icon="mdiPlayCircleOutline"></v-icon>
@@ -46,9 +42,7 @@
               <v-list-item-avatar style="padding-right: 10px">
                 <v-icon :icon="item.icon"></v-icon>
               </v-list-item-avatar>
-              <v-list-item-title>{{
-                $t(item.label, item.labelArgs)
-              }}</v-list-item-title>
+              <v-list-item-title>{{ $t(item.label, item.labelArgs) }}</v-list-item-title>
             </v-list-item>
             <v-divider></v-divider>
           </div>
@@ -91,9 +85,7 @@
           <div v-for="prov of api.providers" :key="prov.id">
             <div
               v-if="
-                prov.supported_features.includes(
-                  MusicProviderFeature.PLAYLIST_CREATE
-                )
+                prov.supported_features.includes(MusicProviderFeature.PLAYLIST_CREATE)
               "
             >
               <v-list-item ripple>
@@ -147,6 +139,7 @@ import {
   mdiCancel,
   mdiAccountMusic,
   mdiAlbum,
+  mdiRadioTower
 } from "@mdi/js";
 import MediaItemThumb from "./MediaItemThumb.vue";
 import ProviderIcons from "./ProviderIcons.vue";
@@ -211,7 +204,7 @@ const showContextMenu = async function () {
   } else {
     playMenuItems.value = [];
   }
-  
+
   // grab the full (lazy) fullItem so we have details about in-library etc.
   let firstItem: MediaItem = props.items[0];
   if (firstItem.provider !== ProviderType.DATABASE) {
@@ -295,6 +288,18 @@ export const itemIsAvailable = function (item: MediaItem) {
   return false;
 };
 
+export const radioSupported = function (item: MediaItemType) {
+  for (const provId of item.provider_ids) {
+    if (
+      api.providers[provId.prov_id].supported_features.includes(
+        MusicProviderFeature.SIMILAR_TRACKS
+      )
+    )
+      return true;
+  }
+  return false;
+};
+
 export const getPlayMenuItems = function (items: MediaItem[]) {
   const playMenuItems: ContextMenuItem[] = [];
   if (items.length == 0 || !itemIsAvailable(items[0])) {
@@ -308,8 +313,21 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
     },
     icon: mdiPlayCircleOutline,
     labelArgs: [],
-    actionStr: "play"
+    actionStr: "play",
   });
+
+  // Start Radio
+  if (radioSupported(items[0])) {
+    playMenuItems.push({
+      label: "play_radio",
+      action: () => {
+        api.playMedia(items, QueueOption.RADIO);
+      },
+      icon: mdiRadioTower,
+      labelArgs: [],
+      actionStr: "play",
+    });
+  }
 
   // Play NEXT
   if (items.length === 1 || items[0].media_type === MediaType.TRACK) {
@@ -320,7 +338,7 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
       },
       icon: mdiSkipNextCircleOutline,
       labelArgs: [],
-      actionStr: "play"
+      actionStr: "play",
     });
   }
   // Add to Queue
@@ -331,26 +349,20 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
     },
     icon: mdiPlaylistPlus,
     labelArgs: [],
-    actionStr: "play"
+    actionStr: "play",
   });
+
   return playMenuItems;
 };
 
-export const getContextMenuItems = function (
-  items: MediaItem[],
-  parentItem?: MediaItem
-) {
+export const getContextMenuItems = function (items: MediaItem[], parentItem?: MediaItem) {
   const contextMenuItems: ContextMenuItem[] = [];
   if (items.length == 0) {
     return contextMenuItems;
   }
 
   // show info
-  if (
-    items.length === 1 &&
-    items[0] !== parentItem &&
-    itemIsAvailable(items[0])
-  ) {
+  if (items.length === 1 && items[0] !== parentItem && itemIsAvailable(items[0])) {
     contextMenuItems.push({
       label: "show_info",
       labelArgs: [],

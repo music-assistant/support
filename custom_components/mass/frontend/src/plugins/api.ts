@@ -321,6 +321,7 @@ export interface PlayerQueue {
   next_item?: QueueItem;
   items: number;
   settings: QueueSettings;
+  radio_source: MediaItemType[];
 }
 
 export enum QueueCommand {
@@ -372,6 +373,7 @@ export enum QueueOption {
   REPLACE = "replace",
   NEXT = "next",
   ADD = "add",
+  RADIO = "radio",
 }
 
 export type MassEvent = {
@@ -415,6 +417,8 @@ export enum MusicProviderFeature {
   LIBRARY_TRACKS_EDIT = "library_tracks_edit",
   LIBRARY_PLAYLISTS_EDIT = "library_playlists_edit",
   LIBRARY_RADIOS_EDIT = "library_radios_edit",
+  // bonus features
+  SIMILAR_TRACKS = "similar_tracks",
   // playlist-specific features
   PLAYLIST_TRACKS_EDIT = "playlist_tracks_edit",
   PLAYLIST_CREATE = "playlist_create",

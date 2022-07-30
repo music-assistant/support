@@ -45,6 +45,7 @@
   "play_on": "Play on: {0}",
   "play_now": "Play Now",
   "play_next": "Play Next",
+  "play_radio": "Start Radio",
   "add_queue": "Add to Queue",
   "start_radio": "Start Radio",
   "queue_clear": "Clear all items in queue",
@@ -144,5 +145,7 @@
     "linked": "This provideritem is linked to the current itemdetails",
     "album_artist_filter": "Toggle album-artist filter"
   },
-  "create_playlist": "Create new playlist on {0}"
+  "create_playlist": "Create new playlist on {0}",
+  "queue_radio_enabled": "Radio mode is enabled",
+  "queue_radio_based_on": "The queue is dynamically filled with tracks based on {0}:"
 }
