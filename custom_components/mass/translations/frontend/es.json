@@ -144,5 +144,7 @@
     "linked": "Este artículo del proveedor está vinculado a los detalles del elemento actual",
     "album_artist_filter": "Alternar filtro de álbum-artista"
   },
-  "create_playlist": "Crear nueva lista de reproducción en {0}"
+  "create_playlist": "Crear nueva lista de reproducción en {0}",
+  "queue_radio_enabled": "El modo de radio está habilitado",
+  "queue_radio_based_on": "La cola se genera dinámicamente en pistas basadas en {0}:"
 }
