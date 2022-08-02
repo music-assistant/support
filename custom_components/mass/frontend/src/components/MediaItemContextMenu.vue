@@ -321,7 +321,7 @@ export const getPlayMenuItems = function (items: MediaItem[]) {
     playMenuItems.push({
       label: "play_radio",
       action: () => {
-        api.playMedia(items, QueueOption.RADIO);
+        api.playMedia(items, QueueOption.PLAY, true);
       },
       icon: mdiRadioTower,
       labelArgs: [],

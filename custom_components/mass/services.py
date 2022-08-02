@@ -1,4 +1,5 @@
 """Custom services for the Music Assistant integration."""
+from __future__ import annotations
 
 from typing import Optional
 
@@ -42,7 +43,7 @@ CMD_MODES_MAP = {
         "play_media_next": QueueOption.NEXT,
         "play_media_add": QueueOption.ADD,
         "play_media_replace": QueueOption.REPLACE,
-        "play_media_radio": QueueOption.RADIO,
+        "play_media_replace_next": QueueOption.REPLACE_NEXT,
     },
 }
 ALL_MODES = (subkey for values in CMD_MODES_MAP.values() for subkey in values)
@@ -72,7 +73,8 @@ QueueCommandServiceSchema = vol.Schema(
             "entity_id": cv.entity_ids,
             "command": str,
             "uri": vol.Union(str, [str], None),
-            "mode": vol.Any(*ALL_MODES),
+            "mode": vol.Optional(vol.Any(*ALL_MODES)),
+            "radio_mode": vol.Optional(bool),
         },
         validate_command_data,
     )
@@ -120,7 +122,11 @@ def register_services(hass: HomeAssistant, mass: MusicAssistant):
                             media_items.append(item)
                         else:
                             raise vol.Invalid(f"Invalid uri: {uri}") from err
-                await queue.play_media(media_items, CMD_MODES_MAP[cmd][data["mode"]])
+                await queue.play_media(
+                    media_items,
+                    CMD_MODES_MAP[cmd][data["mode"]],
+                    radio_mode=data.get("radio_mode", False),
+                )
             elif cmd == CMD_SHUFFLE:
                 queue.settings.shuffle_enabled = CMD_MODES_MAP[cmd][data["mode"]]
             elif cmd == CMD_REPEAT:

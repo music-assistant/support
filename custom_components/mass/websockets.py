@@ -45,6 +45,8 @@ SEARCH = "search"
 SORT = "sort"
 OFFSET = "offset"
 LIMIT = "limit"
+OPTION = "option"
+RADIO_MODE = "radio_mode"
 FORCE_PROVIDER_VERSION = "force_provider_version"
 
 ERR_NOT_LOADED = "not_loaded"
@@ -209,7 +211,7 @@ async def websocket_artist_tracks(
     """Return artist toptracks."""
     result = [
         item.to_dict()
-        for item in await mass.music.artists.toptracks(msg[ITEM_ID], msg[PROVIDER])
+        for item in await mass.music.artists.tracks(msg[ITEM_ID], msg[PROVIDER])
     ]
     connection.send_result(
         msg[ID],
@@ -1170,8 +1172,9 @@ async def websocket_playerqueue_settings(
     {
         vol.Required(TYPE): f"{DOMAIN}/play_media",
         vol.Required(QUEUE_ID): str,
-        vol.Required(MEDIA): vol.Any(str, list, dict),
-        vol.Optional(COMMAND, default=QueueOption.PLAY): vol.Coerce(QueueOption),
+        vol.Required(MEDIA): vol.Union(str, [str], dict, [dict]),
+        vol.Optional(OPTION, default=QueueOption.PLAY): vol.Coerce(QueueOption),
+        vol.Optional(RADIO_MODE, default=False): bool,
     }
 )
 @websocket_api.async_response
@@ -1184,7 +1187,9 @@ async def websocket_play_media(
 ) -> None:
     """Execute play_media command on PlayerQueue."""
     if player_queue := mass.players.get_player_queue(msg[QUEUE_ID]):
-        await player_queue.play_media(msg[MEDIA], msg[COMMAND])
+        await player_queue.play_media(
+            msg[MEDIA], option=msg[OPTION], radio_mode=msg[RADIO_MODE]
+        )
 
         connection.send_result(
             msg[ID],

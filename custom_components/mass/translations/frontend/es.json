@@ -65,7 +65,7 @@
   "crossfade_duration": "{0} segundos",
   "crossfade_enabled": "Crossfade esta habilitado",
   "stream_type": "Codec/tipo para usar en el audio stream hacia el reproductor",
-  "announce_volume_increase": "Aumento relativo del volumen para los anuncios",
+  "announce_volume_increase": "Aumento relativo del volumen para los avisos",
   "max_sample_rate": "Velocidad de muestreo máxima para enviar al reproductor",
   "metadata_mode": {
      "title": "Modo de metadatos ICY",
@@ -133,16 +133,18 @@
   },
   "tooltip": {
     "explicit": "Explicito",
-    "library": "Alternar en biblioteca/favorito",
+    "library": "Guardar en biblioteca/favorito",
     "filter_library": "Alternar filtro en la biblioteca/favorito",
-    "sort_options": "Ordenar opciones",
+    "sort_options": "Opciones de ordenación",
     "toggle_view_mode": "Alternar modo de vista lista/miniaturas",
     "search": "Mostrar/ocultar entrada de búsqueda",
-    "refresh": "Actualizar la lista de artículos",
+    "refresh": "Actualizar la lista de elementos",
     "refresh_new_content": "Hay nuevo contenido disponible, haga clic para actualizar la lista",
     "select_items": "Seleccionar varios elementos",
     "linked": "Este artículo del proveedor está vinculado a los detalles del elemento actual",
     "album_artist_filter": "Alternar filtro de álbum-artista"
   },
-  "create_playlist": "Crear nueva lista de reproducción en {0}"
+  "create_playlist": "Crear nueva lista de reproducción en {0}",
+  "queue_radio_enabled": "El modo de radio está habilitado",
+  "queue_radio_based_on": "La cola se genera dinámicamente en pistas basadas en {0}:"
 }

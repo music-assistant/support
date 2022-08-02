@@ -56,4 +56,12 @@ queue_command:
             - "play_media_next"
             - "play_media_add"
             - "play_media_replace"
-            - "play_media_radio"
+            - "play_media_replace_next"
+    
+    radio_mode:
+      name: Enable radio mode.
+      description: "Only to be used with play_media command: Wether to enable radio mode."
+      required: false
+      advanced: true
+      selector:
+        boolean:

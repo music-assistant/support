@@ -74,19 +74,21 @@ STATE_MAPPING = {
 }
 
 
-def get_source_entity_id(hass: HomeAssistant, entity_id: str) -> str:
+def get_source_entity_id(hass: HomeAssistant, entity_id: str) -> str | None:
     """Return source entity_id from child entity_id."""
     if hass_state := hass.states.get(entity_id):
         # if entity is actually already mass entity, return the source entity
         if source_id := hass_state.attributes.get(ATTR_SOURCE_ENTITY_ID):
             return source_id
-    return entity_id
+        return entity_id
+    return None
 
 
 class HassPlayer(Player):
     """Generic/base Mapping from Home Assistant Mediaplayer to Music Assistant Player."""
 
     _attr_use_mute_as_power: bool = False
+    _attr_device_info: DeviceInfo = DeviceInfo()
 
     def __init__(self, hass: HomeAssistant, entity_id: str) -> None:
         """Initialize player."""
@@ -101,16 +103,18 @@ class HassPlayer(Player):
         entity_comp = hass.data.get(DATA_INSTANCES, {}).get(MP_DOMAIN)
         self.entity: MediaPlayerEntity = entity_comp.get_entity(entity_id)
 
-        manufacturer = "Home Assistant"
-        model = entity_id
-        if reg_entry := self.entity.registry_entry:
-            # grab device entry
-            if reg_entry.device_id:
-                dev_reg = dr.async_get(hass)
-                device = dev_reg.async_get(reg_entry.device_id)
-                manufacturer = device.manufacturer
-                model = device.model
-        self._attr_device_info = DeviceInfo(manufacturer=manufacturer, model=model)
+        # grab device info
+        if self._attr_device_info.model == "unknown":
+            manufacturer = "Home Assistant"
+            model = entity_id
+            if reg_entry := self.entity.registry_entry:
+                # grab device entry
+                if reg_entry.device_id:
+                    dev_reg = dr.async_get(hass)
+                    device = dev_reg.async_get(reg_entry.device_id)
+                    manufacturer = device.manufacturer
+                    model = device.model
+            self._attr_device_info = DeviceInfo(manufacturer=manufacturer, model=model)
         self._attr_powered = False
         self._attr_current_url = ""
         self._attr_elapsed_time = 0
@@ -812,22 +816,24 @@ class HassGroupPlayer(HassPlayer):
     """Mapping from Home Assistant Grouped Mediaplayer to Music Assistant Player."""
 
     _attr_max_sample_rate: int = 48000
-    _attr_stream_type: ContentType = ContentType.FLAC
+    _attr_device_info = DeviceInfo(
+        manufacturer="Home Assistant", model="Media Player Group"
+    )
 
-    def __init__(self, *args, **kwargs) -> None:
-        """Initialize player."""
-        self._attr_device_info = DeviceInfo(
-            manufacturer="Home Assistant", model="Media Player Group"
-        )
-        super().__init__(*args, **kwargs)
+    @property
+    def support_power(self) -> bool:
+        """Return if this player supports power commands."""
+        return False
 
     @property
     def default_stream_type(self) -> ContentType:
         """Return the default content type to use for streaming."""
-        # if any of the players supports FLAC, prefer that
-        for child_player in self.get_child_players(False, False):
-            if child_player.default_stream_type == ContentType.FLAC:
-                return ContentType.FLAC
+        # if all of the players supports FLAC, prefer that
+        if all(
+            x.stream_type == ContentType.FLAC
+            for x in self.get_child_players(False, False)
+        ):
+            return ContentType.FLAC
         # fallback to MP3
         return ContentType.MP3
 
@@ -852,27 +858,21 @@ class HassGroupPlayer(HassPlayer):
         """Return if this player represents a playergroup or is grouped with other players."""
         return True
 
-    @property
-    def group_members(self) -> List[str]:
-        """Return list of playergroup members."""
-        result = []
-        if self.mass is None:
-            return []
+    @callback
+    def on_update(self) -> None:
+        """Update attributes of this player."""
+        super().on_update()
+        if not self.entity:
+            return
+        # build list of group members
+        group_members = set()
         # pylint: disable=protected-access
         for entity_id in self.entity._entities:
-            # make sure we have a source entity_id
-            entity_id = get_source_entity_id(self.hass, entity_id)
-            if player := self.mass.players.get_player(entity_id):
-                player_id = player.player_id
-                if player.is_group and player.is_passive:
-                    # make sure we add the master player if someone
-                    # added a group member into this universal group
-                    player_id = player.group_leader
-                if player_id in result:
-                    # no duplicates please
-                    continue
-                result.append(player_id)
-        return result
+            source_id = get_source_entity_id(self.hass, entity_id)
+            if source_id is None:
+                continue
+            group_members.add(source_id)
+        self._attr_group_members = list(group_members)
 
     @property
     def group_leader(self) -> str | None:
@@ -924,14 +924,12 @@ class HassGroupPlayer(HassPlayer):
 
     async def set_group_power(self, powered: bool) -> None:
         """Send power command to the group player."""
-        self.logger.debug("set_group_power command called with value: %s", powered)
+        # turn off group childs if group turns off
         if not powered:
-            await self.stop()
-        if powered and not self.group_powered:
-            # turn on (all) group clients if none are on now
-            await super().set_group_power(True)
-        else:
             await super().set_group_power(False)
+        if powered != self._attr_powered:
+            self._attr_powered = powered
+            self.update_state()
 
     async def volume_set(self, volume_level: int) -> None:
         """Send volume level (0..100) command to player."""
