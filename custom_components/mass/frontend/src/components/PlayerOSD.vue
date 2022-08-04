@@ -324,7 +324,7 @@
       </v-btn>
       <!-- active player volume -->
       <div v-if="!$vuetify.display.mobile && activePlayerQueue">
-        <v-menu location="bottom end" :close-on-content-click="false">
+        <v-menu location="bottom end" :close-on-content-click="false" v-model="showVolume">
           <template v-slot:activator="{ props }">
             <v-btn
               icon
@@ -373,6 +373,7 @@
                     {{ $t("state." + store.selectedPlayer?.state) }}
                   </div>
                 </template>
+                <v-btn variant="plain" style="position:absolute;right:0px;top:0px" :icon="mdiClose" dark @click="showVolume=!showVolume"></v-btn>
               </v-list-item>
               <v-divider></v-divider>
               <VolumeControl v-if="store.selectedPlayer" :player="store.selectedPlayer" />
@@ -401,6 +402,7 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure */
 import {
+  mdiClose,
   mdiSpeaker,
   mdiSpeakerMultiple,
   mdiSkipNext,
@@ -453,6 +455,7 @@ const theme = useTheme();
 
 // local refs
 const fanartImage = ref();
+const showVolume = ref(false);
 
 // computed properties
 const activePlayerQueue = computed(() => {
@@ -484,6 +487,7 @@ const curQueueItemTime = computed(() => {
 
 // methods
 const itemClick = function (item: MediaItemType) {
+  console.log(item)
   router.push({
     name: item.media_type,
     params: { item_id: item.item_id, provider: item.provider },
