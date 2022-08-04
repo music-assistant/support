@@ -579,14 +579,14 @@ onMounted(() => {
       MassEventType.MEDIA_ITEM_DELETED,
     ],
     (evt: MassEvent) => {
-      if (evt.event == MassEventType.MEDIA_ITEM_ADDED) {
+      if (evt.type == MassEventType.MEDIA_ITEM_ADDED) {
         if (props.itemtype.includes((evt.data as MediaItemType).media_type)) {
           // signal that there is new content
           newContentAvailable.value = true;
         }
-      } else if (evt.event == MassEventType.MEDIA_ITEM_DELETED) {
+      } else if (evt.type == MassEventType.MEDIA_ITEM_DELETED) {
         items.value = items.value.filter((x) => x.uri != evt.object_id);
-      } else if (evt.event == MassEventType.MEDIA_ITEM_UPDATED) {
+      } else if (evt.type == MassEventType.MEDIA_ITEM_UPDATED) {
         // update listing if relevant item changes
         const updatedItem = evt.data as MediaItemType;
         items.value = items.value.map((x) =>
