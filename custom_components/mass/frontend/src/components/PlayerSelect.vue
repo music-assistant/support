@@ -38,21 +38,19 @@
           <v-list-item density="compact">
             <template v-slot:prepend>
               <v-icon
-                size="45"
+                size="50"
                 :icon="player.is_group ? mdiSpeakerMultiple : mdiSpeaker"
                 color="accent"
-                style="padding-left:0px;padding-right:0px;margin-left:-10px;margin-right: 10px;width:40px"
+                style="padding-left:0px;padding-right:0px;margin-left:-10px;margin-right: 10px;width:42px;height:50px"
               />
             </template>
             <template v-slot:title>
-              <div>
                 <div class="text-subtitle-1">
                   <b>{{ player.group_name.substring(0, 25) }}</b>
                 </div>
-              </div>
             </template>
             <template v-slot:subtitle>
-              <div :key="player.state" class="text-body-2">
+              <div :key="player.state" class="text-body-2" style="line-height:1em">
                 {{ $t("state." + player.state) }}
               </div>
             </template>

@@ -45,6 +45,7 @@
         @update:model-value="
           api.queueCommandGroupVolume(player.player_id, $event)
         "
+        style="margin-left: 5px"
       ></v-slider>
     </div>
     <v-divider
@@ -107,6 +108,7 @@
         @update:model-value="
           api.queueCommandVolume(childPlayer.player_id, $event)
         "
+        style="margin-left: 5px"
       ></v-slider>
     </div>
   </v-list>
