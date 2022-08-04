@@ -238,7 +238,7 @@
                 <v-icon
                   size="40"
                   :icon="mdiIdentifier"
-                  style="padding-right: 10px"
+                  style="margin-left: 10px;padding-right: 10px"
                 />
                 {{ truncateString(item.item_id, 30) }}
               </div>
@@ -252,7 +252,7 @@
                 <v-icon
                   size="40"
                   :icon="mdiShareOutline"
-                  style="margin-left: -5px; padding-right: 5px"
+                  style="margin-left: 10px; padding-right: 5px"
                 />
                 <a :href="item.provider_ids[0].url" target="_blank">{{
                   truncateString(item.provider_ids[0].url, 25)
