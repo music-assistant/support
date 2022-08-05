@@ -55,6 +55,7 @@ LOGGER = logging.getLogger(__name__)
 PLATFORMS = ("media_player", "switch", "number", "select")
 
 MIN_HA_VERSION = "2022.8.0"
+MAX_HA_VERSION = "2022.8.999"
 
 
 async def read_manifest() -> dict:
@@ -107,6 +108,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     manifest = await read_manifest()
     ha_vers = AwesomeVersion(HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
     req_ha_vers = AwesomeVersion(MIN_HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
+    max_ha_vers = AwesomeVersion(MAX_HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
     # for now, just raise at mismatch of major/minor because in 99% of the cases
     # there are breaking changes between HA releases
     if ha_vers < req_ha_vers:
@@ -114,7 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             "This version of Music Assistant is only compatible "
             f"with Home Assistant version {manifest['ha_version']} (or higher)."
         )
-    if ha_vers > req_ha_vers:
+    if ha_vers > max_ha_vers:
         LOGGER.warning(
             "This version of Music Assistant is compatible "
             "with Home Assistant version %s, "

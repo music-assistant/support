@@ -7,5 +7,5 @@ pytest==7.1.2
 pytest-cov==3.0.0
 pytest-timeout==2.1.0
 pre-commit==2.20.0
-homeassistant==2022.8.0b6
+homeassistant==2022.8.1
 music-assistant
