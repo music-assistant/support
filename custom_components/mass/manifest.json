@@ -1,11 +1,11 @@
 {
   "domain": "mass",
   "name": "Music Assistant",
-  "version": "2022.8.0",
+  "version": "2022.8.1",
   "documentation": "https://github.com/music-assistant/hass-music-assistant",
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "requirements": [
-    "music-assistant==1.8.3"
+    "music-assistant==1.8.4"
   ],
   "codeowners": [
     "@marcelveldt"
