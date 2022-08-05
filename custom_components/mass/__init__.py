@@ -54,6 +54,8 @@ LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ("media_player", "switch", "number", "select")
 
+MIN_HA_VERSION = "2022.8.0"
+
 
 async def read_manifest() -> dict:
     """Read manifest file."""
@@ -104,10 +106,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # compare version in manifest with HA version
     manifest = await read_manifest()
     ha_vers = AwesomeVersion(HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
-    vers_parts = manifest["version"].split(".")
-    req_ha_vers = AwesomeVersion(
-        f"{vers_parts[0]}.{vers_parts[1]}.0", AwesomeVersionStrategy.SEMVER, True
-    )
+    req_ha_vers = AwesomeVersion(MIN_HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
     # for now, just raise at mismatch of major/minor because in 99% of the cases
     # there are breaking changes between HA releases
     if ha_vers < req_ha_vers:

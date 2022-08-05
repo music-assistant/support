@@ -58,9 +58,9 @@
   "shuffle": "Zufällige Wiedergabe",
   "repeat": "Wiederholen",
   "volume_normalization": "Lautstärke normalisieren",
-  "volume_normalization_target": "{0} LUFS",
+  "volume_normalization_lufs": "{0} LUFS",
   "crossfade": "Überblenden",
-  "crossfade_duration": "{0} Sekunden",
+  "crossfade_seconds": "{0} Sekunden",
   "crossfade_enabled": "Überblenden ist eingeschaltet",
   "state": {
     "playing": "Spielend",
