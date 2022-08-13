@@ -9,7 +9,7 @@
       "
     >
       <!-- loading animation -->
-      <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
+      <v-progress-linear v-if="loading" indeterminate />
 
       <RecycleScroller
         v-slot="{ item }"
@@ -25,28 +25,28 @@
           :show-providers="false"
           :is-selected="false"
           @click="onClick"
-        ></ListviewItem>
+        />
       </RecycleScroller>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, watchEffect } from "vue";
-import { useDisplay } from "vuetify";
-import { useI18n } from "vue-i18n";
-import { RecycleScroller } from "vue-virtual-scroller";
-import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import ListviewItem from "../components/ListviewItem.vue";
+import { onMounted, ref, watch, watchEffect } from 'vue';
+import { useDisplay } from 'vuetify';
+import { useI18n } from 'vue-i18n';
+import { RecycleScroller } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import ListviewItem from '../components/ListviewItem.vue';
 import {
   api,
   MediaType,
   type BrowseFolder,
   type MediaItemType,
-} from "../plugins/api";
-import { store } from "../plugins/store";
-import { useRouter } from "vue-router";
-import { getBrowseFolderName } from "../utils";
+} from '../plugins/api';
+import { store } from '../plugins/store';
+import { useRouter } from 'vue-router';
+import { getBrowseFolderName } from '../utils';
 
 export interface Props {
   path?: string;
@@ -63,15 +63,16 @@ const loading = ref(false);
 const loadData = async function () {
   loading.value = true;
   browseItem.value = await api.browse(props.path);
-  console.log(browseItem.value)
+  console.log(browseItem.value);
 
   // set header title to browse title
-  if (!browseItem.value || !props.path) store.topBarTitle = t("browse");
+  if (!browseItem.value || !props.path) store.topBarTitle = t('browse');
   else {
-    if (mobile.value) store.topBarTitle = getBrowseFolderName(browseItem.value, t);
+    if (mobile.value)
+      store.topBarTitle = getBrowseFolderName(browseItem.value, t);
     else
       store.topBarTitle =
-        t("browse") + " | " + getBrowseFolderName(browseItem.value, t);
+        t('browse') + ' | ' + getBrowseFolderName(browseItem.value, t);
   }
   loading.value = false;
 };
@@ -90,7 +91,7 @@ watch(
 const onClick = function (mediaItem: MediaItemType) {
   if (mediaItem.media_type === MediaType.FOLDER) {
     router.push({
-      name: "browse",
+      name: 'browse',
       params: { path: mediaItem.path },
     });
   } else {

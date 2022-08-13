@@ -1,21 +1,21 @@
 // Vuetify
-import { createVuetify } from "vuetify";
-import { aliases, mdi } from "vuetify/lib/iconsets/mdi-svg";
+import { createVuetify } from 'vuetify';
+import { aliases, mdi } from 'vuetify/lib/iconsets/mdi-svg';
 
-import colors from "vuetify/lib/util/colors";
+import colors from 'vuetify/lib/util/colors';
 
 export default createVuetify(
   // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
   {
     icons: {
-      defaultSet: "mdi",
+      defaultSet: 'mdi',
       aliases,
       sets: {
         mdi,
       },
     },
     display: {
-      mobileBreakpoint: "md",
+      mobileBreakpoint: 'md',
       thresholds: {
         xs: 0,
         sm: 340,
@@ -25,7 +25,7 @@ export default createVuetify(
       },
     },
     theme: {
-      defaultTheme: "light",
+      defaultTheme: 'light',
       themes: {
         light: {
           dark: false,

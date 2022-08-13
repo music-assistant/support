@@ -9,25 +9,25 @@
 </template>
 
 <script setup lang="ts">
-import { mdiFileSync } from "@mdi/js";
-import { onBeforeUnmount, ref } from "vue";
-import { useI18n } from "vue-i18n";
-import ItemsListing from "../components/ItemsListing.vue";
-import { api, MediaType, type Album } from "../plugins/api";
-import { store } from "../plugins/store";
+import { mdiFileSync } from '@mdi/js';
+import { onBeforeUnmount, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import ItemsListing from '../components/ItemsListing.vue';
+import { api, MediaType, type Album } from '../plugins/api';
+import { store } from '../plugins/store';
 
 const { t } = useI18n();
 const items = ref<Album[]>([]);
 
-store.topBarTitle = t("albums");
+store.topBarTitle = t('albums');
 store.topBarContextMenuItems = [
   {
-    label: "sync",
+    label: 'sync',
     labelArgs: [],
     action: () => {
       api.startSync(MediaType.ALBUM);
     },
-    icon: mdiFileSync
+    icon: mdiFileSync,
   },
 ];
 onBeforeUnmount(() => {

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /// <reference types="vite/client" />
 
-declare module "virtual:pwa-register/vue" {
-  import type { Ref } from "vue";
+declare module 'virtual:pwa-register/vue' {
+  import type { Ref } from 'vue';
 
   export interface RegisterSWOptions {
     immediate?: boolean;
@@ -21,4 +21,4 @@ declare module "virtual:pwa-register/vue" {
   };
 }
 
-declare module "v3-infinite-loading";
+declare module 'v3-infinite-loading';

@@ -1,30 +1,30 @@
 <template>
   <div class="provider-icons" :style="`height: ${height};`">
     <v-tooltip
-      location="bottom"
       v-for="prov of uniqueProviders"
-      v-bind:key="prov.prov_id"
+      :key="prov.prov_id"
+      location="bottom"
     >
       <template #activator="{ props }">
         <img
           v-bind="props"
-          class="provider-icon"
           :key="prov.prov_type"
+          class="provider-icon"
           :height="height"
           :src="getProviderIcon(prov.prov_type)"
-          @click="enableLink ? provClicked(prov) : ''"
           :style="enableLink ? 'cursor: pointer' : ''"
+          @click="enableLink ? provClicked(prov) : ''"
         />
       </template>
-      <span>{{ $t("providers." + prov.prov_type.toString()) }}</span>
+      <span>{{ $t('providers.' + prov.prov_type.toString()) }}</span>
     </v-tooltip>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { MediaItemProviderId } from "../plugins/api";
-import { MediaQuality } from "../plugins/api";
-import { computed } from "vue";
+import type { MediaItemProviderId } from '../plugins/api';
+import { MediaQuality } from '../plugins/api';
+import { computed } from 'vue';
 
 export interface Props {
   providerIds: MediaItemProviderId[];
@@ -48,32 +48,33 @@ const uniqueProviders = computed(() => {
 });
 
 const provClicked = function (prov: MediaItemProviderId) {
-  window.open(prov.url, "_blank");
+  window.open(prov.url, '_blank');
 };
 </script>
 
 <script lang="ts">
-import { ContentType, ProviderType } from "../plugins/api";
+import { ContentType, ProviderType } from '../plugins/api';
 
-export const iconSpotify = new URL("../assets/spotify.png", import.meta.url)
+export const iconSpotify = new URL('../assets/spotify.png', import.meta.url)
   .href;
-export const iconQobuz = new URL("../assets/qobuz.png", import.meta.url).href;
+export const iconQobuz = new URL('../assets/qobuz.png', import.meta.url).href;
 export const iconFilesystem = new URL(
-  "../assets/filesystem.png",
+  '../assets/filesystem.png',
   import.meta.url
 ).href;
-export const iconTuneIn = new URL("../assets/tunein.png", import.meta.url).href;
-export const iconYTMusic = new URL("../assets/ytmusic.png", import.meta.url).href;
-export const iconFallback = new URL("../assets/fallback.png", import.meta.url)
+export const iconTuneIn = new URL('../assets/tunein.png', import.meta.url).href;
+export const iconYTMusic = new URL('../assets/ytmusic.png', import.meta.url)
+  .href;
+export const iconFallback = new URL('../assets/fallback.png', import.meta.url)
   .href;
 
-export const iconAac = new URL("../assets/aac.png", import.meta.url).href;
-export const iconFlac = new URL("../assets/flac.png", import.meta.url).href;
-export const iconMp3 = new URL("../assets/mp3.png", import.meta.url).href;
-export const iconOgg = new URL("../assets/ogg.png", import.meta.url).href;
-export const iconVorbis = new URL("../assets/vorbis.png", import.meta.url).href;
-export const iconM4a = new URL("../assets/m4a.png", import.meta.url).href;
-export const iconHiRes = new URL("../assets/hires.png", import.meta.url).href;
+export const iconAac = new URL('../assets/aac.png', import.meta.url).href;
+export const iconFlac = new URL('../assets/flac.png', import.meta.url).href;
+export const iconMp3 = new URL('../assets/mp3.png', import.meta.url).href;
+export const iconOgg = new URL('../assets/ogg.png', import.meta.url).href;
+export const iconVorbis = new URL('../assets/vorbis.png', import.meta.url).href;
+export const iconM4a = new URL('../assets/m4a.png', import.meta.url).href;
+export const iconHiRes = new URL('../assets/hires.png', import.meta.url).href;
 
 export const getProviderIcon = function (provider: ProviderType) {
   if (provider == ProviderType.SPOTIFY) return iconSpotify;
@@ -106,13 +107,13 @@ export const getQualityDesc = function (provDetails: MediaItemProviderId) {
     return provDetails.details;
   }
   if (!provDetails.quality) provDetails.quality = 0;
-  if (provDetails.quality == MediaQuality.LOSSY_AAC) return "Lossy aac";
-  if (provDetails.quality == MediaQuality.LOSSY_MP3) return "Lossy mp3";
-  if (provDetails.quality == MediaQuality.LOSSY_OGG) return "Lossy ogg";
-  if (provDetails.quality == MediaQuality.LOSSY_M4A) return "Lossy m4a";
-  if (provDetails.quality > MediaQuality.LOSSLESS) return "Lossless Hi-Res";
-  if (provDetails.quality >= MediaQuality.LOSSLESS) return "Lossless";
-  return "Unknown media quality ";
+  if (provDetails.quality == MediaQuality.LOSSY_AAC) return 'Lossy aac';
+  if (provDetails.quality == MediaQuality.LOSSY_MP3) return 'Lossy mp3';
+  if (provDetails.quality == MediaQuality.LOSSY_OGG) return 'Lossy ogg';
+  if (provDetails.quality == MediaQuality.LOSSY_M4A) return 'Lossy m4a';
+  if (provDetails.quality > MediaQuality.LOSSLESS) return 'Lossless Hi-Res';
+  if (provDetails.quality >= MediaQuality.LOSSLESS) return 'Lossless';
+  return 'Unknown media quality ';
 };
 </script>
 

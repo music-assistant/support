@@ -6,11 +6,12 @@
         :class="activeTab == 'versions' ? 'active-tab' : 'inactive-tab'"
         value="details"
       >
-        {{ $t("track_versions") }}</v-tab
-      >
+        {{ $t('track_versions') }}
+      </v-tab>
     </v-tabs>
     <v-divider />
     <ItemsListing
+      v-if="activeTab == 'versions'"
       itemtype="radioversions"
       :parent-item="itemDetails"
       :show-providers="true"
@@ -19,25 +20,24 @@
       :show-duration="false"
       :load-data="loadRadioVersions"
       :sort-keys="['provider', 'sort_name']"
-      v-if="activeTab == 'versions'"
     />
   </section>
 </template>
 
 <script setup lang="ts">
-import ItemsListing, { filteredItems } from "../components/ItemsListing.vue";
-import InfoHeader from "../components/InfoHeader.vue";
-import { ref } from "@vue/reactivity";
-import type { ProviderType, Radio } from "../plugins/api";
-import { api } from "../plugins/api";
-import { watchEffect } from "vue";
+import ItemsListing, { filteredItems } from '../components/ItemsListing.vue';
+import InfoHeader from '../components/InfoHeader.vue';
+import { ref } from 'vue';
+import type { ProviderType, Radio } from '../plugins/api';
+import { api } from '../plugins/api';
+import { watchEffect } from 'vue';
 
 export interface Props {
   item_id: string;
   provider: string;
 }
 const props = defineProps<Props>();
-const activeTab = ref("");
+const activeTab = ref('');
 
 const itemDetails = ref<Radio>();
 
@@ -46,7 +46,7 @@ const loadItemDetails = async function () {
     props.provider as ProviderType,
     props.item_id
   );
-  activeTab.value = "versions";
+  activeTab.value = 'versions';
 };
 
 watchEffect(() => {

@@ -6,50 +6,50 @@
         :class="activeTab == 'tracks' ? 'active-tab' : 'inactive-tab'"
         value="tracks"
       >
-        {{ $t("tracks") }}</v-tab
-      >
+        {{ $t('tracks') }}
+      </v-tab>
       <v-tab
         :class="activeTab == 'versions' ? 'active-tab' : 'inactive-tab'"
         value="versions"
       >
-        {{ $t("album_versions") }}</v-tab
-      >
+        {{ $t('album_versions') }}
+      </v-tab>
     </v-tabs>
     <v-divider />
     <ItemsListing
+      v-if="activeTab == 'tracks'"
       itemtype="albumtracks"
       :parent-item="itemDetails"
       :show-providers="true"
       :show-library="true"
       :load-data="loadAlbumTracks"
       :sort-keys="['track_number', 'sort_name', 'duration']"
-      v-if="activeTab == 'tracks'"
     />
     <ItemsListing
+      v-if="activeTab == 'versions'"
       itemtype="albumversions"
       :parent-item="itemDetails"
       :show-providers="true"
       :show-library="false"
       :load-data="loadAlbumVersions"
       :sort-keys="['provider', 'sort_name', 'year']"
-      v-if="activeTab == 'versions'"
     />
   </section>
 </template>
 
 <script setup lang="ts">
-import ItemsListing from "../components/ItemsListing.vue";
-import { filteredItems } from "../components/ItemsListing.vue";
-import InfoHeader from "../components/InfoHeader.vue";
+import ItemsListing from '../components/ItemsListing.vue';
+import { filteredItems } from '../components/ItemsListing.vue';
+import InfoHeader from '../components/InfoHeader.vue';
 import {
   MassEventType,
   type Album,
   type MassEvent,
   type MediaItemType,
-} from "../plugins/api";
-import { api, ProviderType } from "../plugins/api";
-import { watchEffect, ref, onMounted, onBeforeUnmount } from "vue";
-import { parseBool } from "@/utils";
+} from '../plugins/api';
+import { api, ProviderType } from '../plugins/api';
+import { watchEffect, ref, onMounted, onBeforeUnmount } from 'vue';
+import { parseBool } from '@/utils';
 
 export interface Props {
   item_id: string;
@@ -57,7 +57,7 @@ export interface Props {
   force_provider_version?: string;
 }
 const props = defineProps<Props>();
-const activeTab = ref("");
+const activeTab = ref('');
 
 const itemDetails = ref<Album>();
 
@@ -67,9 +67,9 @@ const loadItemDetails = async function () {
     props.item_id,
     true,
     false,
-    parseBool(props.force_provider_version || "")
+    parseBool(props.force_provider_version || '')
   );
-  activeTab.value = "tracks";
+  activeTab.value = 'tracks';
 };
 
 watchEffect(() => {

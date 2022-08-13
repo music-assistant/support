@@ -1,12 +1,12 @@
 <template>
   <section>
     <v-tabs v-model="activePanel" show-arrows grow>
-      <v-tab :value="0">{{
-        $t("queue_next_items") + " (" + nextItems.length + ")"
-      }}</v-tab>
-      <v-tab :value="1">{{
-        $t("queue_previous_items") + " (" + previousItems.length + ")"
-      }}</v-tab>
+      <v-tab :value="0">
+        {{ $t('queue_next_items') + ' (' + nextItems.length + ')' }}
+      </v-tab>
+      <v-tab :value="1">
+        {{ $t('queue_previous_items') + ' (' + previousItems.length + ')' }}
+      </v-tab>
     </v-tabs>
 
     <div
@@ -17,7 +17,7 @@
         padding-bottom: 20px;
       "
     >
-      <v-progress-linear indeterminate v-if="loading"></v-progress-linear>
+      <v-progress-linear v-if="loading" indeterminate />
       <v-alert
         v-if="activePlayerQueue && activePlayerQueue?.radio_source.length > 0"
         color="primary"
@@ -26,10 +26,10 @@
         prominent
         style="margin-right: 10px"
       >
-        <b>{{ $t("queue_radio_enabled") }}</b>
+        <b>{{ $t('queue_radio_enabled') }}</b>
         <br />
         {{
-          $t("queue_radio_based_on", [
+          $t('queue_radio_based_on', [
             $t(activePlayerQueue?.radio_source[0].media_type),
           ])
         }}
@@ -56,27 +56,28 @@
         <div>
           <v-list-item
             ripple
+            :disabled="item.item_id == curQueueItem?.item_id"
             @click.stop="onClick(item)"
             @click.right.prevent="onClick(item)"
-            :disabled="item.item_id == curQueueItem?.item_id"
           >
-            <template v-slot:prepend>
+            <template #prepend>
               <div class="listitem-thumb">
                 <MediaItemThumb
                   :item="item"
                   :size="50"
                   width="50px"
                   height="50px"
-                /></div
-            ></template>
+                />
+              </div>
+            </template>
 
             <!-- title -->
-            <template v-slot:title>
+            <template #title>
               {{ item.media_item ? item.media_item.name : item.name }}
             </template>
 
             <!-- subtitle -->
-            <template v-slot:subtitle>
+            <template #subtitle>
               <div
                 v-if="
                   item.media_item &&
@@ -89,31 +90,34 @@
               <div v-else-if="item.media_item">
                 {{ item.media_item.metadata.description }}
               </div>
-              <div v-else>{{ item.uri }}</div>
+              <div v-else>
+                {{ item.uri }}
+              </div>
             </template>
 
             <!-- actions -->
-            <template v-slot:append>
+            <template #append>
               <div class="listitem-actions">
                 <!-- item duration -->
                 <div
-                  class="listitem-action"
                   v-if="
                     item.duration &&
                     item.media_item?.media_type != MediaType.RADIO
                   "
+                  class="listitem-action"
                 >
                   <span>{{ formatDuration(item.duration) }}</span>
                 </div>
 
                 <!-- move up -->
-                <div class="listitem-action" v-if="!$vuetify.display.mobile">
+                <div v-if="!$vuetify.display.mobile" class="listitem-action">
                   <v-tooltip location="bottom">
                     <template #activator="{ props }">
                       <v-btn
                         variant="plain"
                         ripple
                         v-bind="props"
+                        :icon="mdiArrowUp"
                         @click="
                           api.queueCommandMoveUp(
                             activePlayerQueue?.queue_id,
@@ -122,22 +126,21 @@
                         "
                         @click.prevent
                         @click.stop
-                        :icon="mdiArrowUp"
-                      >
-                      </v-btn>
+                      />
                     </template>
-                    <span>{{ $t("queue_move_up") }}</span>
+                    <span>{{ $t('queue_move_up') }}</span>
                   </v-tooltip>
                 </div>
 
                 <!-- move down -->
-                <div class="listitem-action" v-if="!$vuetify.display.mobile">
+                <div v-if="!$vuetify.display.mobile" class="listitem-action">
                   <v-tooltip location="bottom">
                     <template #activator="{ props }">
                       <v-btn
                         variant="plain"
                         ripple
                         v-bind="props"
+                        :icon="mdiArrowDown"
                         @click="
                           api.queueCommandMoveDown(
                             activePlayerQueue?.queue_id,
@@ -146,25 +149,24 @@
                         "
                         @click.prevent
                         @click.stop
-                        :icon="mdiArrowDown"
-                      >
-                      </v-btn>
+                      />
                     </template>
-                    <span>{{ $t("queue_move_down") }}</span>
+                    <span>{{ $t('queue_move_down') }}</span>
                   </v-tooltip>
                 </div>
               </div>
             </template>
           </v-list-item>
-          <v-divider></v-divider>
+          <v-divider />
         </div>
       </RecycleScroller>
       <v-alert
-        type="info"
         v-if="!loading && items.length == 0"
+        type="info"
         style="margin: 20px"
-        >{{ $t("no_content") }}</v-alert
       >
+        {{ $t('no_content') }}
+      </v-alert>
     </div>
 
     <!-- contextmenu -->
@@ -173,28 +175,23 @@
       class="align-center justify-center"
       :scrim="false"
     >
-      <v-menu class="fullscreen-menu" v-model="showContextMenu">
+      <v-menu v-model="showContextMenu" class="fullscreen-menu">
         <v-card>
           <v-toolbar sense dark color="primary">
-            <v-icon :icon="mdiPlayCircleOutline"></v-icon>
-            <v-toolbar-title v-if="selectedItem" style="padding-left: 10px"
-              ><b>{{
+            <v-icon :icon="mdiPlayCircleOutline" />
+            <v-toolbar-title v-if="selectedItem" style="padding-left: 10px">
+              <b>{{
                 truncateString(
-                  selectedItem?.name || "",
+                  selectedItem?.name || '',
                   $vuetify.display.mobile ? 20 : 150
                 )
-              }}</b></v-toolbar-title
-            >
-            <v-toolbar-title v-else style="padding-left: 10px"
-              ><b>{{ $t("settings") }}</b> |
-              {{ activePlayerQueue?.name }}</v-toolbar-title
-            >
-            <v-btn
-              :icon="mdiClose"
-              dark
-              text
-              @click="closeContextMenu()"
-            ></v-btn>
+              }}</b>
+            </v-toolbar-title>
+            <v-toolbar-title v-else style="padding-left: 10px">
+              <b>{{ $t('settings') }}</b> |
+              {{ activePlayerQueue?.name }}
+            </v-toolbar-title>
+            <v-btn :icon="mdiClose" dark text @click="closeContextMenu()" />
           </v-toolbar>
 
           <!-- QueueItem related content menu -->
@@ -202,93 +199,96 @@
             <v-list>
               <!-- play now -->
               <v-list-item
-                @click="queueCommand(selectedItem, 'play_now')"
                 :title="$t('play_now')"
+                @click="queueCommand(selectedItem, 'play_now')"
               >
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-avatar style="padding-right: 10px">
-                    <v-icon :icon="mdiPlayCircleOutline"></v-icon>
+                    <v-icon :icon="mdiPlayCircleOutline" />
                   </v-avatar>
                 </template>
               </v-list-item>
-              <v-divider></v-divider>
+              <v-divider />
 
               <!-- play next (move to next in line) -->
               <v-list-item
-                @click="queueCommand(selectedItem, 'move_next')"
                 :title="$t('play_next')"
+                @click="queueCommand(selectedItem, 'move_next')"
               >
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-avatar style="padding-right: 10px">
-                    <v-icon :icon="mdiSkipNextCircleOutline"></v-icon>
+                    <v-icon :icon="mdiSkipNextCircleOutline" />
                   </v-avatar>
                 </template>
               </v-list-item>
-              <v-divider></v-divider>
+              <v-divider />
 
               <!-- move up -->
               <v-list-item
-                @click="queueCommand(selectedItem, 'up')"
                 :title="$t('queue_move_up')"
+                @click="queueCommand(selectedItem, 'up')"
               >
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-avatar style="padding-right: 10px">
-                    <v-icon :icon="mdiArrowUp"></v-icon> </v-avatar
-                ></template>
-              </v-list-item>
-              <v-divider></v-divider>
-
-              <!-- move down -->
-              <v-list-item
-                @click="queueCommand(selectedItem, 'down')"
-                :title="$t('queue_move_down')"
-              >
-                <template v-slot:prepend>
-                  <v-avatar style="padding-right: 10px">
-                    <v-icon :icon="mdiArrowDown"></v-icon>
+                    <v-icon :icon="mdiArrowUp" />
                   </v-avatar>
                 </template>
               </v-list-item>
-              <v-divider></v-divider>
+              <v-divider />
+
+              <!-- move down -->
+              <v-list-item
+                :title="$t('queue_move_down')"
+                @click="queueCommand(selectedItem, 'down')"
+              >
+                <template #prepend>
+                  <v-avatar style="padding-right: 10px">
+                    <v-icon :icon="mdiArrowDown" />
+                  </v-avatar>
+                </template>
+              </v-list-item>
+              <v-divider />
 
               <!-- delete -->
               <v-list-item
-                @click="queueCommand(selectedItem, 'delete')"
                 :title="$t('queue_delete')"
+                @click="queueCommand(selectedItem, 'delete')"
               >
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-avatar style="padding-right: 10px">
-                    <v-icon :icon="mdiDelete"></v-icon> </v-avatar
-                ></template>
+                    <v-icon :icon="mdiDelete" />
+                  </v-avatar>
+                </template>
               </v-list-item>
-              <v-divider></v-divider>
+              <v-divider />
 
               <!-- show info (track only) -->
               <v-list-item
+                v-if="selectedItem?.media_item?.media_type == MediaType.TRACK"
+                :title="$t('show_info')"
                 @click="
                   selectedItem?.media_item
                     ? gotoItem(selectedItem.media_item)
                     : ''
                 "
-                :title="$t('show_info')"
-                v-if="selectedItem?.media_item?.media_type == MediaType.TRACK"
               >
-                <template v-slot:prepend>
+                <template #prepend>
                   <v-avatar style="padding-right: 10px">
-                    <v-icon :icon="mdiInformationOutline"></v-icon> </v-avatar
-                ></template>
+                    <v-icon :icon="mdiInformationOutline" />
+                  </v-avatar>
+                </template>
               </v-list-item>
-              <v-divider></v-divider>
+              <v-divider />
             </v-list>
           </v-card-text>
 
           <!-- PlayerQueue settings related content menu -->
           <v-card-text v-else @click.stop>
-            <v-expansion-panels variant="accordion" v-model="panel">
+            <v-expansion-panels v-model="panel" variant="accordion">
               <!-- base settings -->
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  {{ t("basic_settings") }}
+                  {{ t('basic_settings') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-list
@@ -309,13 +309,13 @@
                           { title: $t('on'), value: 'true' },
                           { title: $t('off'), value: 'false' },
                         ]"
+                        hide-details
                         @update:model-value="
                           api.playerQueueSettings(activePlayerQueue?.queue_id, {
                             shuffle_enabled: parseBool($event),
                           })
                         "
-                        hide-details
-                      ></v-select>
+                      />
                     </v-list-item>
 
                     <!-- repeat -->
@@ -344,7 +344,7 @@
                             repeat_mode: $event,
                           })
                         "
-                      ></v-select>
+                      />
                     </v-list-item>
 
                     <!-- crossfade mode -->
@@ -375,13 +375,13 @@
                             value: CrossFadeMode.ALWAYS,
                           },
                         ]"
+                        hide-details
                         @update:model-value="
                           api.playerQueueSettings(activePlayerQueue?.queue_id, {
                             crossfade_mode: $event,
                           })
                         "
-                        hide-details
-                      ></v-select>
+                      />
                     </v-list-item>
 
                     <!-- crossfade duration -->
@@ -399,7 +399,7 @@
                             $vuetify.display.mobile ? '' : 'margin-left: 40px;'
                           "
                         >
-                          {{ $t("crossfade_duration") }}
+                          {{ $t('crossfade_duration') }}
                         </div>
                         <v-slider
                           style="margin-left: 0; margin-right: 0"
@@ -426,10 +426,10 @@
                             )
                           "
                         >
-                          <template v-slot:append>
+                          <template #append>
                             <div class="text-caption">
                               {{
-                                $t("crossfade_seconds", [
+                                $t('crossfade_seconds', [
                                   activePlayerQueue?.settings
                                     .crossfade_duration,
                                 ])
@@ -455,7 +455,7 @@
                             $vuetify.display.mobile ? '' : 'margin-left: 40px'
                           "
                         >
-                          {{ $t("announce_volume_increase") }}
+                          {{ $t('announce_volume_increase') }}
                         </div>
 
                         <v-slider
@@ -479,8 +479,7 @@
                               }
                             )
                           "
-                        >
-                        </v-slider>
+                        />
                       </div>
                     </v-list-item>
                   </v-list>
@@ -489,7 +488,7 @@
               <!-- advanced/pro settings -->
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  {{ t("advanced_settings") }}
+                  {{ t('advanced_settings') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-list
@@ -510,13 +509,13 @@
                           { title: $t('on'), value: 'true' },
                           { title: $t('off'), value: 'false' },
                         ]"
+                        hide-details
                         @update:model-value="
                           api.playerQueueSettings(activePlayerQueue?.queue_id, {
                             volume_normalization_enabled: parseBool($event),
                           })
                         "
-                        hide-details
-                      ></v-select>
+                      />
                     </v-list-item>
 
                     <!-- volume normalization target -->
@@ -534,7 +533,7 @@
                             $vuetify.display.mobile ? '' : 'margin-left: 40px;'
                           "
                         >
-                          {{ $t("volume_normalization_target") }}
+                          {{ $t('volume_normalization_target') }}
                         </div>
                         <v-slider
                           style="margin-left: 0; margin-right: 0"
@@ -553,6 +552,7 @@
                             activePlayerQueue?.settings
                               .volume_normalization_target
                           "
+                          hide-details
                           @update:model-value="
                             api.playerQueueSettings(
                               activePlayerQueue?.queue_id,
@@ -561,12 +561,11 @@
                               }
                             )
                           "
-                          hide-details
                         >
-                          <template v-slot:append>
+                          <template #append>
                             <div class="text-caption">
                               {{
-                                $t("volume_normalization_lufs", [
+                                $t('volume_normalization_lufs', [
                                   activePlayerQueue?.settings
                                     .volume_normalization_target,
                                 ])
@@ -586,13 +585,13 @@
                           $vuetify.display.mobile ? '' : mdiCastConnected
                         "
                         :items="['mp3', 'flac', 'wav', 'aac']"
+                        hide-details
                         @update:model-value="
                           api.playerQueueSettings(activePlayerQueue?.queue_id, {
                             stream_type: $event,
                           })
                         "
-                        hide-details
-                      ></v-select>
+                      />
                     </v-list-item>
 
                     <!-- max sample rate -->
@@ -615,13 +614,13 @@
                           '352000',
                           '384000',
                         ]"
+                        hide-details
                         @update:model-value="
                           api.playerQueueSettings(activePlayerQueue?.queue_id, {
                             max_sample_rate: $event,
                           })
                         "
-                        hide-details
-                      ></v-select>
+                      />
                     </v-list-item>
 
                     <!-- metadata mode -->
@@ -646,13 +645,13 @@
                             value: 'legacy',
                           },
                         ]"
+                        hide-details
                         @update:model-value="
                           api.playerQueueSettings(activePlayerQueue?.queue_id, {
                             metadata_mode: $event,
                           })
                         "
-                        hide-details
-                      ></v-select>
+                      />
                     </v-list-item>
                   </v-list>
                 </v-expansion-panel-text>
@@ -683,25 +682,25 @@ import {
   mdiCastConnected,
   mdiVolumePlus,
   mdiRadioTower,
-} from "@mdi/js";
-import { ref } from "@vue/reactivity";
-import { RecycleScroller } from "vue-virtual-scroller";
-import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import type { QueueItem, MassEvent, MediaItemType } from "../plugins/api";
+} from '@mdi/js';
+import { ref } from 'vue';
+import { RecycleScroller } from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import type { QueueItem, MassEvent, MediaItemType } from '../plugins/api';
 import {
   RepeatMode,
   CrossFadeMode,
   MassEventType,
   MediaType,
   ContentType,
-} from "../plugins/api";
-import api from "../plugins/api";
-import { computed, onBeforeUnmount, watchEffect } from "vue";
-import { store } from "../plugins/store";
-import { formatDuration, parseBool, truncateString } from "../utils";
-import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
-import MediaItemThumb from "../components/MediaItemThumb.vue";
+} from '../plugins/api';
+import api from '../plugins/api';
+import { computed, onBeforeUnmount, watchEffect } from 'vue';
+import { store } from '../plugins/store';
+import { formatDuration, parseBool, truncateString } from '../utils';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import MediaItemThumb from '../components/MediaItemThumb.vue';
 
 // global refs
 const { t } = useI18n();
@@ -756,7 +755,7 @@ onBeforeUnmount(unsub);
 
 store.topBarContextMenuItems = [
   {
-    label: "settings",
+    label: 'settings',
     labelArgs: [],
     action: () => {
       showContextMenu.value = true;
@@ -764,7 +763,7 @@ store.topBarContextMenuItems = [
     icon: mdiCogOutline,
   },
   {
-    label: "queue_clear",
+    label: 'queue_clear',
     labelArgs: [],
     action: () => {
       api.queueCommandClear(activePlayerQueue.value?.queue_id);
@@ -780,12 +779,12 @@ onBeforeUnmount(() => {
 const loadItems = async function () {
   loading.value = true;
   if (activePlayerQueue.value) {
-    store.topBarTitle = t("queue") + ": " + activePlayerQueue.value.name;
+    store.topBarTitle = t('queue') + ': ' + activePlayerQueue.value.name;
     items.value = await api.getPlayerQueueItems(
       activePlayerQueue.value.queue_id
     );
   } else {
-    store.topBarTitle = t("queue");
+    store.topBarTitle = t('queue');
     items.value = [];
   }
   loading.value = false;
@@ -808,15 +807,15 @@ const gotoItem = function (item: MediaItemType) {
 const queueCommand = function (item: QueueItem | undefined, command: string) {
   closeContextMenu();
   if (!item || !activePlayerQueue.value) return;
-  if (command == "play_now") {
+  if (command == 'play_now') {
     api.queueCommandPlayIndex(activePlayerQueue?.value.queue_id, item.item_id);
-  } else if (command == "move_next") {
+  } else if (command == 'move_next') {
     api.queueCommandMoveNext(activePlayerQueue?.value.queue_id, item.item_id);
-  } else if (command == "up") {
+  } else if (command == 'up') {
     api.queueCommandMoveUp(activePlayerQueue?.value.queue_id, item.item_id);
-  } else if (command == "down") {
+  } else if (command == 'down') {
     api.queueCommandMoveDown(activePlayerQueue?.value.queue_id, item.item_id);
-  } else if (command == "delete") {
+  } else if (command == 'delete') {
     api.queueCommandDelete(activePlayerQueue?.value.queue_id, item.item_id);
   }
 };

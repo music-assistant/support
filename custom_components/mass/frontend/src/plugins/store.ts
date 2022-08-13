@@ -1,8 +1,8 @@
-import type { Player } from "./api";
-import { reactive } from "vue";
-import type { LocationQuery, RouteParams, RouteMeta } from "vue-router";
+import type { Player } from './api';
+import { reactive } from 'vue';
+import type { LocationQuery, RouteParams, RouteMeta } from 'vue-router';
 
-import type { ContextMenuItem } from "../components/MediaItemContextMenu.vue";
+import type { ContextMenuItem } from '../components/MediaItemContextMenu.vue';
 
 interface Store {
   selectedPlayer?: Player;
@@ -31,13 +31,13 @@ export const store: Store = reactive({
   isInStandaloneMode: false,
   showPlayersMenu: false,
   darkTheme: false,
-  topBarColor: "#424242",
-  topBarTextColor: "#ffffff",
-  defaultTopBarTitle: "Music Assistant",
+  topBarColor: '#424242',
+  topBarTextColor: '#ffffff',
+  defaultTopBarTitle: 'Music Assistant',
   topBarContextMenuItems: [],
   blockGlobalPlayMenu: false,
   alwaysShowMenuButton: false,
   apiInitialized: false,
-  apiBaseUrl: "",
+  apiBaseUrl: '',
   prevRoutes: [],
 });

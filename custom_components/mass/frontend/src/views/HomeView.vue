@@ -8,7 +8,7 @@
         margin-bottom: 20px;
       "
     >
-    <GlobalSearch />
+      <GlobalSearch />
       <!-- search artists -->
       <!-- <v-card
         v-if="searchArtists.length > 0"
@@ -38,27 +38,27 @@
         <v-row dense align-content="start" align="start">
           <v-col v-for="card in cards" :key="card.label" align-self="start">
             <v-card
-              @click="$router.push(card.path)"
-              hover
-              border
-              width="auto"
-              min-height="90"
-              min-width="90"
+              class="mx-auto"
               align="center"
-              justify="center"
+              outlined
+              min-width="150"
+              max-width="344"
+              @click="$router.push(card.path)"
             >
-              <v-btn variant="plain" icon height="80">
-                <v-icon
-                  :icon="card.icon"
-                  size="80"
-                  style="align: center; padding: 10px"
-                >
-                </v-icon>
-              </v-btn>
-              <v-divider />
-              <span class="text-center text-subtitle-1" style="padding: 10px">
-                {{ $t(card.label) }}
-              </span>
+              <v-list-item two-line>
+                <v-list-item-content>
+                  <v-btn variant="plain" icon height="80">
+                    <v-icon
+                      :icon="card.icon"
+                      size="80"
+                      style="align: center; padding: 10px"
+                    />
+                  </v-btn>
+                  <div class="mb-4">
+                    {{ $t(card.label) }}
+                  </div>
+                </v-list-item-content>
+              </v-list-item>
             </v-card>
           </v-col>
         </v-row>
@@ -78,15 +78,15 @@ import {
   mdiFolder,
   mdiFileSync,
   mdiCached,
-} from "@mdi/js";
-import { ref, computed, onBeforeUnmount, watch } from "vue";
-import { store } from "../plugins/store";
-import PanelviewItem from "../components/PanelviewItem.vue";
-import GlobalSearch from "../components/GlobalSearch.vue";
+} from '@mdi/js';
+import { ref, computed, onBeforeUnmount, watch } from 'vue';
+import { store } from '../plugins/store';
+import PanelviewItem from '../components/PanelviewItem.vue';
+import GlobalSearch from '../components/GlobalSearch.vue';
 
-import { api, type MediaItemType } from "@/plugins/api";
-import { useDisplay } from "vuetify";
-import { useI18n } from "vue-i18n";
+import { api, type MediaItemType } from '@/plugins/api';
+import { useDisplay } from 'vuetify';
+import { useI18n } from 'vue-i18n';
 
 const { mobile } = useDisplay();
 const searchHasFocus = ref(false);
@@ -94,7 +94,7 @@ const searchHasFocus = ref(false);
 store.topBarTitle = store.defaultTopBarTitle;
 store.topBarContextMenuItems = [
   {
-    label: "sync",
+    label: 'sync',
     labelArgs: [],
     action: () => {
       api.startSync(undefined, undefined);
@@ -102,7 +102,7 @@ store.topBarContextMenuItems = [
     icon: mdiFileSync,
   },
   {
-    label: "sync_full",
+    label: 'sync_full',
     labelArgs: [],
     action: () => {
       api.startSync(undefined, undefined, true);
@@ -120,38 +120,36 @@ const thumbSize = computed(() => {
 
 const cards = ref([
   {
-    label: "artists",
+    label: 'artists',
     icon: mdiAccountMusic,
-    path: "/artists",
+    path: '/artists',
   },
   {
-    label: "albums",
+    label: 'albums',
     icon: mdiAlbum,
-    path: "/albums",
+    path: '/albums',
   },
   {
-    label: "tracks",
+    label: 'tracks',
     icon: mdiFileMusic,
-    path: "/tracks",
+    path: '/tracks',
   },
   {
-    label: "radios",
+    label: 'radios',
     icon: mdiRadio,
-    path: "/radios",
+    path: '/radios',
   },
   {
-    label: "playlists",
+    label: 'playlists',
     icon: mdiPlaylistMusic,
-    path: "/playlists",
+    path: '/playlists',
   },
   {
-    label: "browse",
+    label: 'browse',
     icon: mdiFolder,
-    path: "/browse",
+    path: '/browse',
   },
 ]);
-
-
 </script>
 
 <style>
@@ -163,6 +161,7 @@ div.v-slide-group__next {
   align-items: start;
   margin-top: -35px;
 }
+
 div.v-slide-group__prev {
   position: absolute;
   left: -5px;
@@ -170,5 +169,8 @@ div.v-slide-group__prev {
   height: 30px;
   align-items: start;
   margin-top: -35px;
+}
+.v-expansion-panel-title {
+  border-radius: 0px;
 }
 </style>

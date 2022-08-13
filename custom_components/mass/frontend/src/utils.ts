@@ -1,10 +1,10 @@
-import type { Artist, BrowseFolder } from "./plugins/api";
+import type { Artist, BrowseFolder } from './plugins/api';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const parseBool = (val: string | boolean) => {
   if (val == undefined) return false;
   if (!val) return false;
-  if (typeof val === "boolean") return val;
+  if (typeof val === 'boolean') return val;
   return !!JSON.parse(String(val).toLowerCase());
 };
 
@@ -17,18 +17,18 @@ export const formatDuration = function (totalSeconds: number) {
   let minutesStr = minutes.toString();
   let secondsStr = seconds.toString();
   if (hours < 10) {
-    hoursStr = "0" + hours;
+    hoursStr = '0' + hours;
   }
   if (minutes < 10) {
-    minutesStr = "0" + minutes;
+    minutesStr = '0' + minutes;
   }
   if (seconds < 10) {
-    secondsStr = "0" + seconds;
+    secondsStr = '0' + seconds;
   }
-  if (hoursStr === "00") {
-    return minutesStr + ":" + secondsStr;
+  if (hoursStr === '00') {
+    return minutesStr + ':' + secondsStr;
   } else {
-    return hoursStr + ":" + minutesStr + ":" + secondsStr;
+    return hoursStr + ':' + minutesStr + ':' + secondsStr;
   }
 };
 
@@ -39,11 +39,11 @@ export const truncateString = function (str: string, num: number) {
     return str;
   }
   // Return str truncated with '...' concatenated to the end of str.
-  return str.slice(0, num) + "...";
+  return str.slice(0, num) + '...';
 };
 
 export const isColorDark = function (hexColor: string) {
-  if (hexColor.includes("var")) {
+  if (hexColor.includes('var')) {
     hexColor = getComputedStyle(document.documentElement).getPropertyValue(
       hexColor
     );
@@ -51,8 +51,8 @@ export const isColorDark = function (hexColor: string) {
   let r = 0;
   let g = 0;
   let b = 0;
-  if (hexColor.includes("rgb(")) {
-    const parts = hexColor.split("(")[1].split(")")[0].split(",");
+  if (hexColor.includes('rgb(')) {
+    const parts = hexColor.split('(')[1].split(')')[0].split(',');
     r = parseInt(parts[0]);
     g = parseInt(parts[1]);
     b = parseInt(parts[2]);
@@ -70,15 +70,14 @@ export const isColorDark = function (hexColor: string) {
 
 export const kebabize = (str: string) => {
   return str
-    .split("")
+    .split('')
     .map((letter, idx) => {
       return letter.toUpperCase() === letter
-        ? `${idx !== 0 ? "-" : ""}${letter.toLowerCase()}`
+        ? `${idx !== 0 ? '-' : ''}${letter.toLowerCase()}`
         : letter;
     })
-    .join("");
+    .join('');
 };
-
 
 export const getArtistsString = function (artists: Artist[]) {
   if (!artists) return '';
@@ -86,10 +85,10 @@ export const getArtistsString = function (artists: Artist[]) {
     .map((x) => {
       return x.name;
     })
-    .join(" / ");
+    .join(' / ');
 };
 
-export const getBrowseFolderName = function(browseItem: BrowseFolder, t:any) {
+export const getBrowseFolderName = function (browseItem: BrowseFolder, t: any) {
   let browseTitle = '';
   if (browseItem?.name && browseItem?.label) {
     browseTitle = `${browseItem.name}: ${t(browseItem?.label)}`;
@@ -101,4 +100,4 @@ export const getBrowseFolderName = function(browseItem: BrowseFolder, t:any) {
     browseTitle = browseItem.path || '';
   }
   return browseTitle;
-}
+};

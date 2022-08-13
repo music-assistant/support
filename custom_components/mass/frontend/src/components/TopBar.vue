@@ -1,11 +1,17 @@
 <template>
-  <v-app-bar dense app style="height: 55px" :color="store.topBarColor">
+  <v-app-bar
+    elevation="0"
+    dense
+    app
+    style="height: 56px"
+    :color="store.topBarColor"
+  >
     <v-app-bar-nav-icon
       v-if="store.prevRoutes.length > 0"
       :icon="mdiArrowLeft"
       :color="store.topBarTextColor"
-      @click="backButton"
       style="margin-left: -10px"
+      @click="backButton"
     />
     <v-app-bar-nav-icon
       v-if="
@@ -14,37 +20,42 @@
       "
       :icon="mdiMenu"
       :color="store.topBarTextColor"
-      @click="toggleHAMenu"
       style="margin-left: -10px"
+      @click="toggleHAMenu"
     />
     <v-toolbar-title
       :style="`color: ${store.topBarTextColor}`"
-      v-html="truncateString(store.topBarTitle || '', $vuetify.display.mobile ? 25 : 150)"
-    ></v-toolbar-title>
-    <template v-slot:append>
+      v-html="
+        truncateString(
+          store.topBarTitle || '',
+          $vuetify.display.mobile ? 25 : 150
+        )
+      "
+    />
+    <template #append>
       <div style="align-items: right; display: flex">
         <v-menu v-model="dialog" fullscreen>
-          <template v-slot:activator="{ props: menu }">
+          <template #activator="{ props: menu }">
             <v-tooltip location="top end" origin="end center">
-              <template v-slot:activator="{ props: tooltip }">
+              <template #activator="{ props: tooltip }">
                 <v-progress-circular
                   v-if="jobsInProgress.length > 0"
                   indeterminate
                   :color="store.topBarTextColor"
                   v-bind="mergeProps(menu, tooltip)"
-                ></v-progress-circular>
+                />
               </template>
-              <span>{{ $t("jobs_running", [jobsInProgress.length]) }}</span>
+              <span>{{ $t('jobs_running', [jobsInProgress.length]) }}</span>
             </v-tooltip>
           </template>
           <v-card>
             <v-toolbar dark color="primary">
-              <v-icon :icon="mdiReload"></v-icon>
-              <v-toolbar-title style="padding-left: 10px"
-                ><b>{{ $t("jobs") }}</b></v-toolbar-title
-              >
+              <v-icon :icon="mdiReload" />
+              <v-toolbar-title style="padding-left: 10px">
+                <b>{{ $t('jobs') }}</b>
+              </v-toolbar-title>
 
-              <v-btn :icon="mdiClose" dark text @click="dialog = !dialog"></v-btn>
+              <v-btn :icon="mdiClose" dark text @click="dialog = !dialog" />
             </v-toolbar>
 
             <v-list>
@@ -53,8 +64,8 @@
                 :key="index"
                 :title="item.name"
               >
-                <template v-slot:prepend>
-                  <v-avatar :icon="getJobStatusIcon(item.status)"></v-avatar>
+                <template #prepend>
+                  <v-avatar :icon="getJobStatusIcon(item.status)" />
                 </template>
               </v-list-item>
             </v-list>
@@ -62,14 +73,14 @@
         </v-menu>
 
         <v-menu location="bottom end">
-          <template v-slot:activator="{ props }">
+          <template #activator="{ props }">
             <v-btn
-              :icon="mdiDotsVertical"
               v-if="store.topBarContextMenuItems.length > 0"
+              :icon="mdiDotsVertical"
               :color="store.topBarTextColor"
               style="margin-right: -18px"
               v-bind="props"
-            ></v-btn>
+            />
           </template>
 
           <v-list>
@@ -79,9 +90,9 @@
               :title="$t(item.label, item.labelArgs)"
               @click="item.action ? item.action() : ''"
             >
-              <template v-slot:prepend>
-                  <v-avatar :icon="item.icon"></v-avatar>
-                </template>
+              <template #prepend>
+                <v-avatar :icon="item.icon" />
+              </template>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -101,14 +112,14 @@ import {
   mdiReload,
   mdiClose,
   mdiMenu,
-} from "@mdi/js";
+} from '@mdi/js';
 
-import { computed, mergeProps, ref } from "vue";
-import { useRouter } from "vue-router";
-import { api } from "../plugins/api";
-import { JobStatus } from "../plugins/api";
-import { store } from "../plugins/store";
-import { truncateString } from "../utils";
+import { computed, mergeProps, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { api } from '../plugins/api';
+import { JobStatus } from '../plugins/api';
+import { store } from '../plugins/store';
+import { truncateString } from '../utils';
 
 const router = useRouter();
 const dialog = ref(false);
@@ -122,9 +133,9 @@ const jobsInProgress = computed(() => {
 const toggleHAMenu = function () {
   // toggle HA sidebar
   const root = window.parent.document
-    .querySelector("home-assistant")
-    .shadowRoot.querySelector("home-assistant-main");
-  const evt = new Event("hass-toggle-menu", {});
+    .querySelector('home-assistant')
+    .shadowRoot.querySelector('home-assistant-main');
+  const evt = new Event('hass-toggle-menu', {});
   root.dispatchEvent(evt);
 };
 
@@ -135,7 +146,7 @@ const backButton = function () {
 
   const prevRoute = store.prevRoutes.pop();
   if (prevRoute) {
-    prevRoute.params["backnav"] = "true";
+    prevRoute.params['backnav'] = 'true';
     router.replace(prevRoute).then(() => {
       setTimeout(() => {
         window.scrollTo(0, prevRoute.meta.scrollPos || 0);

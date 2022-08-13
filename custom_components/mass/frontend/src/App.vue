@@ -8,18 +8,18 @@
         width: 100%;
         background: rgb(var(--v-theme-background));
       "
-    ></div>
+    />
     <player-select />
     <TopBar />
-    <v-main id="cont" v-if="store.apiInitialized">
+    <v-main v-if="store.apiInitialized" id="cont">
       <v-container fluid style="padding: 0">
-        <router-view app v-slot="{ Component }">
+        <router-view v-slot="{ Component }" app>
           <transition name="fade" mode="out-in">
             <component :is="Component" />
           </transition>
         </router-view>
         <!-- white space to reserve space for footer -->
-        <div style="height: 150px"></div>
+        <div style="height: 150px" />
       </v-container>
     </v-main>
     <player-o-s-d />
@@ -29,23 +29,21 @@
 
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure */
-import { ref } from "vue";
-import { api } from "./plugins/api";
-import { store } from "./plugins/store";
-import { isColorDark } from "./utils";
-import { useTheme } from "vuetify";
-import TopBar from "./components/TopBar.vue";
-import PlayerOSD from "./components/PlayerOSD.vue";
-import PlayerSelect from "./components/PlayerSelect.vue";
-import ReloadPrompt from "./components/ReloadPrompt.vue";
-import "vuetify/styles";
-import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-import type { HassPanelData, HassData } from "./main";
-import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
+import { ref } from 'vue';
+import { api } from './plugins/api';
+import { store } from './plugins/store';
+import { isColorDark } from './utils';
+import { useTheme } from 'vuetify';
+import TopBar from './components/TopBar.vue';
+import PlayerOSD from './components/PlayerOSD.vue';
+import PlayerSelect from './components/PlayerSelect.vue';
+import ReloadPrompt from './components/ReloadPrompt.vue';
+import 'vuetify/styles';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
+import type { HassPanelData, HassData } from './main';
+import { useI18n } from 'vue-i18n';
 
-const { locale } = useI18n({ useScope: "global" });
-const router = useRouter();
+const { locale } = useI18n({ useScope: 'global' });
 
 interface HassPropEvent extends Event {
   detail: HassData;
@@ -54,61 +52,61 @@ interface HassPanelPropEvent extends Event {
   detail: HassPanelData;
 }
 
-document.addEventListener("forward-hass-prop", function (e) {
+document.addEventListener('forward-hass-prop', function (e) {
   const hass = (e as HassPropEvent).detail;
   if (!hass) return;
   if (!store.apiInitialized) {
     api.initialize(hass.connection);
     locale.value = hass.selectedLanguage;
   }
-  store.alwaysShowMenuButton = hass.dockedSidebar == "always_hidden";
+  store.alwaysShowMenuButton = hass.dockedSidebar == 'always_hidden';
   setTheme(hass);
 });
 
-document.addEventListener("forward-panel-prop", function (e) {
+document.addEventListener('forward-panel-prop', function (e) {
   store.defaultTopBarTitle = (e as HassPanelPropEvent).detail.config.title;
 });
 
 // set theme colors based on HA theme
 // TODO: we can set the entire vuetify theme based on HA theme
 const theme = useTheme();
-let lastTheme = "";
+let lastTheme = '';
 const setTheme = async function (hassData: HassData) {
   // determine if dark theme active
-  const curTheme = hassData.themes?.theme || "default";
+  const curTheme = hassData.themes?.theme || 'default';
   const darkMode = hassData?.themes?.darkMode || false;
   const checkKey = `${curTheme}.${darkMode}`;
   if (lastTheme == checkKey) return;
   lastTheme = checkKey;
 
-  if (curTheme == "default") {
+  if (curTheme == 'default') {
     // default theme
     const defaultPrimaryColor =
-      hassData.selectedTheme?.primaryColor || "#03A9F4";
-    store.topBarColor = "#101e24";
-    store.topBarTextColor = "#ffffff";
+      hassData.selectedTheme?.primaryColor || '#03A9F4';
+    store.topBarColor = '#101e24';
+    store.topBarTextColor = '#ffffff';
     store.darkTheme = darkMode;
-    store.topBarColor = darkMode ? "#101e24" : defaultPrimaryColor;
+    store.topBarColor = darkMode ? '#101e24' : defaultPrimaryColor;
   } else {
     // custom theme
     const theme = hassData.themes?.themes[hassData.themes.theme];
-    if (theme && "app-header-background-color" in theme)
-      store.topBarColor = theme["app-header-background-color"];
-    if (theme && "app-header-text-color" in theme)
-      store.topBarTextColor = theme["app-header-text-color"];
+    if (theme && 'app-header-background-color' in theme)
+      store.topBarColor = theme['app-header-background-color'];
+    if (theme && 'app-header-text-color' in theme)
+      store.topBarTextColor = theme['app-header-text-color'];
     // determine if dark theme is active
     if (darkMode) store.darkTheme = true;
     else if (theme) {
-      const bgColor = theme["primary-background-color"] || store.topBarColor;
+      const bgColor = theme['primary-background-color'] || store.topBarColor;
       store.darkTheme = isColorDark(bgColor);
     }
   }
-  theme.name.value = store.darkTheme ? "dark" : "light";
+  theme.name.value = store.darkTheme ? 'dark' : 'light';
 };
 
 setTimeout(() => {
   if (!store.apiInitialized) {
-    console.log("Activating stand-alone mode...");
+    console.log('Activating stand-alone mode...');
     store.isInStandaloneMode = true;
     api.initialize();
   }
@@ -116,7 +114,6 @@ setTimeout(() => {
 </script>
 
 <style>
-
 a {
   cursor: pointer;
 }
@@ -200,5 +197,14 @@ div.v-navigation-drawer__scrim {
   margin-top: 2px;
   width: 50px;
   height: 50px;
+}
+.v-card--variant-elevated {
+  box-shadow: none;
+  border-width: var(--ha-card-border-width, 1px);
+  border-style: solid;
+  border-color: var(--ha-card-border-color, var(--divider-color, #e0e0e0));
+}
+.line-clamp-2 {
+  -webkit-line-clamp: 2;
 }
 </style>

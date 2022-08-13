@@ -1,22 +1,22 @@
-import { store } from "./store";
+import { store } from './store';
 /* eslint-disable no-constant-condition */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   type Connection,
   createConnection,
   ERR_HASS_HOST_REQUIRED,
-  getAuth
-} from "home-assistant-js-websocket";
-import { reactive, ref } from "vue";
+  getAuth,
+} from 'home-assistant-js-websocket';
+import { reactive, ref } from 'vue';
 
 export enum MediaType {
-  ARTIST = "artist",
-  ALBUM = "album",
-  TRACK = "track",
-  PLAYLIST = "playlist",
-  RADIO = "radio",
-  FOLDER = "folder",
-  UNKNOWN = "unknown"
+  ARTIST = 'artist',
+  ALBUM = 'album',
+  TRACK = 'track',
+  PLAYLIST = 'playlist',
+  RADIO = 'radio',
+  FOLDER = 'folder',
+  UNKNOWN = 'unknown',
 }
 
 export enum MediaQuality {
@@ -29,20 +29,20 @@ export enum MediaQuality {
   LOSSLESS_HI_RES_1 = 20, // 44.1/48khz 24 bits HI-RES
   LOSSLESS_HI_RES_2 = 21, // 88.2/96khz 24 bits HI-RES
   LOSSLESS_HI_RES_3 = 22, // 176/192khz 24 bits HI-RES
-  LOSSLESS_HI_RES_4 = 23 // above 192khz 24 bits HI-RES
+  LOSSLESS_HI_RES_4 = 23, // above 192khz 24 bits HI-RES
 }
 
 export enum ProviderType {
-  FILESYSTEM_LOCAL = "file",
-  FILESYSTEM_SMB = "smb",
-  FILESYSTEM_GOOGLE_DRIVE = "gdrive",
-  FILESYSTEM_ONEDRIVE = "onedrive",
-  SPOTIFY = "spotify",
-  QOBUZ = "qobuz",
-  TUNEIN = "tunein",
-  YTMUSIC = "ytmusic",
-  DATABASE = "database",
-  URL = "url"
+  FILESYSTEM_LOCAL = 'file',
+  FILESYSTEM_SMB = 'smb',
+  FILESYSTEM_GOOGLE_DRIVE = 'gdrive',
+  FILESYSTEM_ONEDRIVE = 'onedrive',
+  SPOTIFY = 'spotify',
+  QOBUZ = 'qobuz',
+  TUNEIN = 'tunein',
+  YTMUSIC = 'ytmusic',
+  DATABASE = 'database',
+  URL = 'url',
 }
 export interface MediaItemProviderId {
   item_id: string;
@@ -55,31 +55,31 @@ export interface MediaItemProviderId {
 }
 
 export enum LinkType {
-  WEBSITE = "website",
-  FACEBOOK = "facebook",
-  TWITTER = "twitter",
-  LASTFM = "lastfm",
-  YOUTUBE = "youtube",
-  INSTAGRAM = "instagram",
-  SNAPCHAT = "snapchat",
-  TIKTOK = "tiktok",
-  DISCOGS = "discogs",
-  WIKIPEDIA = "wikipedia",
-  ALLMUSIC = "allmusic"
+  WEBSITE = 'website',
+  FACEBOOK = 'facebook',
+  TWITTER = 'twitter',
+  LASTFM = 'lastfm',
+  YOUTUBE = 'youtube',
+  INSTAGRAM = 'instagram',
+  SNAPCHAT = 'snapchat',
+  TIKTOK = 'tiktok',
+  DISCOGS = 'discogs',
+  WIKIPEDIA = 'wikipedia',
+  ALLMUSIC = 'allmusic',
 }
 
 export enum ImageType {
-  THUMB = "thumb",
-  WIDE_THUMB = "wide_thumb",
-  FANART = "fanart",
-  LOGO = "logo",
-  CLEARART = "clearart",
-  BANNER = "banner",
-  CUTOUT = "cutout",
-  BACK = "back",
-  CDART = "cdart",
-  EMBEDDED_THUMB = "embedded_thumb",
-  OTHER = "other"
+  THUMB = 'thumb',
+  WIDE_THUMB = 'wide_thumb',
+  FANART = 'fanart',
+  LOGO = 'logo',
+  CLEARART = 'clearart',
+  BANNER = 'banner',
+  CUTOUT = 'cutout',
+  BACK = 'back',
+  CDART = 'cdart',
+  EMBEDDED_THUMB = 'embedded_thumb',
+  OTHER = 'other',
 }
 
 export interface MediaItemLink {
@@ -138,10 +138,10 @@ export interface Artist extends MediaItem {
 }
 
 export enum AlbumType {
-  ALBUM = "album",
-  SINGLE = "single",
-  COMPILATION = "compilation",
-  UNKNOWN = "unknown"
+  ALBUM = 'album',
+  SINGLE = 'single',
+  COMPILATION = 'compilation',
+  UNKNOWN = 'unknown',
 }
 
 export interface Album extends MediaItem {
@@ -192,24 +192,24 @@ export type MediaItemType =
   | BrowseFolder;
 
 export enum ContentType {
-  OGG = "ogg",
-  FLAC = "flac",
-  MP3 = "mp3",
-  AAC = "aac",
-  MPEG = "mpeg",
-  ALAC = "alac",
-  WAV = "wav",
-  AIFF = "aiff",
-  WMA = "wma",
-  M4A = "m4a",
-  DSF = "dsf",
-  WAVPACK = "wv",
-  PCM_S16LE = "s16le", // PCM signed 16-bit little-endian
-  PCM_S24LE = "s24le", // PCM signed 24-bit little-endian
-  PCM_S32LE = "s32le", // PCM signed 32-bit little-endian
-  PCM_F32LE = "f32le", // PCM 32-bit floating-point little-endian
-  PCM_F64LE = "f64le", // PCM 64-bit floating-point little-endian
-  UNKNOWN = "?"
+  OGG = 'ogg',
+  FLAC = 'flac',
+  MP3 = 'mp3',
+  AAC = 'aac',
+  MPEG = 'mpeg',
+  ALAC = 'alac',
+  WAV = 'wav',
+  AIFF = 'aiff',
+  WMA = 'wma',
+  M4A = 'm4a',
+  DSF = 'dsf',
+  WAVPACK = 'wv',
+  PCM_S16LE = 's16le', // PCM signed 16-bit little-endian
+  PCM_S24LE = 's24le', // PCM signed 24-bit little-endian
+  PCM_S32LE = 's32le', // PCM signed 32-bit little-endian
+  PCM_F32LE = 'f32le', // PCM 32-bit floating-point little-endian
+  PCM_F64LE = 'f64le', // PCM 64-bit floating-point little-endian
+  UNKNOWN = '?',
 }
 
 export interface StreamDetails {
@@ -231,10 +231,10 @@ export interface StreamDetails {
 }
 
 export enum PlayerState {
-  IDLE = "idle",
-  PAUSED = "paused",
-  PLAYING = "playing",
-  OFF = "off"
+  IDLE = 'idle',
+  PAUSED = 'paused',
+  PLAYING = 'playing',
+  OFF = 'off',
 }
 
 export interface DeviceInfo {
@@ -274,22 +274,22 @@ export interface QueueItem {
 }
 
 export enum CrossFadeMode {
-  DISABLED = "disabled", // no crossfading at all
-  STRICT = "strict", // do not crossfade tracks of same album
-  SMART = "smart", // crossfade if possible (do not crossfade different sample rates)
-  ALWAYS = "always" // all tracks - resample to fixed sample rate
+  DISABLED = 'disabled', // no crossfading at all
+  STRICT = 'strict', // do not crossfade tracks of same album
+  SMART = 'smart', // crossfade if possible (do not crossfade different sample rates)
+  ALWAYS = 'always', // all tracks - resample to fixed sample rate
 }
 
 export enum RepeatMode {
-  OFF = "off", // no repeat at all
-  ONE = "one", // repeat current/single track
-  ALL = "all" // repeat entire queue
+  OFF = 'off', // no repeat at all
+  ONE = 'one', // repeat current/single track
+  ALL = 'all', // repeat entire queue
 }
 
 export enum MetadataMode {
-  DISABLED = "disabled", // do not notify icy support
-  DEFAULT = "default", // enable icy if player requests it, default chunksize
-  LEGACY = "legacy" // enable icy but with legacy 8kb chunksize, requires mp3
+  DISABLED = 'disabled', // do not notify icy support
+  DEFAULT = 'default', // enable icy if player requests it, default chunksize
+  LEGACY = 'legacy', // enable icy but with legacy 8kb chunksize, requires mp3
 }
 
 export interface QueueSettings {
@@ -325,55 +325,55 @@ export interface PlayerQueue {
 }
 
 export enum QueueCommand {
-  PLAY = "play",
-  PAUSE = "pause",
-  PLAY_PAUSE = "play_pause",
-  NEXT = "next",
-  PREVIOUS = "previous",
-  STOP = "stop",
-  SEEK = "seek",
-  SKIP_AHEAD = "skip_ahead",
-  SKIP_BACK = "skip_back",
-  POWER = "power",
-  POWER_TOGGLE = "power_toggle",
-  VOLUME = "volume",
-  VOLUME_UP = "volume_up",
-  VOLUME_DOWN = "volume_down",
-  CLEAR = "clear",
-  PLAY_INDEX = "play_index",
-  MOVE_UP = "move_up",
-  MOVE_DOWN = "move_down",
-  MOVE_NEXT = "move_next",
-  DELETE = "delete",
-  GROUP_POWER = "group_power",
-  GROUP_VOLUME = "group_volume"
+  PLAY = 'play',
+  PAUSE = 'pause',
+  PLAY_PAUSE = 'play_pause',
+  NEXT = 'next',
+  PREVIOUS = 'previous',
+  STOP = 'stop',
+  SEEK = 'seek',
+  SKIP_AHEAD = 'skip_ahead',
+  SKIP_BACK = 'skip_back',
+  POWER = 'power',
+  POWER_TOGGLE = 'power_toggle',
+  VOLUME = 'volume',
+  VOLUME_UP = 'volume_up',
+  VOLUME_DOWN = 'volume_down',
+  CLEAR = 'clear',
+  PLAY_INDEX = 'play_index',
+  MOVE_UP = 'move_up',
+  MOVE_DOWN = 'move_down',
+  MOVE_NEXT = 'move_next',
+  DELETE = 'delete',
+  GROUP_POWER = 'group_power',
+  GROUP_VOLUME = 'group_volume',
 }
 
 export enum MassEventType {
-  PLAYER_ADDED = "player_added",
-  PLAYER_UPDATED = "player_updated",
-  STREAM_STARTED = "streaming_started",
-  STREAM_ENDED = "streaming_ended",
-  QUEUE_ADDED = "queue_added",
-  QUEUE_UPDATED = "queue_updated",
-  QUEUE_ITEMS_UPDATED = "queue_items_updated",
-  QUEUE_TIME_UPDATED = "queue_time_updated",
-  SHUTDOWN = "application_shutdown",
-  BACKGROUND_JOB_UPDATED = "background_job_updated",
-  BACKGROUND_JOB_FINISHED = "background_job_finished",
-  MEDIA_ITEM_ADDED = "media_item_added",
-  MEDIA_ITEM_UPDATED = "media_item_updated",
-  MEDIA_ITEM_DELETED = "media_item_deleted",
+  PLAYER_ADDED = 'player_added',
+  PLAYER_UPDATED = 'player_updated',
+  STREAM_STARTED = 'streaming_started',
+  STREAM_ENDED = 'streaming_ended',
+  QUEUE_ADDED = 'queue_added',
+  QUEUE_UPDATED = 'queue_updated',
+  QUEUE_ITEMS_UPDATED = 'queue_items_updated',
+  QUEUE_TIME_UPDATED = 'queue_time_updated',
+  SHUTDOWN = 'application_shutdown',
+  BACKGROUND_JOB_UPDATED = 'background_job_updated',
+  BACKGROUND_JOB_FINISHED = 'background_job_finished',
+  MEDIA_ITEM_ADDED = 'media_item_added',
+  MEDIA_ITEM_UPDATED = 'media_item_updated',
+  MEDIA_ITEM_DELETED = 'media_item_deleted',
   // special types for local subscriptions only
-  ALL = "*"
+  ALL = '*',
 }
 
 export enum QueueOption {
-  PLAY = "play",
-  REPLACE = "replace",
-  NEXT = "next",
-  ADD = "add",
-  REPLACE_NEXT = "replace_next"
+  PLAY = 'play',
+  REPLACE = 'replace',
+  NEXT = 'next',
+  ADD = 'add',
+  REPLACE_NEXT = 'replace_next',
 }
 
 export type MassEvent = {
@@ -383,11 +383,11 @@ export type MassEvent = {
 };
 
 export enum JobStatus {
-  PENDING = "pending",
-  RUNNING = "running",
-  CANCELLED = "cancelled",
-  FINISHED = "success",
-  ERROR = "error"
+  PENDING = 'pending',
+  RUNNING = 'running',
+  CANCELLED = 'cancelled',
+  FINISHED = 'success',
+  ERROR = 'error',
 }
 
 export type BackgroundJob = {
@@ -399,29 +399,29 @@ export type BackgroundJob = {
 
 export enum MusicProviderFeature {
   // browse/explore/recommendations
-  BROWSE = "browse",
-  SEARCH = "search",
-  RECOMMENDATIONS = "recommendations",
+  BROWSE = 'browse',
+  SEARCH = 'search',
+  RECOMMENDATIONS = 'recommendations',
   // library feature per mediatype
-  LIBRARY_ARTISTS = "library_artists",
-  LIBRARY_ALBUMS = "library_albums",
-  LIBRARY_TRACKS = "library_tracks",
-  LIBRARY_PLAYLISTS = "library_playlists",
-  LIBRARY_RADIOS = "library_radios",
+  LIBRARY_ARTISTS = 'library_artists',
+  LIBRARY_ALBUMS = 'library_albums',
+  LIBRARY_TRACKS = 'library_tracks',
+  LIBRARY_PLAYLISTS = 'library_playlists',
+  LIBRARY_RADIOS = 'library_radios',
   // additional library features
-  ARTIST_ALBUMS = "artist_albums",
-  ARTIST_TOPTRACKS = "artist_toptracks",
+  ARTIST_ALBUMS = 'artist_albums',
+  ARTIST_TOPTRACKS = 'artist_toptracks',
   // library edit (=add/remove) feature per mediatype
-  LIBRARY_ARTISTS_EDIT = "library_artists_edit",
-  LIBRARY_ALBUMS_EDIT = "library_albums_edit",
-  LIBRARY_TRACKS_EDIT = "library_tracks_edit",
-  LIBRARY_PLAYLISTS_EDIT = "library_playlists_edit",
-  LIBRARY_RADIOS_EDIT = "library_radios_edit",
+  LIBRARY_ARTISTS_EDIT = 'library_artists_edit',
+  LIBRARY_ALBUMS_EDIT = 'library_albums_edit',
+  LIBRARY_TRACKS_EDIT = 'library_tracks_edit',
+  LIBRARY_PLAYLISTS_EDIT = 'library_playlists_edit',
+  LIBRARY_RADIOS_EDIT = 'library_radios_edit',
   // bonus features
-  SIMILAR_TRACKS = "similar_tracks",
+  SIMILAR_TRACKS = 'similar_tracks',
   // playlist-specific features
-  PLAYLIST_TRACKS_EDIT = "playlist_tracks_edit",
-  PLAYLIST_CREATE = "playlist_create"
+  PLAYLIST_TRACKS_EDIT = 'playlist_tracks_edit',
+  PLAYLIST_CREATE = 'playlist_create',
 }
 
 export interface MusicProvider {
@@ -470,26 +470,26 @@ export class MusicAssistantApi {
   }
 
   public async initialize(conn?: Connection) {
-    if (this._conn) throw "already connected";
+    if (this._conn) throw 'already connected';
     if (conn) this._conn = conn;
     else if (!this._conn) {
       this._conn = await this.connectHassStandalone();
     }
     if (this._conn?.socket?.url) {
       store.apiBaseUrl = this._conn?.socket?.url
-        .replace("ws://", "http://")
-        .replace("wss://", "https://")
-        .replace("/websocket", "");
+        .replace('ws://', 'http://')
+        .replace('wss://', 'https://')
+        .replace('/websocket', '');
     }
-    console.log("store.apiBaseUrl", store.apiBaseUrl);
+    console.log('store.apiBaseUrl', store.apiBaseUrl);
 
     store.apiInitialized = true;
-    console.log("conn", this._conn);
+    console.log('conn', this._conn);
 
     // load initial data from api
     this._fetchState();
     // subscribe to mass events
-    this._conn?.subscribeEvents((x) => this.handleHassEvent(x), "mass_event");
+    this._conn?.subscribeEvents((x) => this.handleHassEvent(x), 'mass_event');
   }
 
   public subscribe(eventFilter: MassEventType, callback: CallableFunction) {
@@ -535,10 +535,10 @@ export class MusicAssistantApi {
 
     const providers = await this.getData<{
       [provider_id: string]: MusicProvider;
-    }>("providers");
+    }>('providers');
     Object.assign(this.providers, providers);
 
-    this.jobs.value = await this.getData("jobs");
+    this.jobs.value = await this.getData('jobs');
   }
 
   public getTracks(
@@ -548,7 +548,7 @@ export class MusicAssistantApi {
     library?: boolean,
     search?: string
   ): Promise<PagedItems> {
-    return this.getData("tracks", { offset, limit, sort, library, search });
+    return this.getData('tracks', { offset, limit, sort, library, search });
   }
 
   public getTrack(
@@ -558,12 +558,12 @@ export class MusicAssistantApi {
     refresh = false,
     force_provider_version = false
   ): Promise<Track> {
-    return this.getData("track", {
+    return this.getData('track', {
       provider,
       item_id,
       lazy,
       refresh,
-      force_provider_version
+      force_provider_version,
     });
   }
 
@@ -571,16 +571,16 @@ export class MusicAssistantApi {
     provider: ProviderType,
     item_id: string
   ): Promise<Track[]> {
-    return this.getData("track/versions", { provider, item_id });
+    return this.getData('track/versions', { provider, item_id });
   }
 
   public getTrackPreviewUrl(
     provider: ProviderType,
     item_id: string
   ): Promise<string> {
-    return this.getData("track/preview", {
+    return this.getData('track/preview', {
       provider,
-      item_id
+      item_id,
     });
   }
 
@@ -592,13 +592,13 @@ export class MusicAssistantApi {
     search?: string,
     albumArtistsOnly?: boolean
   ): Promise<PagedItems> {
-    return this.getData("artists", {
+    return this.getData('artists', {
       offset,
       sort,
       limit,
       library,
       search,
-      album_artists_only: albumArtistsOnly
+      album_artists_only: albumArtistsOnly,
     });
   }
 
@@ -608,21 +608,21 @@ export class MusicAssistantApi {
     lazy = true,
     refresh = false
   ): Promise<Artist> {
-    return this.getData("artist", { provider, item_id, lazy, refresh });
+    return this.getData('artist', { provider, item_id, lazy, refresh });
   }
 
   public getArtistTracks(
     provider: ProviderType,
     item_id: string
   ): Promise<Track[]> {
-    return this.getData("artist/tracks", { provider, item_id });
+    return this.getData('artist/tracks', { provider, item_id });
   }
 
   public getArtistAlbums(
     provider: ProviderType,
     item_id: string
   ): Promise<Album[]> {
-    return this.getData("artist/albums", { provider, item_id });
+    return this.getData('artist/albums', { provider, item_id });
   }
 
   public getAlbums(
@@ -632,7 +632,7 @@ export class MusicAssistantApi {
     library?: boolean,
     search?: string
   ): Promise<PagedItems> {
-    return this.getData("albums", { offset, limit, sort, library, search });
+    return this.getData('albums', { offset, limit, sort, library, search });
   }
 
   public getAlbum(
@@ -642,12 +642,12 @@ export class MusicAssistantApi {
     refresh = false,
     force_provider_version = false
   ): Promise<Album> {
-    return this.getData("album", {
+    return this.getData('album', {
       provider,
       item_id,
       lazy,
       refresh,
-      force_provider_version
+      force_provider_version,
     });
   }
 
@@ -655,14 +655,14 @@ export class MusicAssistantApi {
     provider: ProviderType,
     item_id: string
   ): Promise<Track[]> {
-    return this.getData("album/tracks", { provider, item_id });
+    return this.getData('album/tracks', { provider, item_id });
   }
 
   public getAlbumVersions(
     provider: ProviderType,
     item_id: string
   ): Promise<Album[]> {
-    return this.getData("album/versions", { provider, item_id });
+    return this.getData('album/versions', { provider, item_id });
   }
 
   public getPlaylists(
@@ -672,7 +672,7 @@ export class MusicAssistantApi {
     library?: boolean,
     search?: string
   ): Promise<PagedItems> {
-    return this.getData("playlists", { offset, limit, sort, library, search });
+    return this.getData('playlists', { offset, limit, sort, library, search });
   }
 
   public getPlaylist(
@@ -681,26 +681,26 @@ export class MusicAssistantApi {
     lazy = true,
     refresh = false
   ): Promise<Playlist> {
-    return this.getData("playlist", { provider, item_id, lazy, refresh });
+    return this.getData('playlist', { provider, item_id, lazy, refresh });
   }
 
   public getPlaylistTracks(
     provider: ProviderType,
     item_id: string
   ): Promise<Track[]> {
-    return this.getData("playlist/tracks", { provider, item_id });
+    return this.getData('playlist/tracks', { provider, item_id });
   }
 
   public addPlaylistTracks(item_id: string, uri: string | string[]) {
-    this.executeCmd("playlist/tracks/add", { item_id, uri });
+    this.executeCmd('playlist/tracks/add', { item_id, uri });
   }
 
   public removePlaylistTracks(item_id: string, position: number | number[]) {
-    this.executeCmd("playlist/tracks/remove", { item_id, position });
+    this.executeCmd('playlist/tracks/remove', { item_id, position });
   }
 
   public createPlaylist(name: string, provider_id?: string): Promise<Playlist> {
-    return this.getData("playlist/create", { name, provider_id });
+    return this.getData('playlist/create', { name, provider_id });
   }
 
   public getRadios(
@@ -710,7 +710,7 @@ export class MusicAssistantApi {
     library?: boolean,
     search?: string
   ): Promise<PagedItems> {
-    return this.getData("radios", { offset, limit, sort, library, search });
+    return this.getData('radios', { offset, limit, sort, library, search });
   }
 
   public getRadio(
@@ -719,14 +719,14 @@ export class MusicAssistantApi {
     lazy = true,
     refresh = false
   ): Promise<Radio> {
-    return this.getData("radio", { provider, item_id, lazy, refresh });
+    return this.getData('radio', { provider, item_id, lazy, refresh });
   }
 
   public getRadioVersions(
     provider: ProviderType,
     item_id: string
   ): Promise<Radio[]> {
-    return this.getData("radio/versions", { provider, item_id });
+    return this.getData('radio/versions', { provider, item_id });
   }
 
   public getItem(
@@ -734,17 +734,17 @@ export class MusicAssistantApi {
     lazy = true,
     refresh = false
   ): Promise<MediaItemType> {
-    return this.getData("item", { uri, lazy, refresh });
+    return this.getData('item', { uri, lazy, refresh });
   }
 
   public async addToLibrary(items: MediaItemType[]) {
     for (const x of items) {
-      this.executeCmd("library/add", { uri: x.uri });
+      this.executeCmd('library/add', { uri: x.uri });
     }
   }
   public async removeFromLibrary(items: MediaItemType[]) {
     for (const x of items) {
-      this.executeCmd("library/remove", { uri: x.uri });
+      this.executeCmd('library/remove', { uri: x.uri });
     }
   }
   public async toggleLibrary(item: MediaItemType) {
@@ -757,11 +757,11 @@ export class MusicAssistantApi {
     db_id: string,
     recursive = false
   ) {
-    this.executeCmd("delete_db_item", { media_type, db_id, recursive });
+    this.executeCmd('delete_db_item', { media_type, db_id, recursive });
   }
 
   public browse(path?: string): Promise<BrowseFolder> {
-    return this.getData("browse", { path });
+    return this.getData('browse', { path });
   }
 
   public search(
@@ -769,19 +769,19 @@ export class MusicAssistantApi {
     media_types?: MediaType[],
     limit?: number
   ): Promise<Track[]> {
-    return this.getData("search", { query, media_types, limit });
+    return this.getData('search', { query, media_types, limit });
   }
 
   public async getPlayers(): Promise<Player[]> {
-    return this.getData("players");
+    return this.getData('players');
   }
 
   public async getPlayerQueues(): Promise<PlayerQueue[]> {
-    return this.getData("playerqueues");
+    return this.getData('playerqueues');
   }
 
   public async getPlayerQueueItems(queue_id: string): Promise<QueueItem[]> {
-    return this.getData("playerqueue/items", { queue_id });
+    return this.getData('playerqueue/items', { queue_id });
   }
 
   public queueCommandPlay(queueId: string) {
@@ -866,16 +866,16 @@ export class MusicAssistantApi {
     // apply a bit of throttling here (for the volume and seek sliders especially)
     clearTimeout(this._throttleId);
     this._throttleId = setTimeout(() => {
-      this.executeCmd("playerqueue/command", {
+      this.executeCmd('playerqueue/command', {
         queue_id,
         command,
-        command_arg
+        command_arg,
       });
     }, 200);
   }
 
   public playerQueueSettings(queueId: string, settings: QueueSettingsUpdate) {
-    this.executeCmd("playerqueue/settings", { queue_id: queueId, settings });
+    this.executeCmd('playerqueue/settings', { queue_id: queueId, settings });
   }
 
   public playMedia(
@@ -887,7 +887,7 @@ export class MusicAssistantApi {
     if (!queue_id) {
       queue_id = store.selectedPlayer?.active_queue;
     }
-    this.executeCmd("play_media", { queue_id, option, media, radio_mode });
+    this.executeCmd('play_media', { queue_id, option, media, radio_mode });
   }
 
   public async playPlaylistFromIndex(
@@ -946,11 +946,11 @@ export class MusicAssistantApi {
     prov_type?: ProviderType,
     clear_cache?: boolean
   ) {
-    this.executeCmd("start_sync", { media_type, prov_type, clear_cache });
+    this.executeCmd('start_sync', { media_type, prov_type, clear_cache });
   }
 
   public getLocalThumb(path: string, size?: number): Promise<string> {
-    return this.getData("thumb", { path, size });
+    return this.getData('thumb', { path, size });
   }
 
   private async connectHassStandalone() {
@@ -958,25 +958,25 @@ export class MusicAssistantApi {
     const storeAuth = true;
     const authOptions = storeAuth
       ? {
-          async loadTokens() {
-            try {
-              return JSON.parse(localStorage.hassTokens);
-            } catch (err) {
-              return undefined;
-            }
-          },
-          saveTokens: (tokens: any) => {
-            localStorage.hassTokens = JSON.stringify(tokens);
+        async loadTokens() {
+          try {
+            return JSON.parse(localStorage.hassTokens);
+          } catch (err) {
+            return undefined;
           }
-        }
+        },
+        saveTokens: (tokens: any) => {
+          localStorage.hassTokens = JSON.stringify(tokens);
+        },
+      }
       : {};
     try {
       auth = await getAuth(authOptions);
     } catch (err) {
       if (err === ERR_HASS_HOST_REQUIRED) {
         authOptions.hassUrl = prompt(
-          "Please enter the URL to Home Assistant",
-          "http://localhost:8123"
+          'Please enter the URL to Home Assistant',
+          'http://localhost:8123'
         );
         if (!authOptions.hassUrl) return;
         auth = await getAuth(authOptions);
@@ -986,7 +986,7 @@ export class MusicAssistantApi {
       }
     }
     const connection = await createConnection({ auth });
-    connection.addEventListener("ready", () => window.history.back());
+    connection.addEventListener('ready', () => window.history.back());
     return connection;
   }
 
@@ -1025,7 +1025,7 @@ export class MusicAssistantApi {
     }
     // signal + log all events
     if (massEvent.type !== MassEventType.QUEUE_TIME_UPDATED) {
-      console.log("[event]", massEvent);
+      console.log('[event]', massEvent);
     }
     this.signalEvent(massEvent);
   }
@@ -1041,21 +1041,21 @@ export class MusicAssistantApi {
 
   private getData<T>(endpoint: string, args?: Record<string, any>): Promise<T> {
     this._lastId++;
-    console.log(`[getData] ${endpoint}`, args || "");
+    console.log(`[getData] ${endpoint}`, args || '');
     return (this._conn as Connection).sendMessagePromise({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args
+      ...args,
     });
   }
 
   private executeCmd(endpoint: string, args?: Record<string, any>) {
     this._lastId++;
-    console.log(`[executeCmd] ${endpoint}`, args || "");
+    console.log(`[executeCmd] ${endpoint}`, args || '');
     (this._conn as Connection).sendMessage({
       id: this._lastId,
       type: `mass/${endpoint}`,
-      ...args
+      ...args,
     });
   }
 }

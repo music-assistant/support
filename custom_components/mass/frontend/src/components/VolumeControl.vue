@@ -9,17 +9,17 @@
       <v-btn
         icon
         variant="plain"
-        @click="
-          api.queueCommandGroupPower(player.player_id, !player.group_powered)
-        "
         width="60"
         height="30"
         size="x-large"
+        @click="
+          api.queueCommandGroupPower(player.player_id, !player.group_powered)
+        "
       >
-        <v-icon :icon="mdiPower"></v-icon>
+        <v-icon :icon="mdiPower" />
       </v-btn>
       <span class="text-body-2" style="position: absolute; margin-top: 3px">{{
-        player.group_name
+        truncateString(player.group_name, 27)
       }}</span>
       <div
         class="text-caption"
@@ -42,16 +42,16 @@
         thumb-label
         :disabled="!player.group_powered"
         :model-value="Math.round(player.group_volume_level)"
+        style="margin-left: 5px"
         @update:model-value="
           api.queueCommandGroupVolume(player.player_id, $event)
         "
-        style="margin-left: 5px"
-      ></v-slider>
+      />
     </div>
     <v-divider
       v-if="player.is_group"
       style="margin-top: 10px; margin-bottom: 10px"
-    ></v-divider>
+    />
 
     <div
       v-for="childPlayer in getVolumePlayers(player)"
@@ -63,25 +63,25 @@
         <v-btn
           icon
           variant="plain"
-          @click="api.queueCommandPowerToggle(childPlayer.player_id)"
           width="60"
           height="30"
           size="x-large"
           style=""
+          @click="api.queueCommandPowerToggle(childPlayer.player_id)"
         >
-          <v-icon :icon="mdiPower"></v-icon>
+          <v-icon :icon="mdiPower" />
         </v-btn>
         <span
           v-if="player.group_members.includes(childPlayer.player_id)"
           class="text-body-2"
           style="position: absolute; margin-top: 3px"
-          >{{ childPlayer.name }}</span
+          >{{ truncateString(childPlayer.name, 27) }}</span
         >
         <span
           v-else
           class="text-body-2"
           style="position: absolute; margin-top: 3px"
-          >{{ childPlayer.group_name }}</span
+          >{{ truncateString(childPlayer.group_name, 27) }}</span
         >
       </span>
       <div
@@ -105,19 +105,20 @@
         thumb-label
         :disabled="!childPlayer.powered"
         :model-value="Math.round(childPlayer.volume_level)"
+        style="margin-left: 5px"
         @update:model-value="
           api.queueCommandVolume(childPlayer.player_id, $event)
         "
-        style="margin-left: 5px"
-      ></v-slider>
+      />
     </div>
   </v-list>
 </template>
 
 <script setup lang="ts">
-import type { Player } from "../plugins/api";
-import { mdiPower } from "@mdi/js";
-import { api } from "../plugins/api";
+import type { Player } from '../plugins/api';
+import { mdiPower } from '@mdi/js';
+import { api } from '../plugins/api';
+import { truncateString } from '../utils';
 
 export interface Props {
   player: Player;

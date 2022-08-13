@@ -6,17 +6,18 @@
         :class="activeTab == 'tracks' ? 'active-tab' : 'inactive-tab'"
         value="tracks"
       >
-        {{ $t("tracks") }}</v-tab
-      >
+        {{ $t('tracks') }}
+      </v-tab>
       <v-tab
         :class="activeTab == 'albums' ? 'active-tab' : 'inactive-tab'"
         value="albums"
       >
-        {{ $t("albums") }}</v-tab
-      >
+        {{ $t('albums') }}
+      </v-tab>
     </v-tabs>
     <v-divider />
     <ItemsListing
+      v-if="activeTab == 'tracks'"
       itemtype="artisttracks"
       :parent-item="itemDetails"
       :show-providers="true"
@@ -24,41 +25,40 @@
       :show-library="false"
       :load-data="loadArtistTracks"
       :sort-keys="['timestamp DESC', 'sort_name', 'sort_album']"
-      v-if="activeTab == 'tracks'"
     />
     <ItemsListing
+      v-if="activeTab == 'albums'"
       itemtype="artistalbums"
       :parent-item="itemDetails"
       :show-providers="true"
       :show-library="false"
       :load-data="loadArtistAlbums"
       :sort-keys="['timestamp DESC', 'sort_name', 'year']"
-      v-if="activeTab == 'albums'"
     />
   </section>
 </template>
 
 <script setup lang="ts">
-import ItemsListing from "../components/ItemsListing.vue";
-import { filteredItems } from "../components/ItemsListing.vue";
-import InfoHeader from "../components/InfoHeader.vue";
-import { ref } from "@vue/reactivity";
+import ItemsListing from '../components/ItemsListing.vue';
+import { filteredItems } from '../components/ItemsListing.vue';
+import InfoHeader from '../components/InfoHeader.vue';
+import { ref } from 'vue';
 import {
   MassEventType,
   type Artist,
   type ProviderType,
   type MassEvent,
   type MediaItemType,
-} from "../plugins/api";
-import { api } from "../plugins/api";
-import { onBeforeUnmount, onMounted, watchEffect } from "vue";
+} from '../plugins/api';
+import { api } from '../plugins/api';
+import { onBeforeUnmount, onMounted, watchEffect } from 'vue';
 
 export interface Props {
   item_id: string;
   provider: string;
 }
 const props = defineProps<Props>();
-const activeTab = ref("");
+const activeTab = ref('');
 
 const itemDetails = ref<Artist>();
 
@@ -67,7 +67,7 @@ const loadItemDetails = async function () {
     props.provider as ProviderType,
     props.item_id
   );
-  activeTab.value = "tracks";
+  activeTab.value = 'tracks';
 };
 
 watchEffect(() => {

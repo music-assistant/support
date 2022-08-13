@@ -6,11 +6,12 @@
         :class="activeTab == 'versions' ? 'active-tab' : 'inactive-tab'"
         value="details"
       >
-        {{ $t("track_versions") }}</v-tab
-      >
+        {{ $t('track_versions') }}
+      </v-tab>
     </v-tabs>
     <v-divider />
     <ItemsListing
+      v-if="activeTab == 'versions'"
       itemtype="trackversions"
       :parent-item="itemDetails"
       :show-providers="true"
@@ -18,25 +19,30 @@
       :show-track-number="false"
       :load-data="loadTrackVersions"
       :sort-keys="['provider', 'sort_name', 'duration']"
-      v-if="activeTab == 'versions'"
     />
   </section>
 </template>
 
 <script setup lang="ts">
-import ItemsListing, { filteredItems } from "../components/ItemsListing.vue";
-import InfoHeader from "../components/InfoHeader.vue";
-import { ref, reactive } from "@vue/reactivity";
-import { MassEventType, type ProviderType, type Track, type MassEvent, type MediaItemType } from "../plugins/api";
-import { api } from "../plugins/api";
-import { onBeforeUnmount, onMounted, watchEffect } from "vue";
+import ItemsListing, { filteredItems } from '../components/ItemsListing.vue';
+import InfoHeader from '../components/InfoHeader.vue';
+import { ref, reactive } from 'vue';
+import {
+  MassEventType,
+  type ProviderType,
+  type Track,
+  type MassEvent,
+  type MediaItemType,
+} from '../plugins/api';
+import { api } from '../plugins/api';
+import { onBeforeUnmount, onMounted, watchEffect } from 'vue';
 
 export interface Props {
   item_id: string;
   provider: string;
 }
 const props = defineProps<Props>();
-const activeTab = ref("");
+const activeTab = ref('');
 
 const itemDetails = ref<Track>();
 
@@ -45,7 +51,7 @@ const loadItemDetails = async function () {
     props.provider as ProviderType,
     props.item_id
   );
-  activeTab.value = "versions";
+  activeTab.value = 'versions';
 };
 
 watchEffect(() => {

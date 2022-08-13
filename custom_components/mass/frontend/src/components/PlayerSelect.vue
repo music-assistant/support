@@ -10,7 +10,7 @@
     style="z-index: 99999"
   >
     <v-card-title class="headline">
-      <b>{{ $t("players") }}</b>
+      <b>{{ $t('players') }}</b>
     </v-card-title>
     <v-btn
       variant="plain"
@@ -19,8 +19,8 @@
       dark
       text
       @click="store.showPlayersMenu = !store.showPlayersMenu"
-    ></v-btn>
-    <v-divider></v-divider>
+    />
+    <v-divider />
     <v-expansion-panels v-model="panelItem" focusable accordion flat>
       <v-expansion-panel
         v-for="player in sortedPlayers"
@@ -44,7 +44,7 @@
           "
         >
           <v-list-item density="compact">
-            <template v-slot:prepend>
+            <template #prepend>
               <v-icon
                 size="50"
                 :icon="player.is_group ? mdiSpeakerMultiple : mdiSpeaker"
@@ -59,18 +59,18 @@
                 "
               />
             </template>
-            <template v-slot:title>
+            <template #title>
               <div class="text-subtitle-1">
                 <b>{{ player.group_name.substring(0, 25) }}</b>
               </div>
             </template>
-            <template v-slot:subtitle>
+            <template #subtitle>
               <div
                 :key="player.state"
                 class="text-body-2"
                 style="line-height: 1em"
               >
-                {{ $t("state." + player.state) }}
+                {{ $t('state.' + player.state) }}
               </div>
             </template>
           </v-list-item>
@@ -84,18 +84,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, ref, watch } from "vue";
+import { computed, getCurrentInstance, onMounted, ref, watch } from 'vue';
 import {
   mdiSpeaker,
   mdiClose,
   mdiSpeakerMultiple,
   mdiChevronUp,
   mdiChevronDown,
-} from "@mdi/js";
-import type { Player } from "../plugins/api";
-import { store } from "../plugins/store";
-import VolumeControl from "./VolumeControl.vue";
-import { api } from "../plugins/api";
+} from '@mdi/js';
+import type { Player } from '../plugins/api';
+import { store } from '../plugins/store';
+import VolumeControl from './VolumeControl.vue';
+import { api } from '../plugins/api';
 
 const panelItem = ref<number | undefined>(undefined);
 
@@ -132,7 +132,7 @@ const scrollToTop = function (playerId: string) {
   lastClicked.value = playerId;
   setTimeout(() => {
     const elmnt = shadowRoot.value?.getElementById(playerId);
-    elmnt?.scrollIntoView({ behavior: "smooth" });
+    elmnt?.scrollIntoView({ behavior: 'smooth' });
   }, 0);
 };
 </script>

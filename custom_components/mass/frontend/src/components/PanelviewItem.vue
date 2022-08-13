@@ -1,23 +1,20 @@
 <template>
   <v-card
-    @click="emit('click', item)"
     :min-height="
       [MediaType.ARTIST, MediaType.RADIO].includes(item.media_type)
         ? size * 1.4
-        : size * 1.8
+        : size * 1.9
     "
-    :min-width="size"
-    :max-width="size * 1.5"
-    hover
-    border
+    :min-width="'175px'"
+    :max-width="'256px'"
+    outlined
+    @click="emit('click', item)"
     @click.right.prevent="emit('menu', item)"
   >
     <MediaItemThumb
       :item="item"
       :size="size"
       :min-height="size"
-      :max-height="size"
-      :max-width="size * 1.5"
       :min-width="size"
       width="100%"
       :border="false"
@@ -25,7 +22,12 @@
     />
     <div
       v-if="showCheckboxes"
-      style="position: absolute; top: 0; background-color: #82b1ff94;height:50px;"
+      style="
+        position: absolute;
+        top: 0;
+        background-color: #82b1ff94;
+        height: 50px;
+      "
     >
       <v-checkbox
         :model-value="isSelected"
@@ -47,7 +49,7 @@
       "
     >
       <v-tooltip bottom>
-        <template v-slot:activator="{ props }">
+        <template #activator="{ props }">
           <img
             :src="iconHiRes"
             height="35"
@@ -63,50 +65,48 @@
       </v-tooltip>
     </div>
 
-    <v-card-text style="padding: 8px; color: primary; margin-top: 8px"
-      ><b>{{ truncateString(item.name, 35) }}</b></v-card-text
-    >
-    <v-card-subtitle
-      v-if="'artists' in item && item.artists"
-      style="
-        padding: 8px;
-        position: absolute;
-        bottom: 0px;
-        display: flex;
-        align-items: flex-end;
-      "
-      v-text="getArtistsString(item.artists)"
-    />
-    <v-card-subtitle
-      v-else-if="'owner' in item && item.owner"
-      style="
-        padding: 8px;
-        position: absolute;
-        bottom: 0px;
-        display: flex;
-        align-items: flex-end;
-      "
-      v-text="item.owner"
-    />
+    <v-list-item two-line style="padding-left: 8px; padding-right: 8px">
+      <v-list-item-content>
+        <v-list-item-text>
+          <p
+            class="font-weight-bold line-clamp-2"
+            style="color: primary; margin-top: 8px; margin-bottom: 8px"
+          >
+            {{ truncateString(item.name, 16) }}
+          </p>
+        </v-list-item-text>
+        <v-list-item-subtitle
+          v-if="'artists' in item && item.artists"
+          class="line-clamp-2"
+          v-text="truncateString(getArtistsString(item.artists), 33)"
+        />
+        <v-list-item-subtitle
+          v-else-if="'owner' in item && item.owner"
+          class="line-clamp-2"
+          v-text="truncateString(item.owner, 35)"
+        />
+      </v-list-item-content>
+    </v-list-item>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { mdiCheckboxMarkedOutline } from "@mdi/js";
-import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
-import { useTheme } from "vuetify";
-import MediaItemThumb from "./MediaItemThumb.vue";
+import { mdiCheckboxMarkedOutline, mdiDotsVertical } from '@mdi/js';
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { useTheme } from 'vuetify';
+import MediaItemThumb from './MediaItemThumb.vue';
 
-import { iconHiRes } from "./ProviderIcons.vue";
+import { iconHiRes } from './ProviderIcons.vue';
+
 import type {
   Artist,
   ItemMapping,
   MediaItem,
   MediaItemType,
-} from "../plugins/api";
-import { MediaType, MediaQuality } from "../plugins/api";
-import { truncateString, getArtistsString } from "../utils";
+} from '../plugins/api';
+import { MediaType, MediaQuality } from '../plugins/api';
+import { truncateString, getArtistsString } from '../utils';
 
 // properties
 export interface Props {
@@ -133,24 +133,24 @@ const isHiRes = computed(() => {
       if (prov.details) {
         return prov.details;
       } else if (prov.quality === MediaQuality.LOSSLESS_HI_RES_1) {
-        return "44.1/48khz 24 bits";
+        return '44.1/48khz 24 bits';
       } else if (prov.quality === MediaQuality.LOSSLESS_HI_RES_2) {
-        return "88.2/96khz 24 bits";
+        return '88.2/96khz 24 bits';
       } else if (prov.quality === MediaQuality.LOSSLESS_HI_RES_3) {
-        return "176/192khz 24 bits";
+        return '176/192khz 24 bits';
       } else {
-        return "+192kHz 24 bits";
+        return '+192kHz 24 bits';
       }
     }
   }
-  return "";
+  return '';
 });
 
 // emits
 const emit = defineEmits<{
-  (e: "menu", value: MediaItem): void;
-  (e: "click", value: MediaItem): void;
-  (e: "select", value: MediaItem, selected: boolean): void;
+  (e: 'menu', value: MediaItem): void;
+  (e: 'click', value: MediaItem): void;
+  (e: 'select', value: MediaItem, selected: boolean): void;
 }>();
 
 // methods
@@ -160,7 +160,7 @@ const artistClick = function (item: Artist | ItemMapping) {
   if (actionInProgress.value) return;
   actionInProgress.value = true;
   router.push({
-    name: "artist",
+    name: 'artist',
     params: {
       item_id: item.item_id,
       provider: item.provider,
