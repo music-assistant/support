@@ -2,10 +2,10 @@
   <div
     :max-height="maxSize"
     :max-width="maxSize"
-    :min-height="minSize"
-    :min-width="minSize"
-    :height="height"
-    :width="width"
+    :min-height="minSize || size"
+    :min-width="minSize || size"
+    :height="'auto'"
+    :width="'100%'"
   >
     <v-avatar
       :size="size"
@@ -44,22 +44,16 @@ import { store } from '../plugins/store';
 export interface Props {
   item?: MediaItemType | ItemMapping | QueueItem;
   size?: number;
-  width?: string | number;
-  height?: string | number;
-  maxSize?: string | number;
   minSize?: string | number;
-  cover?: boolean;
+  maxSize?: string | number;
   tile?: boolean;
+  cover?: boolean;
   fallback?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  size: 192,
-  minSize: 192,
   maxSize: 256,
   tile: true,
-  width: '100%',
-  height: 'auto',
   cover: true,
 });
 

@@ -11,15 +11,7 @@
     @click="emit('click', item)"
     @click.right.prevent="emit('menu', item)"
   >
-    <MediaItemThumb
-      :item="item"
-      :size="size"
-      :min-height="size"
-      :min-width="size"
-      width="100%"
-      :border="false"
-      :cover="true"
-    />
+    <MediaItemThumb :item="item" :size="size" />
     <div
       v-if="showCheckboxes"
       style="

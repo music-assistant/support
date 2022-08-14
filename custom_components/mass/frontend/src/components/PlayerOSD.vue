@@ -41,9 +41,7 @@
         <div class="listitem-thumb">
           <MediaItemThumb
             :item="curQueueItem.media_item || curQueueItem"
-            width="100%"
-            :minSize="50"
-            :tile="true"
+            :size="50"
             style="cursor: pointer"
             @click="
               curQueueItem?.media_item ? itemClick(curQueueItem.media_item) : ''

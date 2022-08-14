@@ -40,14 +40,14 @@
           <div v-if="'artists' in item && item.media_type">
             <MediaItemThumb
               :item="item"
-              :tile="true"
+              :minSize="192"
               style="margin-top: 15px; margin-bottom: 15px; margin-right: 24px"
             />
           </div>
           <div v-else-if="'owner' in item && item.media_type">
             <MediaItemThumb
               :item="item"
-              :tile="true"
+              :minSize="192"
               style="margin-top: 15px; margin-bottom: 15px; margin-right: 24px"
             />
           </div>
@@ -55,6 +55,7 @@
             <MediaItemThumb
               :item="item"
               :tile="false"
+              :minSize="192"
               style="margin-top: 15px; margin-bottom: 15px; margin-right: 24px"
             />
           </div>
