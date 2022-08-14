@@ -24,6 +24,7 @@ module.exports = {
     'no-unused-vars': 1,
     indent: ['error', 2],
     quotes: ['error', 'single'],
+    'vue/attribute-hyphenation': 0,
     'object-curly-spacing': ['warn', 'always'],
     'comma-dangle': [
       'warn',

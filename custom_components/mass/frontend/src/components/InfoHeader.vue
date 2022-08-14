@@ -4,7 +4,9 @@
       flat
       :img="imgGradient"
       style="margin-top: -10px; z-index: 0"
-      min-height="150"
+      height="30vh"
+      max-height="500px"
+      min-height="340px"
     >
       <!-- loading animation -->
       <v-progress-linear v-if="!item" indeterminate />
@@ -20,18 +22,42 @@
             : 'to bottom, rgba(255,255,255,.90), rgba(255,255,255,.75)'
         "
       />
-      <v-layout v-if="item" style="padding-left: 15px; padding-right: 15px">
+      <v-layout
+        v-if="item"
+        style="
+          margin: 0;
+          position: absolute;
+          top: 50%;
+          -ms-transform: translateY(-50%);
+          transform: translateY(-50%);
+          padding-left: 15px;
+          align-items: center;
+          padding-right: 15px;
+        "
+      >
         <!-- left side: cover image -->
         <div v-if="!$vuetify.display.mobile" xs5 pa-5>
-          <MediaItemThumb
-            :item="item"
-            :size="180"
-            width="100%"
-            :min-width="180"
-            :min-height="180"
-            :border="true"
-            style="margin-top: 15px; margin-bottom: 15px"
-          />
+          <div v-if="'artists' in item && item.media_type">
+            <MediaItemThumb
+              :item="item"
+              :tile="true"
+              style="margin-top: 15px; margin-bottom: 15px; margin-right: 24px"
+            />
+          </div>
+          <div v-else-if="'owner' in item && item.media_type">
+            <MediaItemThumb
+              :item="item"
+              :tile="true"
+              style="margin-top: 15px; margin-bottom: 15px; margin-right: 24px"
+            />
+          </div>
+          <div v-else>
+            <MediaItemThumb
+              :item="item"
+              :tile="false"
+              style="margin-top: 15px; margin-bottom: 15px; margin-right: 24px"
+            />
+          </div>
         </div>
 
         <div>
@@ -200,6 +226,11 @@
             </v-chip>
           </div>
         </div>
+      </v-layout>
+      <v-layout
+        v-if="item"
+        style="z-index: 800; height: 100%; padding-left: 15px"
+      >
         <!-- provider icons -->
         <div style="position: absolute; float: right; right: 15px; top: 15px">
           <ProviderIcons

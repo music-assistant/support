@@ -30,7 +30,13 @@
           </v-btn>
         </div>
         <div v-else class="listitem-thumb">
-          <MediaItemThumb :item="item" :size="50" width="50px" height="50px" />
+          <MediaItemThumb
+            :item="item"
+            :minSize="50"
+            :maxSize="50"
+            :size="50"
+            :tile="true"
+          />
         </div>
       </template>
 

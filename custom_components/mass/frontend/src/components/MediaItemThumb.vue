@@ -1,30 +1,32 @@
 <template>
   <div
-    :max-height="maxHeight"
-    :max-width="maxWidth"
-    :min-height="minHeight"
-    :min-width="minWidth"
+    :max-height="maxSize"
+    :max-width="maxSize"
+    :min-height="minSize"
+    :min-width="minSize"
     :height="height"
     :width="width"
   >
-    <v-img
-      :key="item?.uri"
-      :cover="cover"
-      :src="imgData"
-      :style="border ? 'border: 1px solid rgba(0, 0, 0, 0.22)' : ''"
-      :max-height="maxHeight"
-      :max-width="maxWidth"
-      :min-height="minHeight"
-      :min-width="minWidth"
-      :height="height"
-      :width="width"
+    <v-avatar
+      :size="size"
+      :min-height="minSize"
+      :min-width="minSize"
+      :rounded="tile ? 0 : undefined"
     >
-      <template #placeholder>
-        <div class="d-flex align-center justify-center fill-height">
-          <v-progress-circular indeterminate color="grey-lighten-4" />
-        </div>
-      </template>
-    </v-img>
+      <v-img
+        :key="item?.uri"
+        :min-height="minSize"
+        :min-width="minSize"
+        :cover="cover"
+        :src="imgData"
+      >
+        <template #placeholder>
+          <div class="d-flex align-center justify-center fill-height">
+            <v-progress-circular indeterminate color="grey-lighten-4" />
+          </div>
+        </template>
+      </v-img>
+    </v-avatar>
   </div>
 </template>
 
@@ -44,22 +46,20 @@ export interface Props {
   size?: number;
   width?: string | number;
   height?: string | number;
-  minWidth?: string | number;
-  minHeight?: string | number;
-  maxWidth?: string | number;
-  maxHeight?: string | number;
-  border?: boolean;
+  maxSize?: string | number;
+  minSize?: string | number;
   cover?: boolean;
+  tile?: boolean;
   fallback?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  border: true,
-  size: 200,
-  width: 'auto',
+  size: 192,
+  minSize: 192,
+  maxSize: 256,
+  tile: true,
+  width: '100%',
   height: 'auto',
-  maxHeight: 256,
-  maxWidth: 256,
   cover: true,
 });
 
@@ -164,3 +164,10 @@ export const getImageThumbForItem = async function (
   }
 };
 </script>
+
+<style>
+.v-avatar.v-avatar--density-default {
+  height: 100% !important;
+  width: 100% !important;
+}
+</style>
