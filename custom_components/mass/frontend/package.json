@@ -30,7 +30,7 @@
     "@types/jsdom": "^20.0.0",
     "@types/node": "^18.6.3",
     "@types/webfontloader": "^1.0.0",
-    "@vitejs/plugin-vue": "^2.3.3",
+    "@vitejs/plugin-vue": "^2.3.4",
     "@vue/eslint-config-prettier": "^7.0.0",
     "@vue/eslint-config-typescript": "^10.0.0",
     "@vue/test-utils": "^2.0.2",
