@@ -82,6 +82,11 @@ Music Assistant consists of multiple building blocks:
 - Music sources are synced at integration (re)load and every 3 hours.
 - If a song is available on multiple providers (e.g. Spotify and a flac file on disk), the file/stream with the highest quality is always preferred when starting a stream.
 - Music Assistant uses a custom stream port (TCP 8095 by default) to stream audio to players. Players must be able to reach the Home Assistant instance and this port. If you're running one of the recommended Home Assistant installation methods, this is all handled for you, otherwise you will have to make sure you're running HA in HOST network mode. Note: If the default port 8095 is occupied, the next port will be tried, and so on.
+- Music Assistant will create its own media players if you select the bottom option in the advanced configuration screen. If you have a player such as media_player.kitchen_speaker you will find a new one called media_player.mass_kitchen_speaker. These new players are just like any other media players and should be used in automations and scripts. 
+
+![image](https://user-images.githubusercontent.com/19848947/184626841-f67694f8-ca94-4a84-90d7-eb7ed5e85be6.png)
+
+- In order to be able to utilise the MA features, such as cross fade, gapless playback and volume normalisation, you must be streaming to one of the MA media players.
 
 ## Spotify, Youtube Music and Tune-In Radio specific notes
 
