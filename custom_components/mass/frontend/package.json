@@ -24,7 +24,7 @@
     "webfontloader": "^1.0.0"
   },
   "devDependencies": {
-    "@intlify/vite-plugin-vue-i18n": "^5.0.1",
+    "@intlify/vite-plugin-vue-i18n": "^6.0.1",
     "@mdi/js": "^7.0.96",
     "@rushstack/eslint-patch": "^1.1.4",
     "@types/jsdom": "^20.0.0",
@@ -42,14 +42,14 @@
     "jsdom": "^20.0.0",
     "prettier": "^2.7.1",
     "replace-in-file": "^6.3.5",
-    "sass": "^1.54.0",
+    "sass": "^1.54.4",
     "sass-loader": "^13.0.2",
     "typescript": "~4.7.4",
     "vite": "^2.9.14",
     "vite-plugin-pwa": "^0.12.3",
     "vitest": "^0.20.3",
     "vue-cli-plugin-vuetify": "~2.5.1",
-    "vue-tsc": "^0.39.4",
+    "vue-tsc": "^0.40.1",
     "vuetify-loader": "^2.0.0-alpha.0"
   }
 }
