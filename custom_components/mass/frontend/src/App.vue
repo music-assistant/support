@@ -204,7 +204,17 @@ div.v-navigation-drawer__scrim {
   border-style: solid;
   border-color: var(--ha-card-border-color, var(--divider-color, #e0e0e0));
 }
+.line-clamp-1 {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
 .line-clamp-2 {
+  box-sizing: border-box;
+  white-space: pre-line;
+  word-wrap: break-word;
+  display: -webkit-box;
   -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 </style>

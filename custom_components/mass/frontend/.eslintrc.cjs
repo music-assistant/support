@@ -22,7 +22,7 @@ module.exports = {
   rules: {
     semi: ['error', 'always'],
     'no-unused-vars': 1,
-    indent: ['error', 2],
+    indent: ['error', 2, { SwitchCase: 1 }],
     quotes: ['error', 'single'],
     'vue/attribute-hyphenation': 0,
     'object-curly-spacing': ['warn', 'always'],

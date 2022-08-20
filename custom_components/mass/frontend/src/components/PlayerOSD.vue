@@ -273,11 +273,11 @@
           :disabled="activePlayerQueue && activePlayerQueue?.items == 0"
           @click="api.queueCommandPlayPause(activePlayerQueue?.queue_id)"
         >
-          <v-icon color="primary" size="50">
+          <v-icon size="50">
             {{
               activePlayerQueue?.state == 'playing'
-                ? mdiPauseCircle
-                : mdiPlayCircle
+                ? mdiPause
+                : mdiPlay
             }}
           </v-icon>
         </v-btn>
@@ -289,8 +289,8 @@
           variant="plain"
           @click="api.queueCommandStop(activePlayerQueue?.queue_id)"
         >
-          <v-icon color="primary" size="50">
-            {{ mdiStopCircle }}
+          <v-icon size="50">
+            {{ mdiStop }}
           </v-icon>
         </v-btn>
         <!-- play button: all other situations - resume the queue (disabled if queue is empty)-->
@@ -302,8 +302,8 @@
           :disabled="activePlayerQueue && activePlayerQueue?.items == 0"
           @click="api.queueCommandPlay(activePlayerQueue?.queue_id)"
         >
-          <v-icon color="primary" size="50">
-            {{ mdiPlayCircle }}
+          <v-icon size="50">
+            {{ mdiPlay }}
           </v-icon>
         </v-btn>
         <v-btn
@@ -443,9 +443,9 @@ import {
   mdiChevronLeft,
   mdiVolumeHigh,
   mdiPlaylistMusic,
-  mdiPlayCircle,
-  mdiPauseCircle,
-  mdiStopCircle,
+  mdiPlay,
+  mdiPause,
+  mdiStop,
 } from '@mdi/js';
 
 import { watchEffect, ref, computed, watch } from 'vue';

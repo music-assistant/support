@@ -61,21 +61,21 @@
       <v-list-item-content>
         <v-list-item-text>
           <p
-            class="font-weight-bold line-clamp-2"
+            class="font-weight-bold line-clamp-1"
             style="color: primary; margin-top: 8px; margin-bottom: 8px"
           >
-            {{ truncateString(item.name, 16) }}
+            {{ item.name }}
           </p>
         </v-list-item-text>
         <v-list-item-subtitle
           v-if="'artists' in item && item.artists"
           class="line-clamp-2"
-          v-text="truncateString(getArtistsString(item.artists), 33)"
+          v-text="getArtistsString(item.artists)"
         />
         <v-list-item-subtitle
           v-else-if="'owner' in item && item.owner"
           class="line-clamp-2"
-          v-text="truncateString(item.owner, 35)"
+          v-text="item.owner"
         />
       </v-list-item-content>
     </v-list-item>
