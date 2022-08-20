@@ -274,11 +274,7 @@
           @click="api.queueCommandPlayPause(activePlayerQueue?.queue_id)"
         >
           <v-icon size="50">
-            {{
-              activePlayerQueue?.state == 'playing'
-                ? mdiPause
-                : mdiPlay
-            }}
+            {{ activePlayerQueue?.state == 'playing' ? mdiPause : mdiPlay }}
           </v-icon>
         </v-btn>
         <!-- stop button: player is playing other source (not MA)-->

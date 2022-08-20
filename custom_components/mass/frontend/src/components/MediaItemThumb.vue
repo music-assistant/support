@@ -44,8 +44,8 @@ import { store } from '../plugins/store';
 export interface Props {
   item?: MediaItemType | ItemMapping | QueueItem;
   size?: number;
-  minSize?: string | number;
-  maxSize?: string | number;
+  minSize?: number;
+  maxSize?: number;
   tile?: boolean;
   cover?: boolean;
   fallback?: string;
@@ -62,15 +62,15 @@ const imgData = ref<string>();
 const fallbackImage = computed(() => {
   if (props.fallback) return props.fallback;
   if (store.darkTheme)
-    return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}&bold=true&background=1d1d1d&color=383838`;
+    return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.maxSize}&bold=true&background=1d1d1d&color=383838`;
   else
-    return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.size}&bold=true&background=a0a0a0&color=cccccc`;
+    return `https://ui-avatars.com/api/?name=${props.item.name}&size=${props.maxSize}&bold=true&background=a0a0a0&color=cccccc`;
 });
 
 watchEffect(async () => {
   if (!props.item) return;
   imgData.value =
-    (await getImageThumbForItem(props.item, ImageType.THUMB, props.size)) ||
+    (await getImageThumbForItem(props.item, ImageType.THUMB, props.maxSize)) ||
     fallbackImage.value;
 });
 </script>
@@ -140,7 +140,7 @@ export const getImageThumbForItem = async function (
   if (!img) return undefined;
   if (!img.is_file && size) {
     // get url to resized image(thumb) from weserv service
-    return `https://images.weserv.nl/?url=${img.url}&w=256&h=256&fit=cover&a=attention`;
+    return `https://images.weserv.nl/?url=${img.url}&w=${size}&h=${size}&fit=cover&a=attention`;
   } else if (img.url.startsWith('https://')) {
     return img.url;
   } else if (

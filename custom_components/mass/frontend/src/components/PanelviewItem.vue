@@ -5,7 +5,7 @@
         ? size * 1.4
         : size * 1.9
     "
-    :min-width="'175px'"
+    :min-width="'135px'"
     :max-width="'256px'"
     outlined
     @click="emit('click', item)"
