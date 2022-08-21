@@ -210,11 +210,13 @@ div.v-navigation-drawer__scrim {
   overflow: hidden;
 }
 .line-clamp-2 {
-  box-sizing: border-box;
   white-space: pre-line;
+  overflow: hidden;
+  line-height: 1.5em;
+  height: 3em;
   word-wrap: break-word;
+  box-sizing: border-box;
   display: -webkit-box;
   -webkit-line-clamp: 2;
-  overflow: hidden;
 }
 </style>

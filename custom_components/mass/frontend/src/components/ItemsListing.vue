@@ -166,27 +166,31 @@
       <v-progress-linear v-if="loading" indeterminate />
 
       <!-- panel view -->
-      <v-row
-        v-if="viewMode == 'panel'"
-        dense
-        align-content="start"
-        align="left"
-      >
-        <template v-for="item in items" :key="item.uri">
-          <v-col>
-            <PanelviewItem
-              :item="item"
-              :size="thumbSize"
-              :is-selected="isSelected(item)"
-              :show-checkboxes="showCheckboxes"
-              @select="onSelect"
-              @menu="onMenu"
-              @click="onClick"
-            />
+      <v-item-group v-if="viewMode == 'panel'" multiple>
+        <v-row>
+          <v-col
+            v-for="(item, i) in items"
+            :key="item.uri"
+            cols="6"
+            xl="1"
+            lg="2"
+            md="3"
+            sm="4"
+            xs="6"
+          >
+            <v-item>
+              <PanelviewItem
+                :item="item"
+                :is-selected="isSelected(item)"
+                :show-checkboxes="showCheckboxes"
+                @select="onSelect"
+                @menu="onMenu"
+                @click="onClick"
+              />
+            </v-item>
           </v-col>
-          <v-responsive v-if="item === 2" :key="`width-${item}`" width="100%" />
-        </template>
-      </v-row>
+        </v-row>
+      </v-item-group>
 
       <!-- list view -->
       <div v-if="viewMode == 'list'">
@@ -330,7 +334,7 @@ const defaultLimit = 100;
 // global refs
 const router = useRouter();
 const i18n = useI18n();
-const { mobile } = useDisplay();
+const { mobile, desktop } = useDisplay();
 
 // local refs
 const viewMode = ref('list');
@@ -353,6 +357,10 @@ const albumArtistsOnlyFilter = ref(false);
 // computed properties
 const thumbSize = computed(() => {
   return mobile.value ? 140 : 150;
+});
+
+const panelViewItemSize = computed(() => {
+  return mobile ? [3, 9] : desktop ? [9, 3] : [6, 6];
 });
 
 const emit = defineEmits<{

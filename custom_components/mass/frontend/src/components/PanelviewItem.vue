@@ -1,12 +1,5 @@
 <template>
   <v-card
-    :min-height="
-      [MediaType.ARTIST, MediaType.RADIO].includes(item.media_type)
-        ? size * 1.4
-        : size * 1.9
-    "
-    :min-width="'135px'"
-    :max-width="'256px'"
     outlined
     @click="emit('click', item)"
     @click.right.prevent="emit('menu', item)"
