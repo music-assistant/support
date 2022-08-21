@@ -166,31 +166,22 @@
       <v-progress-linear v-if="loading" indeterminate />
 
       <!-- panel view -->
-      <v-item-group v-if="viewMode == 'panel'" multiple>
-        <v-row>
-          <v-col
-            v-for="(item, i) in items"
-            :key="item.uri"
-            cols="6"
-            xl="1"
-            lg="2"
-            md="3"
-            sm="4"
-            xs="6"
-          >
-            <v-item>
-              <PanelviewItem
-                :item="item"
-                :is-selected="isSelected(item)"
-                :show-checkboxes="showCheckboxes"
-                @select="onSelect"
-                @menu="onMenu"
-                @click="onClick"
-              />
-            </v-item>
-          </v-col>
-        </v-row>
-      </v-item-group>
+      <v-row v-if="viewMode == 'panel'">
+        <v-col
+          v-for="(item, i) in items"
+          :key="item.uri"
+          :class="`col-${panelViewItemResponsive($vuetify.display.width)}`"
+        >
+          <PanelviewItem
+            :item="item"
+            :is-selected="isSelected(item)"
+            :show-checkboxes="showCheckboxes"
+            @select="onSelect"
+            @menu="onMenu"
+            @click="onClick"
+          />
+        </v-col>
+      </v-row>
 
       <!-- list view -->
       <div v-if="viewMode == 'list'">
@@ -334,7 +325,6 @@ const defaultLimit = 100;
 // global refs
 const router = useRouter();
 const i18n = useI18n();
-const { mobile, desktop } = useDisplay();
 
 // local refs
 const viewMode = ref('list');
@@ -355,13 +345,27 @@ const showCheckboxes = ref(false);
 const albumArtistsOnlyFilter = ref(false);
 
 // computed properties
-const thumbSize = computed(() => {
-  return mobile.value ? 140 : 150;
-});
-
-const panelViewItemSize = computed(() => {
-  return mobile ? [3, 9] : desktop ? [9, 3] : [6, 6];
-});
+const panelViewItemResponsive = function (displaySize: any) {
+  if (displaySize < 500) {
+    return 2;
+  } else if (displaySize <= 500) {
+    return 3;
+  } else if (displaySize <= 700) {
+    return 4;
+  } else if (displaySize <= 1000) {
+    return 5;
+  } else if (displaySize <= 1200) {
+    return 6;
+  } else if (displaySize <= 1500) {
+    return 7;
+  } else if (displaySize <= 1700) {
+    return 8;
+  } else if (displaySize > 1700) {
+    return 9;
+  } else {
+    return 0;
+  }
+};
 
 const emit = defineEmits<{
   (e: 'toggleAlbumArtistsOnly', value: boolean): void;
@@ -738,5 +742,45 @@ export const filteredItems = function (
 <style scoped>
 .scroller {
   height: 100%;
+}
+.col-2 {
+  width: 50%;
+  max-width: 50%;
+  flex-basis: 50%;
+}
+.col-3 {
+  width: 33.3%;
+  max-width: 33.3%;
+  flex-basis: 33.3%;
+}
+.col-4 {
+  width: 25%;
+  max-width: 25%;
+  flex-basis: 25%;
+}
+.col-5 {
+  width: 20%;
+  max-width: 20%;
+  flex-basis: 20%;
+}
+.col-6 {
+  width: 16.6%;
+  max-width: 16.6%;
+  flex-basis: 16.6%;
+}
+.col-7 {
+  width: 14.2%;
+  max-width: 14.2%;
+  flex-basis: 14.2%;
+}
+.col-8 {
+  width: 12.5%;
+  max-width: 12.5%;
+  flex-basis: 12.5%;
+}
+.col-9 {
+  width: 11.1%;
+  max-width: 11.1%;
+  flex-basis: 11.1%;
 }
 </style>

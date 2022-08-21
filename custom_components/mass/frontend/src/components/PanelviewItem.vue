@@ -63,11 +63,13 @@
         <v-list-item-subtitle
           v-if="'artists' in item && item.artists"
           class="line-clamp-2"
+          style="margin-bottom: 8px"
           v-text="getArtistsString(item.artists)"
         />
         <v-list-item-subtitle
           v-else-if="'owner' in item && item.owner"
           class="line-clamp-2"
+          style="margin-bottom: 8px"
           v-text="item.owner"
         />
       </v-list-item-content>
@@ -91,7 +93,7 @@ import type {
   MediaItemType,
 } from '../plugins/api';
 import { MediaType, MediaQuality } from '../plugins/api';
-import { truncateString, getArtistsString } from '../utils';
+import { getArtistsString } from '../utils';
 
 // properties
 export interface Props {
