@@ -1,154 +1,168 @@
 <template>
-  <v-dialog
+  <v-overlay
     :model-value="modelValue"
     class="align-center justify-center"
     :scrim="false"
-    :fullscreen="true"
   >
-    <v-card>
-      <v-toolbar density="default" dark color="primary">
-        <v-icon :icon="mdiPlayCircleOutline"></v-icon>
-        <v-toolbar-title style="padding-left: 10px" v-if="showPlaylistsMenu">
-          <b>{{ $t("add_playlist") }}</b>
-          <span v-if="!$vuetify.display.mobile"> | {{ header }} </span></v-toolbar-title
-        >
-        <v-toolbar-title style="padding-left: 10px" v-else
-          ><b>{{ header }}</b>
-        </v-toolbar-title>
-        <v-btn :icon="mdiClose" dark text @click="close()"></v-btn>
-      </v-toolbar>
-      <!-- play contextmenu items -->
-      <v-card-text
-        v-if="enablePlayItems && !showPlaylistsMenu && playMenuItems.length > 0"
-      >
-        <v-select
-          :label="$t('play_on')"
-          :model-value="store.selectedPlayer?.player_id"
-          :items="availablePlayers"
-          @update:model-value="
-            (newVal) => {
-              store.selectedPlayer = api.players[newVal];
-            }
+    <v-menu class="fullscreen-menu" :model-value="modelValue">
+      <v-card>
+        <v-toolbar density="default" dark color="primary">
+          <v-icon :icon="mdiPlayCircleOutline" />
+          <v-toolbar-title v-if="showPlaylistsMenu" style="padding-left: 10px">
+            <b>{{ $t('add_playlist') }}</b>
+            <span v-if="!$vuetify.display.mobile"> | {{ header }} </span>
+          </v-toolbar-title>
+          <v-toolbar-title v-else style="padding-left: 10px">
+            <b>{{ header }}</b>
+          </v-toolbar-title>
+          <v-btn :icon="mdiClose" dark text @click="close()" />
+        </v-toolbar>
+        <!-- play contextmenu items -->
+        <v-card-text
+          v-if="
+            enablePlayItems && !showPlaylistsMenu && playMenuItems.length > 0
           "
-          hide-details
-        ></v-select>
+        >
+          <v-select
+            :label="$t('play_on')"
+            :model-value="store.selectedPlayer?.player_id"
+            :items="availablePlayers"
+            hide-details
+            @update:model-value="
+              (newVal) => {
+                store.selectedPlayer = api.players[newVal];
+              }
+            "
+          />
 
-        <v-list>
-          <div v-for="item of playMenuItems" :key="item.label">
-            <v-list-item
-              @click="itemClicked(item)"
-              :title="$t(item.label, item.labelArgs)"
-              density="default"
-            >
-              <template v-slot:prepend>
-                <v-avatar style="padding-right: 10px">
-                  <v-icon :icon="item.icon"></v-icon>
-                </v-avatar>
-              </template>
-            </v-list-item>
-            <v-divider></v-divider>
-          </div>
-        </v-list>
-      </v-card-text>
-      <!-- action contextmenu items -->
-      <v-card-text
-        v-if="enableActionMenuItems && !showPlaylistsMenu && actionMenuItems.length > 0"
-        style="padding-top: 0; margin-top: -10px; padding-bottom: 0"
-      >
-        <v-list-item-subtitle style="margin-left: 10px">{{
-          $t("actions")
-        }}</v-list-item-subtitle>
-        <v-list>
-          <div v-for="item of actionMenuItems" :key="item.label">
-            <v-list-item
-              @click="itemClicked(item)"
-              :title="$t(item.label, item.labelArgs)"
-              density="default"
-            >
-              <template v-slot:prepend>
-                <v-avatar style="padding-right: 10px">
-                  <v-icon :icon="item.icon"></v-icon>
-                </v-avatar>
-              </template>
-            </v-list-item>
-            <v-divider></v-divider>
-          </div>
-        </v-list>
-      </v-card-text>
-      <!-- playlists selection -->
-      <v-card-text v-if="showPlaylistsMenu">
-        <v-list>
-          <div v-for="playlist of playlists" :key="playlist.item_id">
-            <v-list-item ripple @click="addToPlaylist(playlist)" density="default">
-              <template v-slot:prepend>
-                <div class="listitem-thumb">
-                  <MediaItemThumb
-                    :item="playlist"
-                    :size="50"
-                    width="50px"
-                    height="50px"
-                  /></div
-              ></template>
-              <template v-slot:title>
-                <div>{{ playlist.name }}</div>
-              </template>
-              <template v-slot:subtitle>
-                <div>{{ playlist.owner }}</div>
-              </template>
-              <template v-slot:append>
-                <div class="listitem-actions">
-                  <ProviderIcons
-                    v-if="playlist.provider_ids"
-                    :provider-ids="playlist.provider_ids"
-                    :height="20"
-                    class="listitem-actions"
-                  />
-                </div>
-              </template>
-            </v-list-item>
-            <v-divider></v-divider>
-          </div>
-          <!-- create playlist row(s) -->
-          <div v-for="prov of api.providers" :key="prov.id">
-            <div
-              v-if="
-                prov.supported_features.includes(MusicProviderFeature.PLAYLIST_CREATE)
-              "
-            >
-              <v-list-item ripple>
-                <template v-slot:prepend>
+          <v-list>
+            <div v-for="item of playMenuItems" :key="item.label">
+              <v-list-item
+                :title="$t(item.label, item.labelArgs)"
+                density="default"
+                @click="itemClicked(item)"
+              >
+                <template #prepend>
+                  <v-avatar style="padding-right: 10px">
+                    <v-icon :icon="item.icon" />
+                  </v-avatar>
+                </template>
+              </v-list-item>
+              <v-divider />
+            </div>
+          </v-list>
+        </v-card-text>
+        <!-- action contextmenu items -->
+        <v-card-text
+          v-if="
+            enableActionMenuItems &&
+            !showPlaylistsMenu &&
+            actionMenuItems.length > 0
+          "
+          style="padding-top: 0; margin-top: -10px; padding-bottom: 0"
+        >
+          <v-list-item-subtitle style="margin-left: 10px">
+            {{ $t('actions') }}
+          </v-list-item-subtitle>
+          <v-list>
+            <div v-for="item of actionMenuItems" :key="item.label">
+              <v-list-item
+                :title="$t(item.label, item.labelArgs)"
+                density="default"
+                @click="itemClicked(item)"
+              >
+                <template #prepend>
+                  <v-avatar style="padding-right: 10px">
+                    <v-icon :icon="item.icon" />
+                  </v-avatar>
+                </template>
+              </v-list-item>
+              <v-divider />
+            </div>
+          </v-list>
+        </v-card-text>
+        <!-- playlists selection -->
+        <v-card-text v-if="showPlaylistsMenu">
+          <v-list>
+            <div v-for="playlist of playlists" :key="playlist.item_id">
+              <v-list-item
+                ripple
+                density="default"
+                @click="addToPlaylist(playlist)"
+              >
+                <template #prepend>
                   <div class="listitem-thumb">
-                    <img
-                      v-bind="props"
-                      :height="40"
-                      :src="getProviderIcon(prov.type)"
-                      style="margin-left: 5px; margin-top: 5px"
+                    <MediaItemThumb
+                      :item="playlist"
+                      :size="50"
+                      width="50px"
+                      height="50px"
                     />
                   </div>
                 </template>
-                <template v-slot:title>
-                  <v-text-field
-                    :label="$t('create_playlist', [prov.name])"
-                    :append-icon="mdiPlaylistPlus"
-                    variant="plain"
-                    hide-details
-                    @update:model-value="
-                      (txt) => {
-                        newPlaylistName = txt;
-                      }
-                    "
-                    @click:append="newPlaylist(prov.id)"
-                    @keydown.enter="newPlaylist(prov.id)"
-                  ></v-text-field>
+                <template #title>
+                  <div>{{ playlist.name }}</div>
+                </template>
+                <template #subtitle>
+                  <div>{{ playlist.owner }}</div>
+                </template>
+                <template #append>
+                  <div class="listitem-actions">
+                    <ProviderIcons
+                      v-if="playlist.provider_ids"
+                      :provider-ids="playlist.provider_ids"
+                      :height="20"
+                      class="listitem-actions"
+                    />
+                  </div>
                 </template>
               </v-list-item>
-              <v-divider></v-divider>
+              <v-divider />
             </div>
-          </div>
-        </v-list>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+            <!-- create playlist row(s) -->
+            <div v-for="prov of api.providers" :key="prov.id">
+              <div
+                v-if="
+                  prov.supported_features.includes(
+                    MusicProviderFeature.PLAYLIST_CREATE
+                  )
+                "
+              >
+                <v-list-item ripple>
+                  <template #prepend>
+                    <div class="listitem-thumb">
+                      <img
+                        v-bind="props"
+                        :height="40"
+                        :src="getProviderIcon(prov.type)"
+                        style="margin-left: 5px; margin-top: 5px"
+                      />
+                    </div>
+                  </template>
+                  <template #title>
+                    <v-text-field
+                      :label="$t('create_playlist', [prov.name])"
+                      :append-icon="mdiPlaylistPlus"
+                      variant="plain"
+                      hide-details
+                      @update:model-value="
+                        (txt) => {
+                          newPlaylistName = txt;
+                        }
+                      "
+                      @click:append="newPlaylist(prov.id)"
+                      @keydown.enter="newPlaylist(prov.id)"
+                    />
+                  </template>
+                </v-list-item>
+                <v-divider />
+              </div>
+            </div>
+          </v-list>
+        </v-card-text>
+      </v-card>
+    </v-menu>
+  </v-overlay>
 </template>
 
 <script setup lang="ts">
@@ -167,21 +181,21 @@ import {
   mdiAccountMusic,
   mdiAlbum,
   mdiRadioTower,
-} from "@mdi/js";
-import MediaItemThumb from "./MediaItemThumb.vue";
-import ProviderIcons from "./ProviderIcons.vue";
-import { getProviderIcon } from "./ProviderIcons.vue";
+} from '@mdi/js';
+import MediaItemThumb from './MediaItemThumb.vue';
+import ProviderIcons from './ProviderIcons.vue';
+import { getProviderIcon } from './ProviderIcons.vue';
 import {
   MediaType,
   ProviderType,
   QueueOption,
   type Album,
-} from "../plugins/api";
-import type { MediaItem, MediaItemType, Playlist, Track } from "../plugins/api";
-import { computed, ref, watch } from "vue";
-import api, { MusicProviderFeature } from "../plugins/api";
-import { useI18n } from "vue-i18n";
-import { store } from "../plugins/store";
+} from '../plugins/api';
+import type { MediaItem, MediaItemType, Playlist, Track } from '../plugins/api';
+import { computed, ref, watch } from 'vue';
+import api, { MusicProviderFeature } from '../plugins/api';
+import { useI18n } from 'vue-i18n';
+import { store } from '../plugins/store';
 
 // properties
 export interface Props {
@@ -202,16 +216,16 @@ const { t } = useI18n();
 
 const actionMenuItems = ref<ContextMenuItem[]>([]);
 const playMenuItems = ref<ContextMenuItem[]>([]);
-const header = ref("");
+const header = ref('');
 const playlists = ref<Playlist[]>([]);
 const showPlaylistsMenu = ref(false);
-const newPlaylistName = ref("");
+const newPlaylistName = ref('');
 
 const emit = defineEmits<{
-  (e: "refresh", value: MediaItemType): void;
-  (e: "clear"): void;
-  (e: "update:modelValue", value: boolean): void;
-  (e: "update:items", value: MediaItemType[]): void;
+  (e: 'refresh', value: MediaItemType): void;
+  (e: 'clear'): void;
+  (e: 'update:modelValue', value: boolean): void;
+  (e: 'update:items', value: MediaItemType[]): void;
 }>();
 
 watch(
@@ -228,7 +242,7 @@ const showContextMenu = async function () {
   if (!props.items) return;
 
   if (props.items.length === 1) header.value = props.items[0].name;
-  else header.value = t("items_selected", [props.items.length]).toString();
+  else header.value = t('items_selected', [props.items.length]).toString();
 
   if (store.selectedPlayer && store.selectedPlayer.available) {
     playMenuItems.value = getPlayMenuItems(props.items, props.parentItem);
@@ -245,7 +259,7 @@ const showContextMenu = async function () {
     firstItem.position = orgPosition;
     const items = props.items;
     items[0] = firstItem;
-    emit("update:items", items);
+    emit('update:items', items);
   }
   actionMenuItems.value = getContextMenuItems(props.items, props.parentItem);
   fetchPlaylists();
@@ -281,14 +295,14 @@ const newPlaylist = async function (provId: string) {
 };
 
 const itemClicked = async function (item: ContextMenuItem) {
-  if (item.actionStr == "add_playlist") {
+  if (item.actionStr == 'add_playlist') {
     showPlaylistsMenu.value = true;
-  } else if (item.actionStr == "clear") {
-    emit("clear");
+  } else if (item.actionStr == 'clear') {
+    emit('clear');
     close();
-  } else if (item.action && item.actionStr == "play") {
+  } else if (item.action && item.actionStr == 'play') {
     item.action();
-    emit("clear");
+    emit('clear');
     close();
   } else if (item.action) {
     close();
@@ -298,9 +312,9 @@ const itemClicked = async function (item: ContextMenuItem) {
 
 const close = function () {
   if (props.items.length == 1) {
-    emit("clear");
+    emit('clear');
   }
-  emit("update:modelValue", false);
+  emit('update:modelValue', false);
 };
 
 const availablePlayers = computed(() => {
@@ -317,7 +331,7 @@ const availablePlayers = computed(() => {
 </script>
 
 <script lang="ts">
-import router from "@/plugins/router";
+import router from '@/plugins/router';
 
 export interface ContextMenuItem {
   label: string;
@@ -346,7 +360,10 @@ export const radioSupported = function (item: MediaItemType) {
   return false;
 };
 
-export const getPlayMenuItems = function (items: MediaItem[], parentItem?: MediaItem) {
+export const getPlayMenuItems = function (
+  items: MediaItem[],
+  parentItem?: MediaItem
+) {
   const playMenuItems: ContextMenuItem[] = [];
   if (items.length == 0 || !itemIsAvailable(items[0])) {
     return playMenuItems;
@@ -361,90 +378,105 @@ export const getPlayMenuItems = function (items: MediaItem[], parentItem?: Media
     queueOptNext = QueueOption.REPLACE_NEXT;
   }
   // Play from here (playlist track)
-  if (items.length == 1 && parentItem && parentItem.media_type == MediaType.PLAYLIST) {
+  if (
+    items.length == 1 &&
+    parentItem &&
+    parentItem.media_type == MediaType.PLAYLIST
+  ) {
     playMenuItems.push({
-      label: "play_playlist_from",
+      label: 'play_playlist_from',
       action: () => {
         api.playPlaylistFromIndex(parentItem as Playlist, items[0].position);
       },
       icon: mdiPlayCircleOutline,
       labelArgs: [],
-      actionStr: "play",
+      actionStr: 'play',
     });
   }
   // Play from here (album track)
-  if (items.length == 1 && parentItem && parentItem.media_type == MediaType.ALBUM) {
+  if (
+    items.length == 1 &&
+    parentItem &&
+    parentItem.media_type == MediaType.ALBUM
+  ) {
     playMenuItems.push({
-      label: "play_album_from",
+      label: 'play_album_from',
       action: () => {
         api.playAlbumFromItem(parentItem as Album, items[0] as Track);
       },
       icon: mdiPlayCircleOutline,
       labelArgs: [],
-      actionStr: "play",
+      actionStr: 'play',
     });
   }
 
   // Play NOW
   playMenuItems.push({
-    label: "play_now",
+    label: 'play_now',
     action: () => {
       api.playMedia(items, queueOptPlay);
     },
     icon: mdiPlayCircleOutline,
     labelArgs: [],
-    actionStr: "play",
+    actionStr: 'play',
   });
 
   // Start Radio
   if (radioSupported(items[0])) {
     playMenuItems.push({
-      label: "play_radio",
+      label: 'play_radio',
       action: () => {
         api.playMedia(items, queueOptPlay, true);
       },
       icon: mdiRadioTower,
       labelArgs: [],
-      actionStr: "play",
+      actionStr: 'play',
     });
   }
 
   // Play NEXT
   if (items.length === 1 || items[0].media_type === MediaType.TRACK) {
     playMenuItems.push({
-      label: "play_next",
+      label: 'play_next',
       action: () => {
         api.playMedia(items, queueOptNext);
       },
       icon: mdiSkipNextCircleOutline,
       labelArgs: [],
-      actionStr: "play",
+      actionStr: 'play',
     });
   }
   // Add to Queue
   playMenuItems.push({
-    label: "add_queue",
+    label: 'add_queue',
     action: () => {
       api.playMedia(items, QueueOption.ADD);
     },
     icon: mdiPlaylistPlus,
     labelArgs: [],
-    actionStr: "play",
+    actionStr: 'play',
   });
 
   return playMenuItems;
 };
 
-export const getContextMenuItems = function (items: MediaItem[], parentItem?: MediaItem) {
+export const getContextMenuItems = function (
+  items: MediaItem[],
+  parentItem?: MediaItem
+) {
   const contextMenuItems: ContextMenuItem[] = [];
   if (items.length == 0) {
     return contextMenuItems;
   }
 
   // show info
-  if (items.length === 1 && items[0] !== parentItem && itemIsAvailable(items[0])) {
+  if (
+    items.length === 1 &&
+    items[0] !== parentItem &&
+    itemIsAvailable(items[0])
+  ) {
     contextMenuItems.push({
-      label: "show_info",
+      label: 'show_info',
       labelArgs: [],
       action: () => {
         router.push({
@@ -463,16 +495,16 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
   if (
     items.length === 1 &&
     itemIsAvailable(items[0]) &&
-    "artists" in items[0] &&
+    'artists' in items[0] &&
     (items[0] as Track | Album).artists.length === 1
   ) {
     for (const artist of (items[0] as Track).artists) {
       contextMenuItems.push({
-        label: "goto_artist",
+        label: 'goto_artist',
         labelArgs: [artist.name],
         action: () => {
           router.push({
-            name: "artist",
+            name: 'artist',
             params: {
               item_id: artist.item_id,
               provider: artist.provider,
@@ -487,15 +519,15 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
   if (
     items.length === 1 &&
     itemIsAvailable(items[0]) &&
-    "album" in items[0] &&
+    'album' in items[0] &&
     (items[0] as Track).album
   ) {
     contextMenuItems.push({
-      label: "goto_album",
+      label: 'goto_album',
       labelArgs: [items[0].album.name],
       action: () => {
         router.push({
-          name: "album",
+          name: 'album',
           params: {
             item_id: items[0].album.item_id,
             provider: items[0].album.provider,
@@ -509,7 +541,7 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
   // refresh item
   if (items.length === 1 && items[0] == parentItem) {
     contextMenuItems.push({
-      label: "refresh_item",
+      label: 'refresh_item',
       labelArgs: [],
       action: () => {
         api.getItem(items[0].uri, false, true);
@@ -520,7 +552,7 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
   // add to library
   if (!items[0].in_library && itemIsAvailable(items[0])) {
     contextMenuItems.push({
-      label: "add_library",
+      label: 'add_library',
       labelArgs: [],
       action: () => {
         api.addToLibrary(items);
@@ -531,7 +563,7 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
   // remove from library
   if (items[0].in_library) {
     contextMenuItems.push({
-      label: "remove_library",
+      label: 'remove_library',
       labelArgs: [],
       action: () => {
         api.removeFromLibrary(items);
@@ -544,7 +576,7 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
     const playlist = parentItem as Playlist;
     if (items[0].media_type === MediaType.TRACK && playlist.is_editable) {
       contextMenuItems.push({
-        label: "remove_playlist",
+        label: 'remove_playlist',
         labelArgs: [],
         action: () => {
           api.removePlaylistTracks(
@@ -557,18 +589,18 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
     }
   }
   // add to playlist action (tracks only)
-  if (items[0].media_type === "track") {
+  if (items[0].media_type === 'track') {
     contextMenuItems.push({
-      label: "add_playlist",
+      label: 'add_playlist',
       labelArgs: [],
-      actionStr: "add_playlist",
+      actionStr: 'add_playlist',
       icon: mdiPlusCircleOutline,
     });
   }
   // delete from db
   if (items.length == 1 && items[0].provider == ProviderType.DATABASE) {
     contextMenuItems.push({
-      label: "delete_db",
+      label: 'delete_db',
       labelArgs: [],
       action: () => {
         api.deleteDbItem(items[0].media_type, items[0].item_id, true);
@@ -585,9 +617,9 @@ export const getContextMenuItems = function (items: MediaItem[], parentItem?: Me
   // clear selection
   if (items.length > 1) {
     contextMenuItems.push({
-      label: "clear_selection",
+      label: 'clear_selection',
       labelArgs: [],
-      actionStr: "clear",
+      actionStr: 'clear',
       icon: mdiCancel,
     });
   }
