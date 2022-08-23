@@ -4686,10 +4686,10 @@ vue@^3.2.37:
     "@vue/server-renderer" "3.2.37"
     "@vue/shared" "3.2.37"
 
-vuetify@^3.0.0-beta.6:
-  version "3.0.0-beta.6"
-  resolved "https://registry.yarnpkg.com/vuetify/-/vuetify-3.0.0-beta.6.tgz#c429837b2facd8cdb2eb7229dd979496e99f57c9"
-  integrity sha512-eL8l4YdpB8ePWex1NkB35nqgWIJCsElTk4XzZEXeN7ECh5Qd1JqPwxEE+JVVC5e1+Ut2EQw+08ouLkeEk2uMow==
+vuetify@^3.0.0-beta.8:
+  version "3.0.0-beta.8"
+  resolved "https://registry.yarnpkg.com/vuetify/-/vuetify-3.0.0-beta.8.tgz#0784d64ef3bfe7422a971bbeea11db5a52b21cc2"
+  integrity sha512-D8ZJc7HRMeXBsXRMWFcc+FQm6vMLgF7B3WZPoI59qsMKwwhaXdn3dm3pnLUFcH2YO378FQAoCbr3KRGwjoWs7w==
 
 w3c-hr-time@^1.0.2:
   version "1.0.2"
