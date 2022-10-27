@@ -4,5 +4,5 @@
     "zip_release": true,
     "filename": "mass.zip",
     "hide_default_branch": true,
-    "homeassistant": "2022.7.0"
+    "homeassistant": "2022.11.0"
   }

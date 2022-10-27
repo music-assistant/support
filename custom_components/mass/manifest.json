@@ -6,7 +6,8 @@
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "requirements": [
     "music-assistant==1.8.7",
-    "git+https://github.com/music-assistant/databases@fix-breaking-sqlalchemy-cursor-changes#databases==0.6.2"
+    "git+https://github.com/music-assistant/databases@fix-breaking-sqlalchemy-cursor-changes#databases==0.6.2",
+    "music-assistant-frontend==20220908.1"
   ],
   "codeowners": [
     "@marcelveldt"

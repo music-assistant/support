@@ -1,5 +1,4 @@
 """Host Music Assistant frontend in custom panel."""
-import logging
 import os
 import urllib.parse
 from http import HTTPStatus
@@ -12,13 +11,11 @@ from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
 from music_assistant import MusicAssistant
+import mass_frontend 
 
 from .const import DOMAIN
 
-_LOGGER = logging.getLogger(__name__)
-
-PANEL_FOLDER = "frontend/dist"
-JS_FILENAME = "mass.iife.js"
+JS_FILENAME = "mass.umd.js"
 LIB_URL_BASE = f"/lib/{DOMAIN}/"
 JS_URL = LIB_URL_BASE + JS_FILENAME
 
@@ -29,8 +26,7 @@ COMPONENT_NAME = "music-assistant"
 async def async_register_panel(hass: HomeAssistant, title: str) -> Callable:
     """Register custom panel."""
     panel_url = title.lower().replace(" ", "-")
-    root_dir = os.path.dirname(__file__)
-    panel_dir = os.path.join(root_dir, PANEL_FOLDER)
+    panel_dir = mass_frontend.where()
 
     for filename in os.listdir(panel_dir):
         url = LIB_URL_BASE + filename
