@@ -18,6 +18,9 @@
           "qobuz_enabled": "Aktiviere Qobuz Musikquelle",
           "qobuz_username": "Benutzername für Qobuz",
           "qobuz_password": "Passwort für Qobuz",
+          "ytmusic_enabled": "Aktiviere Youtube Music Musikquelle",
+          "ytmusic_username": "Benutzername für Youtube Music",
+          "ytmusic_password": "Log-in Cookie für Youtube Music",
           "tunein_enabled": "Aktiviere Tune-In Radio Musikquelle",
           "tunein_username": "Benutzername für Tune-In Radio",
           "filesystem_enabled": "Aktiviere Dateisystem Musikquelle",
@@ -30,6 +33,7 @@
     },
     "error": {
       "directory_not_exists": "Ordner existiert nicht oder ist nicht zugänglich"
+      "yt_no_cookie": "Youtube Music benötigt einen Cookie im Passwortfeld, siehe: https://github.com/music-assistant/hass-music-assistant/discussions/606"
     }
   },
   "options": {
@@ -51,13 +55,16 @@
           "qobuz_enabled": "Aktiviere Qobuz Musikquelle",
           "qobuz_username": "Benutzername für Qobuz",
           "qobuz_password": "Passwort für Qobuz",
+          "ytmusic_enabled": "Aktiviere Youtube Music Musikquelle",
+          "ytmusic_username": "Benutzername für Youtube Music",
+          "ytmusic_password": "Log-in Cookie für Youtube Music",
           "tunein_enabled": "Aktiviere Tune-In Radio Musikquelle",
           "tunein_username": "Benutzername für Tune-In Radio",
           "filesystem_enabled": "Aktiviere Dateisystem Musikquelle",
           "filesystem_directory": "Pfad im Dateisystem zu deinen Musikdateien."
         },
         "data_description": {
-          "filesystem_directory": "Gebe den vollständigen Pfad im Dateisystem an, an dem deine Musikdateien abgespeichert sind. (z.B. /media). Berücksichtige, das Home Assistant Zugriff auf diesen Pfad haben muss."
+          "filesystem_directory": "Gebe den vollständigen Pfad im Dateisystem an, an dem deine Musikdateien abgespeichert sind. (z.B. /media). Berücksichtige, dass Home Assistant Zugriff auf diesen Pfad haben muss."
         }
       },
       "adv": {
@@ -71,6 +78,7 @@
     },
     "error": {
       "directory_not_exists": "Ordner existiert nicht oder ist nicht zugänglich"
+      "yt_no_cookie": "Youtube Music benötigt einen Cookie im Passwortfeld, siehe: https://github.com/music-assistant/hass-music-assistant/discussions/606"
     }
   }
 }
