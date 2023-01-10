@@ -27,7 +27,7 @@
           "filesystem_directory": "Pfad im Dateisystem zu deinen Musikdateien."
         },
         "data_description": {
-          "filesystem_directory": "Gebe den vollständigen Pfad im Dateisystem an, an dem deine Musikdateien abgespeichert sind. (z.B. /media). Berücksichtige, das Home Assistant Zugriff auf diesen Pfad haben muss."
+          "filesystem_directory": "Gebe den vollständigen Pfad im Dateisystem an, an dem deine Musikdateien abgespeichert sind. (z.B. /media). Berücksichtige, dass Home Assistant Zugriff auf diesen Pfad haben muss."
         }
       }
     },
