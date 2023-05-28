@@ -1,84 +1,61 @@
 {
-  "config": {
-    "step": {
-      "user": {
-        "title": "Media players",
-        "description": "Configure which Home Assistant media players you would like to use with Music Assistant.",
-        "data": {
-          "player_entities": "Player entities"
-        }
-      },
-      "music": {
-        "title": "Set-up Music Providers",
-        "description": "Please configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
-        "data": {
-          "spotify_enabled": "Enable Spotify music provider",
-          "spotify_username": "Username for Spotify",
-          "spotify_password": "Password for Spotify",
-          "qobuz_enabled": "Enable Qobuz music provider",
-          "qobuz_username": "Username for Qobuz",
-          "qobuz_password": "Password for Qobuz",
-          "ytmusic_enabled": "Enable Youtube Music provider",
-          "ytmusic_username": "Username for Youtube Music",
-          "ytmusic_password": "Log-in Cookie for Youtube Music",
-          "tunein_enabled": "Enable Tune-In Radio music provider",
-          "tunein_username": "Username for Tune-In Radio",
-          "filesystem_enabled": "Enable filesystem provider",
-          "filesystem_directory": "Directory on disk to your music files."
-        },
-        "data_description": {
-          "filesystem_directory": "Specify the full path on disk where your media files are stored (e.g. /media). Note that Home Assistant must have access to this location."
-        }
-      }
+  "issues": {
+    "prev_version": {
+      "title": "A reinstall of the Music Assistant integration is needed.",
+      "description": "Music Assistant 2.0 needs a reinstall of the Home Assistant integration. Remove the Music Assistant entry from your Home Assistant integrations and re-add it."
     },
-    "error": {
-      "directory_not_exists": "Directory does not exist or not accessible",
-      "yt_no_cookie": "Youtube Music requires a cookie in the password field, see here: https://github.com/music-assistant/hass-music-assistant/discussions/606"
+    "invalid_server_version": {
+      "title": "The Music Assistant server is not the correct version",
+      "description": "Check if there are updates available for the Music Assistant Server and/or integration."
     }
   },
-  "options": {
+  "config": {
+    "flow_title": "{name}",
     "step": {
-      "init": {
-        "title": "Media players",
-        "description": "Configure which Home Assistant media players you would like to use with Music Assistant.",
+      "manual": {
         "data": {
-          "player_entities": "Player entities"
+          "url": "URL of the Music Assistant server"
         }
       },
-      "music": {
-        "title": "Music Providers",
-        "description": "Configure which music providers you want to enable. For each enabled music provider, enter your credentials below.",
+      "on_supervisor": {
+        "title": "Select connection method",
+        "description": "Do you want to use the official Music Assistant Server add-on?\n\nIf you are already running the Music Assistant Server in another add-on, in a custom container, natively etc., then do not select this option.",
         "data": {
-          "spotify_enabled": "Enable Spotify music provider",
-          "spotify_username": "Username for Spotify",
-          "spotify_password": "Password for Spotify",
-          "qobuz_enabled": "Enable Qobuz music provider",
-          "qobuz_username": "Username for Qobuz",
-          "qobuz_password": "Password for Qobuz",
-          "ytmusic_enabled": "Enable Youtube Music provider",
-          "ytmusic_username": "Username for Youtube Music",
-          "ytmusic_password": "Log-in Cookie for Youtube Music",
-          "tunein_enabled": "Enable Tune-In Radio music provider",
-          "tunein_username": "Username for Tune-In Radio",
-          "filesystem_enabled": "Enable filesystem provider",
-          "filesystem_directory": "Directory on disk to your music files."
-        },
-        "data_description": {
-          "filesystem_directory": "Specify the full path on disk where your media files are stored (e.g. /media). Note that Home Assistant must have access to this location."
+          "use_addon": "Use the official Music Assistant Server add-on"
         }
       },
-      "adv": {
-        "title": "Advanced",
-        "description": "Configure advanced options for Music Assistant.",
-        "data": {
-          "hide_source_players": "Hide source players in the Home Assistant UI.",
-          "create_mass_players": "Create mediaplayers for Music Assistant players in Home Assistant."
-        }
+      "install_addon": {
+        "title": "The add-on installation has started"
+      },
+      "start_addon": {
+        "title": "Starting add-on."
+      },
+      "hassio_confirm": {
+        "title": "Set up the Music Assistant integration with the Music Assistant Server add-on"
+      },
+      "discovery_confirm": {
+        "description": "Do you want to add the Music Assistant Server `{url}` to Home Assistant?",
+        "title": "Discovered Music Assistant Server"
       }
     },
     "error": {
-      "directory_not_exists": "Directory does not exist or not accessible",
-      "yt_no_cookie": "Youtube Music requires a cookie in the password field, see here: https://github.com/music-assistant/hass-music-assistant/discussions/606"
+      "cannot_connect": "Failed to connect",
+      "unknown": "Unexpected error"
+  },
+    "abort": {
+      "addon_get_discovery_info_failed": "Failed to get Music Assistant Server add-on discovery info.",
+      "addon_info_failed": "Failed to get Music Assistant Server add-on info.",
+      "addon_install_failed": "Failed to install the Music Assistant Server add-on.",
+      "addon_start_failed": "Failed to start the Music Assistant Server add-on.",
+      "already_configured": "Device is already configured",
+      "already_in_progress": "Configuration flow is already in progress",
+      "not_matter_addon": "Discovered add-on is not the official Music Assistant Server add-on.",
+      "reconfiguration_successful": "Successfully reconfigured the Music Assistant integration.",
+      "cannot_connect": "Failed to connect"
+  },
+    "progress": {
+      "install_addon": "Please wait while the Music Assistant Server add-on installation finishes. This can take several minutes.",
+      "start_addon": "Please wait while the Music Assistant Server add-on starts. This add-on is what powers Music Assistant in Home Assistant. This may take some seconds."
     }
   }
 }

@@ -1,8 +1,8 @@
 # Music Assistant
 
-[![latest version](https://img.shields.io/github/release/music-assistant/hass-music-assistant?display_name=tag&include_prereleases&label=latest%20version)](https://github.com/music-assistant/hass-music-assistant/releases) 
-[![discord](https://img.shields.io/discord/753947050995089438?label=Chat&logo=discord)](https://discord.gg/kaVm8hGpne) 
-[![hacs](https://img.shields.io/badge/HACS-Default-41BDF5?label=HACS)](https://github.com/hacs/integration) 
+[![latest version](https://img.shields.io/github/release/music-assistant/hass-music-assistant?display_name=tag&include_prereleases&label=latest%20version)](https://github.com/music-assistant/hass-music-assistant/releases)
+[![discord](https://img.shields.io/discord/753947050995089438?label=Chat&logo=discord)](https://discord.gg/kaVm8hGpne)
+[![hacs](https://img.shields.io/badge/HACS-Default-41BDF5?label=HACS)](https://github.com/hacs/integration)
 [![sponsor](https://img.shields.io/github/sponsors/music-assistant?label=sponsors)](https://github.com/sponsors/music-assistant)
 
 
@@ -72,7 +72,7 @@ Music Assistant consists of multiple building blocks:
 - Restart Home Assistant.
 - Go to Configuration -> Integrations and click the big `+` button.
 - Look for Music Assistant and click to add it.
-- If Home Assistant does not show, refresh your brower (cache).
+- If Home Assistant does not show, refresh your browser (cache).
 - Follow the steps for initial configuration, like what players you want to use and music providers.
 - The Music Assistant integration is ready for use.
 - You can find the panel in the menu on the left for the rich user interface or use the default Home Assistant Media panel to quickly browse your music.
@@ -88,7 +88,7 @@ Music Assistant consists of multiple building blocks:
 - Music sources are synced at integration (re)load and every 3 hours.
 - If a song is available on multiple providers (e.g. Spotify and a flac file on disk), the file/stream with the highest quality is always preferred when starting a stream.
 - Music Assistant uses a custom stream port (TCP 8095 by default) to stream audio to players. Players must be able to reach the Home Assistant instance and this port. If you're running one of the recommended Home Assistant installation methods, this is all handled for you, otherwise you will have to make sure you're running HA in HOST network mode. Note: If the default port 8095 is occupied, the next port will be tried, and so on.
-- Music Assistant will create its own media players if you select the bottom option in the advanced configuration screen. If you have a player such as media_player.kitchen_speaker you will find a new one called media_player.mass_kitchen_speaker. These new players are just like any other media players and should be used in automations and scripts. 
+- Music Assistant will create its own media players if you select the bottom option in the advanced configuration screen. If you have a player such as media_player.kitchen_speaker you will find a new one called media_player.mass_kitchen_speaker. These new players are just like any other media players and should be used in automations and scripts.
 
 ![image](https://user-images.githubusercontent.com/19848947/184626841-f67694f8-ca94-4a84-90d7-eb7ed5e85be6.png)
 
@@ -101,7 +101,7 @@ Music Assistant consists of multiple building blocks:
 
 ## File System specific notes
 
-- When using the file system provider, make sure that your audio files can be reached from Home Assistant, for example /media/music. 
+- When using the file system provider, make sure that your audio files can be reached from Home Assistant, for example /media/music.
 - There is not (yet) direct support for remote file locations such as SMB, cloud drives etc however SMB shares can be mounted via the OS and then will be accessible. See here for the details https://github.com/music-assistant/hass-music-assistant/discussions/452
 - It is very important that all of your audio files contain proper ID3 tag information. The more comprehensive the tagging the better the results will be when using MA. For this reason it is strongly recommended that all files are tagged with MusicBrainz Picard. It is also important that the audio files are stored in a folder structure that is typical of other audio library applications. To minimise the chance of problems with MA you should follow the Kodi guidelines here https://kodi.wiki/view/Music_tagging Just about all the tips, tricks and suggestions on that page are applicable to MA and if you follow it all to the letter you will have a much better experience.
 - If you have local artwork then it is important that album names match exactly the tagged album name except characters that are not allowed in folder names are not parsed. Therefore, "The Big Chill: Soundtrack" will match "The Big Chill Soundtrack" but "Vika and Linda" will not match "Vika & Linda"
@@ -138,7 +138,7 @@ In some cases it just works out of the box and in some cases it will need a few 
 
 With a large project like this, there is always enough todo. Not only with actual writing of code but also in documentation, providing support, testing etc. Ofcourse you help me out greatly by donating me a few bucks but helping out can also be done in other ways:
 
-- If you like to help with the development, e.g. implementing a new music provider or fix a player specific quirk, please reach out to me on discord in a PM. I did not have time to write extended development docs but once you get the grasp of the structure it is relatively straight forward. 
+- If you like to help with the development, e.g. implementing a new music provider or fix a player specific quirk, please reach out to me on discord in a PM. I did not have time to write extended development docs but once you get the grasp of the structure it is relatively straight forward.
 - Help others out on discord or within the discussions part of Github.
 - Help out with writing documentation and HOWTO's and the FAQ's.
 - Just like [erkr](https://github.com/erkr) and [OzGav](https://github.com/OzGav) help out as a moderator on discord and Github with the load of incoming reports, request and questions. Thanks guys!
@@ -151,7 +151,7 @@ As explained above you can also show your appreciation in all kinds of ways. Bes
 - [Github Sponsors](https://github.com/music-assistant)
 - [Buy me a Coffee](https://www.buymeacoffee.com/marcelveldt)
 
-A really big thank you in advance from me and my family! 
+A really big thank you in advance from me and my family!
 
 ___________________________________________
 

@@ -1,355 +1,322 @@
-"""Config flow for Music Assistant integration."""
+"""Config flow for MusicAssistant integration."""
+from __future__ import annotations
 
-import os
-from typing import List
+import asyncio
+from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.components.media_player import DOMAIN as MP_DOMAIN
-from homeassistant.components.media_player import (
-    SUPPORT_PAUSE,
-    SUPPORT_PLAY,
-    SUPPORT_PLAY_MEDIA,
-    MediaPlayerEntity,
+from homeassistant.components import zeroconf
+from homeassistant.components.hassio import (
+    AddonError,
+    AddonInfo,
+    AddonManager,
+    AddonState,
+    is_hassio,
 )
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers import selector
-from homeassistant.helpers.entity_component import DATA_INSTANCES
+from homeassistant.const import CONF_URL
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import AbortFlow, FlowResult
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import aiohttp_client
+from music_assistant.client import MusicAssistantClient
+from music_assistant.client.exceptions import CannotConnect, InvalidServerVersion
+from music_assistant.common.models.api import ServerInfoMessage
 
+from .addon import get_addon_manager, install_repository
 from .const import (
-    BLACKLIST_DOMAINS,
-    CONF_CREATE_MASS_PLAYERS,
-    CONF_FILE_DIRECTORY,
-    CONF_FILE_ENABLED,
-    CONF_HIDE_SOURCE_PLAYERS,
-    CONF_PLAYER_ENTITIES,
-    CONF_QOBUZ_ENABLED,
-    CONF_QOBUZ_PASSWORD,
-    CONF_QOBUZ_USERNAME,
-    CONF_SPOTIFY_ENABLED,
-    CONF_SPOTIFY_PASSWORD,
-    CONF_SPOTIFY_USERNAME,
-    CONF_TUNEIN_ENABLED,
-    CONF_TUNEIN_USERNAME,
-    CONF_YTMUSIC_ENABLED,
-    CONF_YTMUSIC_PASSWORD,
-    CONF_YTMUSIC_USERNAME,
-    DEFAULT_NAME,
+    ADDON_HOSTNAME,
+    CONF_INTEGRATION_CREATED_ADDON,
+    CONF_USE_ADDON,
     DOMAIN,
+    LOGGER,
 )
 
-REQUIRED_FEATURES = (
-    SUPPORT_PLAY_MEDIA,
-    SUPPORT_PLAY,
-    SUPPORT_PAUSE,
-)
-
-DEFAULT_CONFIG = {
-    CONF_HIDE_SOURCE_PLAYERS: True,
-    CONF_CREATE_MASS_PLAYERS: True,
-    CONF_PLAYER_ENTITIES: [],
-    CONF_SPOTIFY_ENABLED: False,
-    CONF_SPOTIFY_USERNAME: "",
-    CONF_SPOTIFY_PASSWORD: "",
-    CONF_QOBUZ_ENABLED: False,
-    CONF_QOBUZ_USERNAME: "",
-    CONF_QOBUZ_PASSWORD: "",
-    CONF_TUNEIN_ENABLED: False,
-    CONF_TUNEIN_USERNAME: "",
-    CONF_YTMUSIC_ENABLED: False,
-    CONF_YTMUSIC_USERNAME: "",
-    CONF_YTMUSIC_PASSWORD: "",
-    CONF_FILE_ENABLED: False,
-    CONF_FILE_DIRECTORY: "",
-}
+ADDON_SETUP_TIMEOUT = 5
+ADDON_SETUP_TIMEOUT_ROUNDS = 40
+DEFAULT_URL = "http://mass.local:8095"
+ADDON_URL = f"http://{ADDON_HOSTNAME}:8095"
+DEFAULT_TITLE = "Music Assistant"
+ON_SUPERVISOR_SCHEMA = vol.Schema({vol.Optional(CONF_USE_ADDON, default=True): bool})
 
 
-@callback
-def hide_player_entities(
-    hass: HomeAssistant, entity_ids: List[str], hide: bool
-) -> None:
-    """Hide/unhide media_player entities that are used as source for Music Assistant."""
-    # Hide the wrapped entry if registered
-    registry = er.async_get(hass)
-    for entity_id in entity_ids:
-        entity_entry = registry.async_get(entity_id)
-        if entity_entry is None:
-            continue
-        if entity_entry.hidden and not hide:
-            registry.async_update_entity(entity_id, hidden_by=None)
-        elif not entity_entry.hidden and hide:
-            registry.async_update_entity(
-                entity_id, hidden_by=er.RegistryEntryHider.INTEGRATION
-            )
+def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
+    """Return a schema for the manual step."""
+    default_url = user_input.get(CONF_URL, DEFAULT_URL)
+    return vol.Schema({vol.Required(CONF_URL, default=default_url): str})
 
 
-@callback
-def get_players_schema(hass: HomeAssistant, cur_conf: dict) -> vol.Schema:
-    """Return player config schema."""
-    control_entities = hass.states.async_entity_ids(MP_DOMAIN)
-    # filter any non existing device id's from the list to prevent errors
-    cur_ids = [
-        item for item in cur_conf[CONF_PLAYER_ENTITIES] if item in control_entities
-    ]
-    # blacklist unsupported and mass entities
-    exclude_entities = []
-    for entity_id in control_entities:
-        if entity_id in cur_ids:
-            continue
-        entity_comp = hass.data.get(DATA_INSTANCES, {}).get(MP_DOMAIN)
-        entity: MediaPlayerEntity = entity_comp.get_entity(entity_id)
-        if (
-            not entity
-            or entity.platform.platform_name == DOMAIN
-            or entity.platform.platform_name in BLACKLIST_DOMAINS
-        ):
-            exclude_entities.append(entity_id)
-            continue
-        # require some basic features, most important `play_media`
-        if not (
-            entity.support_play_media
-            and entity.support_play
-            and entity.support_volume_set
-        ):
-            exclude_entities.append(entity_id)
-
-    return vol.Schema(
-        {
-            vol.Optional(CONF_PLAYER_ENTITIES, default=cur_ids): selector.selector(
-                {
-                    "entity": {
-                        "domain": "media_player",
-                        "multiple": True,
-                        "exclude_entities": exclude_entities,
-                    }
-                }
-            )
-        }
-    )
+async def get_server_info(hass: HomeAssistant, url: str) -> ServerInfoMessage:
+    """Validate the user input allows us to connect."""
+    async with MusicAssistantClient(
+        url, aiohttp_client.async_get_clientsession(hass)
+    ) as client:
+        return client.server_info
 
 
-@callback
-def get_music_schema(cur_conf: dict):
-    """Return music config schema."""
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_SPOTIFY_ENABLED,
-                default=cur_conf[CONF_SPOTIFY_ENABLED],
-            ): bool,
-            vol.Optional(
-                CONF_SPOTIFY_USERNAME,
-                default=cur_conf[CONF_SPOTIFY_USERNAME],
-            ): str,
-            vol.Optional(
-                CONF_SPOTIFY_PASSWORD,
-                default=cur_conf[CONF_SPOTIFY_PASSWORD],
-            ): str,
-            vol.Required(
-                CONF_QOBUZ_ENABLED, default=cur_conf[CONF_QOBUZ_ENABLED]
-            ): bool,
-            vol.Optional(
-                CONF_QOBUZ_USERNAME, default=cur_conf[CONF_QOBUZ_USERNAME]
-            ): str,
-            vol.Optional(
-                CONF_QOBUZ_PASSWORD, default=cur_conf[CONF_QOBUZ_PASSWORD]
-            ): str,
-            vol.Required(
-                CONF_YTMUSIC_ENABLED, default=cur_conf.get(CONF_YTMUSIC_ENABLED, False)
-            ): bool,
-            vol.Optional(
-                CONF_YTMUSIC_USERNAME, default=cur_conf.get(CONF_YTMUSIC_USERNAME, "")
-            ): str,
-            vol.Optional(
-                CONF_YTMUSIC_PASSWORD, default=cur_conf.get(CONF_YTMUSIC_PASSWORD, "")
-            ): str,
-            vol.Required(
-                CONF_TUNEIN_ENABLED,
-                default=cur_conf[CONF_TUNEIN_ENABLED],
-            ): bool,
-            vol.Optional(
-                CONF_TUNEIN_USERNAME, default=cur_conf[CONF_TUNEIN_USERNAME]
-            ): str,
-            vol.Required(
-                CONF_FILE_ENABLED,
-                default=cur_conf[CONF_FILE_ENABLED],
-            ): bool,
-            vol.Optional(
-                CONF_FILE_DIRECTORY, default=cur_conf[CONF_FILE_DIRECTORY]
-            ): str,
-        }
-    )
-
-
-@callback
-def validate_config(user_input: dict) -> dict:
-    """Validate config and return dict with any errors."""
-    errors = {}
-    # check file provider config
-    if user_input.get(CONF_FILE_ENABLED):
-        # check if music directory is valid
-        music_dir = user_input.get(CONF_FILE_DIRECTORY)
-        if music_dir and not os.path.isdir(music_dir):
-            errors[CONF_FILE_DIRECTORY] = "directory_not_exists"
-    if user_input.get(CONF_YTMUSIC_ENABLED):
-        # check if user has cookie in password
-        yt_pass = user_input.get(CONF_YTMUSIC_PASSWORD)
-        if not CONF_YTMUSIC_PASSWORD or len(yt_pass) < 50:
-            errors[CONF_YTMUSIC_PASSWORD] = "yt_no_cookie"
-    return errors
+# ruff: noqa: ARG002
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Music Assistant."""
+    """Handle a config flow for MusicAssistant."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
-        """Return the options flow."""
-        return OptionsFlowHandler(config_entry)
+    def __init__(self) -> None:
+        """Set up flow instance."""
+        self.server_info: ServerInfoMessage | None = None
+        # If we install the add-on we should uninstall it on entry remove.
+        self.integration_created_addon = False
+        self.install_task: asyncio.Task | None = None
+        self.start_task: asyncio.Task | None = None
+        self.use_addon = False
 
-    def __init__(self, *args, **kwargs) -> None:
-        """Initialize."""
-        super().__init__(*args, **kwargs)
-        self.data = {**DEFAULT_CONFIG}
+    async def async_step_install_addon(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Install MusicAssistant Server add-on."""
+        if not self.install_task:
+            self.install_task = self.hass.async_create_task(self._async_install_addon())
+            return self.async_show_progress(
+                step_id="install_addon", progress_action="install_addon"
+            )
+        try:
+            await self.install_task
+        except AddonError as err:
+            self.install_task = None
+            LOGGER.error(err)
+            return self.async_show_progress_done(next_step_id="install_failed")
 
-    async def async_step_user(self, user_input=None):
-        """Handle getting base config from the user."""
+        self.integration_created_addon = True
+        self.install_task = None
 
-        errors = None
+        return self.async_show_progress_done(next_step_id="start_addon")
 
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
+    async def async_step_install_failed(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add-on installation failed."""
+        return self.async_abort(reason="addon_install_failed")
 
-        if user_input is not None:
-            self.data.update(user_input)
-            return await self.async_step_music()
+    async def _async_install_addon(self) -> None:
+        """Install the MusicAssistant Server add-on."""
+        addon_manager: AddonManager = get_addon_manager(self.hass)
+        try:
+            await addon_manager.async_schedule_install_addon()
+        finally:
+            # Continue the flow after show progress when the task is done.
+            self.hass.async_create_task(
+                self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
+            )
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=get_players_schema(self.hass, self.data),
-            last_step=False,
-            errors=errors,
-        )
+    async def async_step_start_addon(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Start MusicAssistant Server add-on."""
+        if not self.start_task:
+            self.start_task = self.hass.async_create_task(self._async_start_addon())
+            return self.async_show_progress(
+                step_id="start_addon", progress_action="start_addon"
+            )
+        try:
+            await self.start_task
+        except (FailedConnect, AddonError, AbortFlow) as err:
+            self.start_task = None
+            LOGGER.error(err)
+            return self.async_show_progress_done(next_step_id="start_failed")
 
-    async def async_step_music(self, user_input=None):
-        """Handle getting music provider config from the user."""
+        self.start_task = None
+        return self.async_show_progress_done(next_step_id="finish_addon_setup")
 
-        errors = None
+    async def async_step_start_failed(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Add-on start failed."""
+        return self.async_abort(reason="addon_start_failed")
 
-        if user_input is not None:
-            self.data.update(user_input)
-            errors = validate_config(user_input)
+    async def _async_start_addon(self) -> None:
+        """Start the MusicAssistant Server add-on."""
+        addon_manager: AddonManager = get_addon_manager(self.hass)
 
-            if not errors:
-                # config complete, store entry
-                self.data.update(user_input)
-                hide_player_entities(
-                    self.hass,
-                    self.data[CONF_PLAYER_ENTITIES],
-                    self.data[CONF_HIDE_SOURCE_PLAYERS],
+        try:
+            await addon_manager.async_schedule_start_addon()
+            # Sleep some seconds to let the add-on start properly before connecting.
+            for _ in range(ADDON_SETUP_TIMEOUT_ROUNDS):
+                await asyncio.sleep(ADDON_SETUP_TIMEOUT)
+                try:
+                    self.server_info = await get_server_info(self.hass, ADDON_URL)
+                    await self.async_set_unique_id(self.server_info.server_id)
+                except (AbortFlow, CannotConnect) as err:
+                    LOGGER.debug(
+                        "Add-on not ready yet, waiting %s seconds: %s",
+                        ADDON_SETUP_TIMEOUT,
+                        err,
+                    )
+                else:
+                    break
+            else:
+                raise FailedConnect(
+                    "Failed to start MusicAssistant Server add-on: timeout"
                 )
-                return self.async_create_entry(
-                    title=DEFAULT_NAME, data={}, options={**self.data}
-                )
+        finally:
+            # Continue the flow after show progress when the task is done.
+            self.hass.async_create_task(
+                self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
+            )
+
+    async def _async_get_addon_info(self) -> AddonInfo:
+        """Return MusicAssistant Server add-on info."""
+        addon_manager: AddonManager = get_addon_manager(self.hass)
+        try:
+            addon_info: AddonInfo = await addon_manager.async_get_addon_info()
+        except AddonError as err:
+            LOGGER.error(err)
+            raise AbortFlow("addon_info_failed") from err
+
+        return addon_info
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the initial step."""
+        if is_hassio(self.hass):
+            return await self.async_step_on_supervisor()
+
+        return await self.async_step_manual()
+
+    async def async_step_manual(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle a manual configuration."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="manual", data_schema=get_manual_schema({})
+            )
+
+        errors = {}
+
+        try:
+            self.server_info = await get_server_info(self.hass, user_input[CONF_URL])
+            await self.async_set_unique_id(self.server_info.server_id)
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
+        except InvalidServerVersion:
+            errors["base"] = "invalid_server_version"
+        except Exception:  # pylint: disable=broad-except
+            LOGGER.exception("Unexpected exception")
+            errors["base"] = "unknown"
+        else:
+            return await self._async_create_entry_or_abort()
 
         return self.async_show_form(
-            step_id="music",
-            data_schema=get_music_schema(self.data),
-            last_step=True,
-            errors=errors,
+            step_id="manual", data_schema=get_manual_schema(user_input), errors=errors
         )
 
+    async def async_step_zeroconf(
+        self, discovery_info: zeroconf.ZeroconfServiceInfo
+    ) -> FlowResult:
+        """
+        Handle a discovered Mass server.
 
-class OptionsFlowHandler(config_entries.OptionsFlow):
-    """OptionsFlow handler."""
+        This flow is triggered by the Zeroconf component. It will check if the
+        host is already configured and delegate to the import step if not.
+        """
+        # abort if we already have exactly this server_id
+        # reload the integration if the host got updated
+        server_id = discovery_info.properties["server_id"]
+        base_url = discovery_info.properties["base_url"]
+        await self.async_set_unique_id(server_id)
+        self._abort_if_unique_id_configured(
+            updates={CONF_URL: base_url},
+            reload_on_update=True,
+        )
+        self.server_info = ServerInfoMessage.from_dict(discovery_info.properties)
+        return await self.async_step_discovery_confirm()
 
-    def __init__(self, config_entry: config_entries.ConfigEntry):
-        """Initialize options flow."""
-        self.config_entry = config_entry
-        self.data = {**self.config_entry.options}
-
-    async def async_step_init(self, user_input=None):
-        """Handle getting base config from the user."""
-
+    async def async_step_discovery_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle user-confirmation of discovered server."""
         if user_input is not None:
-            # figure out if any players are removed
-            prev_players = set(self.data[CONF_PLAYER_ENTITIES])
-            new_players = set(user_input.get(CONF_PLAYER_ENTITIES, []))
-            removed_players = prev_players - new_players
-            if removed_players:
-                hide_player_entities(self.hass, removed_players, False)
-
-            self.data.update(user_input)
-            return await self.async_step_music()
-
+            # Check that we can connect to the address.
+            try:
+                await get_server_info(self.hass, self.server_info.base_url)
+            except CannotConnect:
+                return self.async_abort(reason="cannot_connect")
+            return await self._async_create_entry_or_abort()
         return self.async_show_form(
-            step_id="init",
-            data_schema=get_players_schema(self.hass, self.data),
-            last_step=False,
+            step_id="discovery_confirm",
+            description_placeholders={"url": self.server_info.base_url},
         )
 
-    async def async_step_music(self, user_input=None):
-        """Handle getting music provider config from the user."""
+    async def async_step_on_supervisor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle logic when on Supervisor host."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="on_supervisor", data_schema=ON_SUPERVISOR_SCHEMA
+            )
+        if not user_input[CONF_USE_ADDON]:
+            return await self.async_step_manual()
 
-        errors = None
+        self.use_addon = True
+        await install_repository(self.hass)
+        addon_info = await self._async_get_addon_info()
 
-        if user_input is not None:
-            self.data.update(user_input)
-            errors = validate_config(user_input)
+        if addon_info.state == AddonState.RUNNING:
+            return await self.async_step_finish_addon_setup()
 
-            if not errors:
-                return await self.async_step_adv()
+        if addon_info.state == AddonState.NOT_RUNNING:
+            return await self.async_step_start_addon()
 
-        return self.async_show_form(
-            step_id="music",
-            data_schema=get_music_schema(self.data),
-            last_step=False,
-            errors=errors,
+        return await self.async_step_install_addon()
+
+    async def async_step_finish_addon_setup(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Prepare info needed to complete the config entry."""
+        if not self.server_info:
+            # Check that we can connect to the address.
+            try:
+                self.server_info = await get_server_info(self.hass, ADDON_URL)
+            except CannotConnect:
+                return self.async_abort(reason="cannot_connect")
+        return await self._async_create_entry_or_abort()
+
+    async def _async_create_entry_or_abort(self) -> FlowResult:
+        """Return a config entry for the flow or abort if already configured."""
+        assert self.server_info is not None
+
+        for config_entry in self._async_current_entries():
+            if config_entry.unique_id != self.server_info.server_id:
+                continue
+            self.hass.config_entries.async_update_entry(
+                config_entry,
+                data={
+                    **config_entry.data,
+                    CONF_URL: self.server_info.base_url,
+                    CONF_USE_ADDON: self.use_addon,
+                    CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
+                },
+                title=DEFAULT_TITLE,
+            )
+            await self.hass.config_entries.async_reload(config_entry.entry_id)
+            raise AbortFlow("reconfiguration_successful")
+
+        # Abort any other flows that may be in progress
+        for progress in self._async_in_progress():
+            self.hass.config_entries.flow.async_abort(progress["flow_id"])
+
+        return self.async_create_entry(
+            title=DEFAULT_TITLE,
+            data={
+                CONF_URL: self.server_info.base_url,
+                CONF_USE_ADDON: self.use_addon,
+                CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
+            },
         )
 
-        # return self.async_show_menu(
-        #     step_id="user",
-        #     menu_options=["add_new", "spotify_1", "spotify_2"],
-        #     description_placeholders={
-        #         "add_new": "Add new music provider",
-        #     }
-        # )
 
-    async def async_step_adv(self, user_input=None):
-        """Handle getting advanced config options from the user."""
-
-        if user_input is not None:
-            self.data.update(user_input)
-            errors = validate_config(user_input)
-
-            if not errors:
-                # config complete, store entry
-                self.data.update(user_input)
-                hide_player_entities(
-                    self.hass,
-                    self.data[CONF_PLAYER_ENTITIES],
-                    self.data[CONF_HIDE_SOURCE_PLAYERS],
-                )
-                return self.async_create_entry(title=DEFAULT_NAME, data={**self.data})
-
-        return self.async_show_form(
-            step_id="adv",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_HIDE_SOURCE_PLAYERS,
-                        default=self.data[CONF_HIDE_SOURCE_PLAYERS],
-                    ): selector.selector({"boolean": {}}),
-                    vol.Required(
-                        CONF_CREATE_MASS_PLAYERS,
-                        default=self.data[CONF_CREATE_MASS_PLAYERS],
-                    ): selector.selector({"boolean": {}}),
-                }
-            ),
-            last_step=True,
-        )
+class FailedConnect(HomeAssistantError):
+    """Failed to connect to the MusicAssistant Server."""

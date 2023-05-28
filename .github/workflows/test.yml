@@ -37,4 +37,3 @@ jobs:
       - name: Run pylint on changed files
         run: |
           pylint -rn -sn --rcfile=pylintrc --fail-on=I $(git ls-files '*.py')
-

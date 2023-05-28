@@ -2,12 +2,18 @@
 
 queue_command:
   name: Queue command
-  description: "Send a command directly to a Music Assistant player(queue), bypassing the need for a Music Assistant generated player. You may provide the origin media_player as well as the (optional) media_player entity created by MA itself. Note: Only use this special service for advanced purposes. Usually you can just the builtin HA services."
-  target:
-    entity:
-      domain: media_player
+  description: "Send a command directly to a Music Assistant player(queue). Note: Only use this special service for advanced purposes. Usually you can just the builtin HA services."
   fields:
-    
+
+    player_id:
+      name: Player ID
+      description: Music Assistant Player ID of the player to execute the command. May also be the HA entity ID of a MA player.
+      required: true
+      advanced: false
+      example: "aa:bb:cc:dd:ee"
+      selector:
+        text:
+
     command:
       name: Command
       description: The command to issue on the player(queue).
@@ -32,8 +38,8 @@ queue_command:
             - play_announcement
 
     uri:
-      name: Media item to play
-      description: To be used together with play_media command, the uri to play on the queue.
+      name: Media item(s) to play
+      description: To be used together with play_media command, the uri(s) to play on the queue. May also be the name of an item you want to play.
       required: false
       advanced: false
       example: "spotify://playlist/aabbccddeeff"
@@ -66,10 +72,10 @@ queue_command:
             - "one"
             - "all"
             - "off"
-    
+
     radio_mode:
       name: Enable radio mode.
-      description: "Only to be used with play_media command: Wether to enable radio mode."
+      description: "Only to be used with play_media command: Whether to enable radio mode."
       required: false
       advanced: true
       selector:

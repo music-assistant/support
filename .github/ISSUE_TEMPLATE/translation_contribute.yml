@@ -6,8 +6,8 @@ body:
     attributes:
       value: |
         This issue form is for contributions to translations only!
-        More information on the process can be found in the discussions [see here][lc] 
- 
+        More information on the process can be found in the discussions [see here][lc]
+
         [lc]: https://github.com/orgs/music-assistant/discussions/1216
 
   - type: input
@@ -22,7 +22,7 @@ body:
   - type: textarea
     id: additional_remarks
     validations:
-      required: false    
+      required: false
     attributes:
       label: Additional remarks
       description: |

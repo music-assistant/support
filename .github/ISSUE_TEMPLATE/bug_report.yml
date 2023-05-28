@@ -7,8 +7,8 @@ body:
       value: |
         This issue form is for reporting bugs only!
         For questions read our [FAQ section][fq] or visit our community on [Discord][cf].
-        If you have a feature or enhancement request, please enter them in our discussions section [feature request][fr] 
- 
+        If you have a feature or enhancement request, please enter them in our discussions section [feature request][fr]
+
         [fq]: https://github.com/music-assistant/hass-music-assistant/discussions/categories/q-a-faq
         [cf]: https://discord.com/channels/753947050995089438/753947050995089442
         [fr]: https://github.com/music-assistant/hass-music-assistant/discussions/categories/feature-requests-and-ideas
@@ -20,7 +20,7 @@ body:
       label: What version of Music Assistant has the issue?
       placeholder: 2022.x.y
       description: >
-        Can be found in: HACS -> Integrations -> Music Assistant -> Information 
+        Can be found in: HACS -> Integrations -> Music Assistant -> Information
         For example: 2022.6.2
   - type: textarea
     validations:
@@ -28,7 +28,7 @@ body:
     attributes:
       label: The problem
       description: |
-        Please give a clear and concise description of the issue you are experiencing here, 
+        Please give a clear and concise description of the issue you are experiencing here,
         to communicate to the maintainers. Tell us what you were trying to do and what happened.
   - type: textarea
     validations:

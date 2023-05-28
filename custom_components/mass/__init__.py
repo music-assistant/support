@@ -2,292 +2,247 @@
 from __future__ import annotations
 
 import asyncio
-import logging
-import os
-import pathlib
-import socket
-from urllib.parse import urlparse
 
-from awesomeversion import AwesomeVersion, AwesomeVersionStrategy
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
-from homeassistant.const import __version__ as HA_VERSION
-from homeassistant.core import Event, HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+import async_timeout
+from homeassistant.components.hassio import AddonError, AddonManager, AddonState
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.const import CONF_URL, EVENT_HOMEASSISTANT_STOP
+from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.json import json_loads
-from homeassistant.helpers.network import NoURLAvailableError, get_url
-from homeassistant.helpers.start import async_at_start
-from music_assistant import MusicAssistant
-from music_assistant.models.config import MassConfig, MusicProviderConfig
-from music_assistant.models.enums import ProviderType
-from music_assistant.models.errors import MusicAssistantError
-from music_assistant.models.event import MassEvent
-
-from .config_flow import hide_player_entities
-from .const import (
-    CONF_CREATE_MASS_PLAYERS,
-    CONF_FILE_DIRECTORY,
-    CONF_FILE_ENABLED,
-    CONF_PLAYER_ENTITIES,
-    CONF_QOBUZ_ENABLED,
-    CONF_QOBUZ_PASSWORD,
-    CONF_QOBUZ_USERNAME,
-    CONF_SPOTIFY_ENABLED,
-    CONF_SPOTIFY_PASSWORD,
-    CONF_SPOTIFY_USERNAME,
-    CONF_TUNEIN_ENABLED,
-    CONF_TUNEIN_USERNAME,
-    CONF_YTMUSIC_ENABLED,
-    CONF_YTMUSIC_PASSWORD,
-    CONF_YTMUSIC_USERNAME,
-    DOMAIN,
-    DOMAIN_EVENT,
+from homeassistant.helpers.issue_registry import (
+    IssueSeverity,
+    async_create_issue,
+    async_delete_issue,
 )
-from .panel import async_register_panel
-from .player_controls import async_register_player_controls
+from music_assistant.client import MusicAssistantClient
+from music_assistant.client.exceptions import CannotConnect, InvalidServerVersion
+from music_assistant.common.models.errors import MusicAssistantError
+
+from .addon import get_addon_manager
+from .const import CONF_INTEGRATION_CREATED_ADDON, CONF_USE_ADDON, DOMAIN, LOGGER
+from .helpers import MassEntryData
 from .services import register_services
-from .websockets import async_register_websockets
 
-LOGGER = logging.getLogger(__name__)
+PLATFORMS = ("media_player",)
 
-PLATFORMS = ("media_player", "switch", "number", "select")
-
-MIN_HA_VERSION = "2022.11.0"
-MAX_HA_VERSION = "2022.12.999"
+CONNECT_TIMEOUT = 10
+LISTEN_READY_TIMEOUT = 30
 
 
-async def read_manifest() -> dict:
-    """Read manifest file."""
-
-    def _read_manifest():
-        manifest_path = (
-            pathlib.Path(__file__).parent.resolve().joinpath("manifest.json")
-        )
-        return json_loads(manifest_path.read_text("utf-8"))
-
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _read_manifest)
-
-
-def get_local_ip_from_internal_url(hass: HomeAssistant):
-    """Get the stream ip address from the internal_url."""
-    try:
-        url = get_url(
-            hass,
-            allow_internal=True,
-            allow_external=False,
-            allow_cloud=False,
-            allow_ip=True,
-        )
-    except NoURLAvailableError:
-        LOGGER.warning(
-            "Unable to retrieve the internal URL from Home Assistant, "
-            "this may cause issues resolving the correct internal stream ip. "
-            "Please set a valid internal url in the Home Assistant configuration"
-        )
-        return hass.config.api.local_ip
-    parsed_uri = urlparse(url)
-
-    if parsed_uri.netloc == "":
-        return hass.config.api.local_ip
-
-    try:
-        return socket.gethostbyname(parsed_uri.netloc)
-    except socket.gaierror:
-        # url is set as ip instead of hostname
-        return hass.config.api.local_ip
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> bool:  # ruff: noqa: PLR0915
     """Set up from a config entry."""
+    if use_addon := entry.data.get(CONF_USE_ADDON):
+        await _async_ensure_addon_running(hass, entry)
+
     http_session = async_get_clientsession(hass, verify_ssl=False)
 
-    # compare HA version
-    # raise (and halt) if the ha version is too low
-    # log (and continue) if the ha version is too high
-    # we do this because every HA release has breaking changes
-    # so a MA release needs to be compatible with HA
-    manifest = await read_manifest()
-    ha_vers = AwesomeVersion(HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
-    min_ha_vers = AwesomeVersion(MIN_HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
-    max_ha_vers = AwesomeVersion(MAX_HA_VERSION, AwesomeVersionStrategy.SEMVER, True)
-    if ha_vers < min_ha_vers:
-        raise ConfigEntryAuthFailed(
-            "This version of Music Assistant is only compatible "
-            f"with Home Assistant version {manifest['ha_version']} (or higher)."
+    # handle case where user had old V1 mass installed
+    if CONF_URL not in entry.data:
+        async_create_issue(
+            hass,
+            DOMAIN,
+            "prev_version",
+            is_fixable=False,
+            severity=IssueSeverity.ERROR,
+            learn_more_url="https://github.com/music-assistant/hass-music-assistant/issues/1143",
+            translation_key="prev_version",
         )
-    if ha_vers > max_ha_vers:
-        LOGGER.warning(
-            "This version of Music Assistant is compatible "
-            "with Home Assistant version %s, "
-            "and you are running %s. You may run into compatibility issues. "
-            "Please check if there's a newer (beta) version available of Music Assistant.",
-            f"{min_ha_vers.major}.{min_ha_vers.minor}",
-            HA_VERSION,
+        raise ConfigEntryError(
+            "Invalid configuration (migrating from V1 is not possible)"
         )
 
-    # databases is really chatty with logging at info level
-    logging.getLogger("databases").setLevel(logging.WARNING)
-    logging.getLogger("music_assistant").setLevel(logging.getLogger(__name__).level)
-
-    conf = entry.options
-
-    # TODO: adjust config flow to support creating multiple provider entries
-    providers = []
-
-    if conf.get(CONF_SPOTIFY_ENABLED):
-        providers.append(
-            MusicProviderConfig(
-                ProviderType.SPOTIFY,
-                username=conf.get(CONF_SPOTIFY_USERNAME),
-                password=conf.get(CONF_SPOTIFY_PASSWORD),
-            )
-        )
-
-    if conf.get(CONF_QOBUZ_ENABLED):
-        providers.append(
-            MusicProviderConfig(
-                ProviderType.QOBUZ,
-                username=conf.get(CONF_QOBUZ_USERNAME),
-                password=conf.get(CONF_QOBUZ_PASSWORD),
-            )
-        )
-
-    if conf.get(CONF_TUNEIN_ENABLED):
-        providers.append(
-            MusicProviderConfig(
-                ProviderType.TUNEIN,
-                username=conf.get(CONF_TUNEIN_USERNAME),
-            )
-        )
-    if conf.get(CONF_FILE_ENABLED) and conf.get(CONF_FILE_DIRECTORY):
-        providers.append(
-            MusicProviderConfig(
-                ProviderType.FILESYSTEM_LOCAL,
-                path=conf.get(CONF_FILE_DIRECTORY),
-            )
-        )
-    if conf.get(CONF_YTMUSIC_ENABLED):
-        providers.append(
-            MusicProviderConfig(
-                ProviderType.YTMUSIC,
-                username=conf.get(CONF_YTMUSIC_USERNAME),
-                password=conf.get(CONF_YTMUSIC_PASSWORD),
-            )
-        )
-
-    db_file = hass.config.path("music_assistant.db")
-    stream_ip = get_local_ip_from_internal_url(hass)
-    mass_conf = MassConfig(
-        database_url=f"sqlite:///{db_file}", providers=providers, stream_ip=stream_ip
-    )
-
-    mass = MusicAssistant(mass_conf, session=http_session)
+    mass = MusicAssistantClient(entry.data[CONF_URL], http_session)
 
     try:
-        await mass.setup()
-    except MusicAssistantError as err:
-        await mass.stop()
-        LOGGER.exception(err)
-        raise ConfigEntryNotReady from err
-    except Exception as exc:  # pylint: disable=broad-except
-        await mass.stop()
-        raise exc
-
-    hass.data[DOMAIN] = mass
-
-    # initialize platforms
-    if conf.get(CONF_CREATE_MASS_PLAYERS, True):
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    async def on_hass_start(*args, **kwargs):
-        """Start sync actions when Home Assistant is started."""
-        register_services(hass, mass)
-        # register hass players with mass
-        await async_register_player_controls(hass, mass, entry)
-        # start and schedule sync (every 3 hours)
-        await mass.music.start_sync(schedule=3)
-
-    async def on_hass_stop(event: Event):
-        """Handle an incoming stop event from Home Assistant."""
-        await mass.stop()
-
-    async def on_mass_event(event: MassEvent):
-        """Handle an incoming event from Music Assistant."""
-        # forward event to the HA eventbus
-        if hasattr(event.data, "to_dict"):
-            data = event.data.to_dict()
+        async with async_timeout.timeout(CONNECT_TIMEOUT):
+            await mass.connect()
+    except (CannotConnect, asyncio.TimeoutError) as err:
+        raise ConfigEntryNotReady(
+            "Failed to connect to music assistant server"
+        ) from err
+    except InvalidServerVersion as err:
+        if use_addon:
+            addon_manager = _get_addon_manager(hass)
+            addon_manager.async_schedule_update_addon(catch_error=True)
         else:
-            data = event.data
-        hass.bus.async_fire(
-            DOMAIN_EVENT,
-            {"type": event.type.value, "object_id": event.object_id, "data": data},
-        )
+            async_create_issue(
+                hass,
+                DOMAIN,
+                "invalid_server_version",
+                is_fixable=False,
+                severity=IssueSeverity.ERROR,
+                translation_key="invalid_server_version",
+            )
+        raise ConfigEntryNotReady(f"Invalid server version: {err}") from err
 
-    # setup event listeners, register their unsubscribe in the unload
-    entry.async_on_unload(async_at_start(hass, on_hass_start))
-    entry.async_on_unload(entry.add_update_listener(_update_listener))
+    except Exception as err:
+        LOGGER.exception("Failed to connect to music assistant server")
+        raise ConfigEntryNotReady(
+            "Unknown error connecting to the Music Assistant server"
+        ) from err
+
+    async_delete_issue(hass, DOMAIN, "invalid_server_version")
+
+    async def on_hass_stop(event: Event) -> None:  # noqa: ARG001
+        """Handle incoming stop event from Home Assistant."""
+        await mass.disconnect()
+
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
     )
-    entry.async_on_unload(mass.subscribe(on_mass_event))
 
-    # Websocket support and frontend (panel)
-    async_register_websockets(hass)
-    entry.async_on_unload(await async_register_panel(hass, entry.title))
+    # launch the music assistant client listen task in the background
+    # use the init_ready event to wait until initialization is done
+    init_ready = asyncio.Event()
+    listen_task = asyncio.create_task(_client_listen(hass, entry, mass, init_ready))
+
+    try:
+        async with async_timeout.timeout(LISTEN_READY_TIMEOUT):
+            await init_ready.wait()
+    except asyncio.TimeoutError as err:
+        listen_task.cancel()
+        raise ConfigEntryNotReady("Music Assistant client not ready") from err
+
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {}
+        register_services(hass)
+
+    hass.data[DOMAIN][entry.entry_id] = MassEntryData(mass, listen_task)
+
+    # initialize platforms
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # If the listen task is already failed, we need to raise ConfigEntryNotReady
+    if listen_task.done() and (listen_error := listen_task.exception()) is not None:
+        await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+        hass.data[DOMAIN].pop(entry.entry_id)
+        try:
+            await mass.disconnect()
+        finally:
+            raise ConfigEntryNotReady(listen_error) from listen_error
 
     # cleanup orphan devices/entities
-    dev_reg = dr.async_get(hass)
-    stored_devices = dr.async_entries_for_config_entry(dev_reg, entry.entry_id)
-    if CONF_PLAYER_ENTITIES in entry.options:
-        for device in stored_devices:
-            for _, player_id in device.identifiers:
-                if player_id not in entry.options[CONF_PLAYER_ENTITIES]:
-                    dev_reg.async_remove_device(device.id)
-                elif not entry.options[CONF_CREATE_MASS_PLAYERS]:
-                    dev_reg.async_remove_device(device.id)
+    # TODO: uncomment once we can read player configs to determine if a player still exists
+    # dev_reg = dr.async_get(hass)
+    # stored_devices = dr.async_entries_for_config_entry(dev_reg, entry.entry_id)
+    # for device in stored_devices:
+    #     for _, player_id in device.identifiers:
+    #         if mass.players.get_player(player_id) is None:
+    #             dev_reg.async_remove_device(device.id)
     return True
 
 
-async def _update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle ConfigEntry options update."""
-    await hass.config_entries.async_reload(entry.entry_id)
+async def _client_listen(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    mass: MusicAssistantClient,
+    init_ready: asyncio.Event,
+) -> None:
+    """Listen with the client."""
+    try:
+        await mass.start_listening(init_ready)
+    except MusicAssistantError as err:
+        if entry.state != ConfigEntryState.LOADED:
+            raise
+        LOGGER.error("Failed to listen: %s", err)
+    except Exception as err:  # pylint: disable=broad-except
+        # We need to guard against unknown exceptions to not crash this task.
+        LOGGER.exception("Unexpected exception: %s", err)
+        if entry.state != ConfigEntryState.LOADED:
+            raise
+
+    if not hass.is_stopping:
+        LOGGER.debug("Disconnected from server. Reloading integration")
+        hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+    if unload_ok:
+        mass_entry_data: MassEntryData = hass.data[DOMAIN].pop(entry.entry_id)
+        mass_entry_data.listen_task.cancel()
+        await mass_entry_data.mass.disconnect()
+
+    if entry.data.get(CONF_USE_ADDON) and entry.disabled_by:
+        addon_manager: AddonManager = get_addon_manager(hass)
+        LOGGER.debug("Stopping Music Assistant Server add-on")
+        try:
+            await addon_manager.async_stop_addon()
+        except AddonError as err:
+            LOGGER.error("Failed to stop the Music Assistant Server add-on: %s", err)
+            return False
+
+    return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Call when entry is about to be removed."""
+    if not entry.data.get(CONF_INTEGRATION_CREATED_ADDON):
+        return
+
+    addon_manager: AddonManager = get_addon_manager(hass)
+    try:
+        await addon_manager.async_stop_addon()
+    except AddonError as err:
+        LOGGER.error(err)
+        return
+    try:
+        await addon_manager.async_create_backup()
+    except AddonError as err:
+        LOGGER.error(err)
+        return
+    try:
+        await addon_manager.async_uninstall_addon()
+    except AddonError as err:
+        LOGGER.error(err)
 
 
 async def async_remove_config_entry_device(
-    hass: HomeAssistant, config_entry: ConfigEntry, device_entry: dr.DeviceEntry
+    hass: HomeAssistant,  # noqa: ARG001
+    config_entry: ConfigEntry,  # noqa: ARG001
+    device_entry: dr.DeviceEntry,  # noqa: ARG001
 ) -> bool:
     """Remove a config entry from a device."""
     return True
 
 
-async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Call when entry is about to be removed."""
-    if mass := hass.data.pop(DOMAIN, None):
-        await mass.stop()
-    # remove the db file to allow users make a clean start
-    # backup the db file just in case of user error
-    db_file = hass.config.path("music_assistant.db")
-    db_file_old = f"{db_file}.old"
-    if os.path.isfile(db_file_old):
-        os.remove(db_file_old)
-    if os.path.isfile(db_file):
-        os.rename(db_file, db_file_old)
+async def _async_ensure_addon_running(
+    hass: HomeAssistant, entry: ConfigEntry  # noqa: ARG001
+) -> None:
+    """Ensure that Music Assistant Server add-on is installed and running."""
+    addon_manager = _get_addon_manager(hass)
+    try:
+        addon_info = await addon_manager.async_get_addon_info()
+    except AddonError as err:
+        raise ConfigEntryNotReady(err) from err
 
-    # unhide the player entities
-    hide_player_entities(hass, entry.options.get(CONF_PLAYER_ENTITIES, []), False)
+    addon_state = addon_info.state
 
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload a config entry."""
-    if entry.options.get(CONF_CREATE_MASS_PLAYERS, True):
-        unload_success = await hass.config_entries.async_unload_platforms(
-            entry, PLATFORMS
+    if addon_state == AddonState.NOT_INSTALLED:
+        addon_manager.async_schedule_install_setup_addon(
+            addon_info.options,
+            catch_error=True,
         )
-    else:
-        unload_success = True
-    if mass := hass.data.pop(DOMAIN, None):
-        await mass.stop()
-    return unload_success
+        raise ConfigEntryNotReady
+
+    if addon_state == AddonState.NOT_RUNNING:
+        addon_manager.async_schedule_start_addon(catch_error=True)
+        raise ConfigEntryNotReady
+
+
+@callback
+def _get_addon_manager(hass: HomeAssistant) -> AddonManager:
+    """Ensure that Music Assistant Server add-on is updated and running.
+
+    May only be used as part of async_setup_entry above.
+    """
+    addon_manager: AddonManager = get_addon_manager(hass)
+    if addon_manager.task_in_progress():
+        raise ConfigEntryNotReady
+    return addon_manager
