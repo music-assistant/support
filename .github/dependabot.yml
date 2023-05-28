@@ -7,8 +7,4 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: weekly
-  - package-ecosystem: "npm"
-    directory: "/custom_components/mass/frontend/"
-    schedule:
-      interval: weekly
+      interval: daily
