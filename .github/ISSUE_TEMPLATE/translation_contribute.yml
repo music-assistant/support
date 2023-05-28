@@ -1,6 +1,8 @@
 name: "Translation Request Music Assistant."
 description: "Contribute to Music Assistant with a translation."
 labels: ["triage", "translation"]
+assignees:
+  - jozefKruszynski
 body:
   - type: markdown
     attributes:
