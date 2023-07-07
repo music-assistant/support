@@ -48,9 +48,7 @@ def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
 
 async def get_server_info(hass: HomeAssistant, url: str) -> ServerInfoMessage:
     """Validate the user input allows us to connect."""
-    async with MusicAssistantClient(
-        url, aiohttp_client.async_get_clientsession(hass)
-    ) as client:
+    async with MusicAssistantClient(url, aiohttp_client.async_get_clientsession(hass)) as client:
         return client.server_info
 
 
@@ -109,15 +107,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
             )
 
-    async def async_step_start_addon(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_start_addon(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Start MusicAssistant Server add-on."""
         if not self.start_task:
             self.start_task = self.hass.async_create_task(self._async_start_addon())
-            return self.async_show_progress(
-                step_id="start_addon", progress_action="start_addon"
-            )
+            return self.async_show_progress(step_id="start_addon", progress_action="start_addon")
         try:
             await self.start_task
         except (FailedConnect, AddonError, AbortFlow) as err:
@@ -128,9 +122,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.start_task = None
         return self.async_show_progress_done(next_step_id="finish_addon_setup")
 
-    async def async_step_start_failed(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_start_failed(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add-on start failed."""
         return self.async_abort(reason="addon_start_failed")
 
@@ -155,9 +147,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     break
             else:
-                raise FailedConnect(
-                    "Failed to start MusicAssistant Server add-on: timeout"
-                )
+                raise FailedConnect("Failed to start MusicAssistant Server add-on: timeout")
         finally:
             # Continue the flow after show progress when the task is done.
             self.hass.async_create_task(
@@ -175,23 +165,17 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return addon_info
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the initial step."""
         if is_hassio(self.hass):
             return await self.async_step_on_supervisor()
 
         return await self.async_step_manual()
 
-    async def async_step_manual(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_manual(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle a manual configuration."""
         if user_input is None:
-            return self.async_show_form(
-                step_id="manual", data_schema=get_manual_schema({})
-            )
+            return self.async_show_form(step_id="manual", data_schema=get_manual_schema({}))
 
         errors = {}
 
@@ -212,9 +196,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="manual", data_schema=get_manual_schema(user_input), errors=errors
         )
 
-    async def async_step_zeroconf(
-        self, discovery_info: zeroconf.ZeroconfServiceInfo
-    ) -> FlowResult:
+    async def async_step_zeroconf(self, discovery_info: zeroconf.ZeroconfServiceInfo) -> FlowResult:
         """
         Handle a discovered Mass server.
 
@@ -254,9 +236,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle logic when on Supervisor host."""
         if user_input is None:
-            return self.async_show_form(
-                step_id="on_supervisor", data_schema=ON_SUPERVISOR_SCHEMA
-            )
+            return self.async_show_form(step_id="on_supervisor", data_schema=ON_SUPERVISOR_SCHEMA)
         if not user_input[CONF_USE_ADDON]:
             return await self.async_step_manual()
 

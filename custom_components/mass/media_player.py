@@ -117,9 +117,7 @@ async def async_setup_entry(
         async_add_entities([MassPlayer(mass, event.object_id)])
 
     # register listener for new players
-    config_entry.async_on_unload(
-        mass.subscribe(handle_player_added, EventType.PLAYER_ADDED)
-    )
+    config_entry.async_on_unload(mass.subscribe(handle_player_added, EventType.PLAYER_ADDED))
     # add all current players
     for player in mass.players:
         added_ids.add(player.player_id)
@@ -325,13 +323,9 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     async def async_set_repeat(self, repeat: str) -> None:
         """Set repeat state."""
         if queue := self.mass.players.get_player_queue(self.player.active_source):
-            await self.mass.players.queue_command_repeat(
-                queue.queue_id, RepeatMode(repeat)
-            )
+            await self.mass.players.queue_command_repeat(queue.queue_id, RepeatMode(repeat))
         else:
-            await self.mass.players.queue_command_repeat(
-                self.player_id, RepeatMode(repeat)
-            )
+            await self.mass.players.queue_command_repeat(self.player_id, RepeatMode(repeat))
 
     async def async_clear_playlist(self) -> None:
         """Clear players playlist."""
@@ -357,26 +351,16 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             media_id = sourced_media.url
             media_id = async_process_play_media_url(self.hass, media_id)
         # try to handle playback of item by name
-        elif "://" not in media_id and (
-            item := await get_item_by_name(self.mass, media_id)
-        ):
+        elif "://" not in media_id and (item := await get_item_by_name(self.mass, media_id)):
             media_id = item.uri
 
         queue_opt = QUEUE_OPTION_MAP.get(enqueue, QueueOption.PLAY)
-        radio_mode = (
-            kwargs.get("radio_mode")
-            or kwargs.get("extra", {}).get("radio_mode")
-            or False
-        )
+        radio_mode = kwargs.get("radio_mode") or kwargs.get("extra", {}).get("radio_mode") or False
 
         if queue := self.mass.players.get_player_queue(self.player.active_source):
-            await self.mass.players.play_media(
-                queue.queue_id, media_id, queue_opt, radio_mode
-            )
+            await self.mass.players.play_media(queue.queue_id, media_id, queue_opt, radio_mode)
         else:
-            await self.mass.players.play_media(
-                self.player_id, media_id, queue_opt, radio_mode
-            )
+            await self.mass.players.play_media(self.player_id, media_id, queue_opt, radio_mode)
 
         # announce/alert support
         # is_tts = "/api/tts_proxy" in media_id
@@ -391,6 +375,4 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         self, media_content_type=None, media_content_id=None
     ) -> BrowseMedia:
         """Implement the websocket media browsing helper."""
-        return await async_browse_media(
-            self.hass, self.mass, media_content_id, media_content_type
-        )
+        return await async_browse_media(self.hass, self.mass, media_content_id, media_content_type)

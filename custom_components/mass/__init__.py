@@ -31,9 +31,7 @@ CONNECT_TIMEOUT = 10
 LISTEN_READY_TIMEOUT = 30
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> bool:  # ruff: noqa: PLR0915
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # ruff: noqa: PLR0915
     """Set up from a config entry."""
     if use_addon := entry.data.get(CONF_USE_ADDON):
         await _async_ensure_addon_running(hass, entry)
@@ -51,9 +49,7 @@ async def async_setup_entry(
             learn_more_url="https://github.com/music-assistant/hass-music-assistant/issues/1143",
             translation_key="prev_version",
         )
-        raise ConfigEntryError(
-            "Invalid configuration (migrating from V1 is not possible)"
-        )
+        raise ConfigEntryError("Invalid configuration (migrating from V1 is not possible)")
 
     mass = MusicAssistantClient(entry.data[CONF_URL], http_session)
 
@@ -61,9 +57,7 @@ async def async_setup_entry(
         async with async_timeout.timeout(CONNECT_TIMEOUT):
             await mass.connect()
     except (CannotConnect, asyncio.TimeoutError) as err:
-        raise ConfigEntryNotReady(
-            "Failed to connect to music assistant server"
-        ) from err
+        raise ConfigEntryNotReady("Failed to connect to music assistant server") from err
     except InvalidServerVersion as err:
         if use_addon:
             addon_manager = _get_addon_manager(hass)
@@ -81,9 +75,7 @@ async def async_setup_entry(
 
     except Exception as err:
         LOGGER.exception("Failed to connect to music assistant server")
-        raise ConfigEntryNotReady(
-            "Unknown error connecting to the Music Assistant server"
-        ) from err
+        raise ConfigEntryNotReady("Unknown error connecting to the Music Assistant server") from err
 
     async_delete_issue(hass, DOMAIN, "invalid_server_version")
 
@@ -91,9 +83,7 @@ async def async_setup_entry(
         """Handle incoming stop event from Home Assistant."""
         await mass.disconnect()
 
-    entry.async_on_unload(
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop)
-    )
+    entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, on_hass_stop))
 
     # launch the music assistant client listen task in the background
     # use the init_ready event to wait until initialization is done

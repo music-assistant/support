@@ -132,9 +132,7 @@ async def build_main_listing(hass: HomeAssistant):
         parent_source.children.append(child_source)
 
     try:
-        item = await media_source.async_browse_media(
-            hass, None, content_filter=media_source_filter
-        )
+        item = await media_source.async_browse_media(hass, None, content_filter=media_source_filter)
         # If domain is None, it's overview of available sources
         if item.domain is None and item.children is not None:
             parent_source.children.extend(item.children)
@@ -161,9 +159,7 @@ async def build_playlists_listing(mass: MusicAssistantClient):
                 build_item(mass, item, can_expand=True)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for item in (
-                    await mass.music.get_playlists(in_library=True, limit=250)
-                ).items
+                for item in (await mass.music.get_playlists(in_library=True, limit=250)).items
             ],
             key=lambda x: x.title,
         ),
@@ -204,9 +200,7 @@ async def build_artists_listing(mass: MusicAssistantClient):
                 build_item(mass, artist, can_expand=True)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for artist in (
-                    await mass.music.get_artists(in_library=True, limit=250)
-                ).items
+                for artist in (await mass.music.get_artists(in_library=True, limit=250)).items
             ],
             key=lambda x: x.title,
         ),
@@ -247,9 +241,7 @@ async def build_albums_listing(mass: MusicAssistantClient):
                 build_item(mass, album, can_expand=True)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for album in (
-                    await mass.music.get_albums(in_library=True, limit=250)
-                ).items
+                for album in (await mass.music.get_albums(in_library=True, limit=250)).items
             ],
             key=lambda x: x.title,
         ),
@@ -290,9 +282,7 @@ async def build_tracks_listing(mass: MusicAssistantClient):
                 build_item(mass, track, can_expand=False)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for track in (
-                    await mass.music.get_tracks(in_library=True, limit=250)
-                ).items
+                for track in (await mass.music.get_tracks(in_library=True, limit=250)).items
             ],
             key=lambda x: x.title,
         ),
@@ -326,11 +316,7 @@ def build_item(
     media_class=None,
 ) -> BrowseMedia:
     """Return BrowseMedia for MediaItem."""
-    title = (
-        f"{item.artists[0].name} - {item.name}"
-        if hasattr(item, "artists")
-        else item.name
-    )
+    title = f"{item.artists[0].name} - {item.name}" if hasattr(item, "artists") else item.name
     img_url = mass.get_image_url(image) if (image := item.image) else None
 
     return BrowseMedia(
