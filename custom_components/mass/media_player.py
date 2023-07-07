@@ -129,6 +129,8 @@ async def async_setup_entry(
 class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     """Representation of MediaPlayerEntity from Music Assistant Player."""
 
+    _attr_name = None
+
     def __init__(self, mass: MusicAssistantClient, player_id: str) -> None:
         """Initialize MediaPlayer entity."""
         super().__init__(mass, player_id)
