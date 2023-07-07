@@ -33,9 +33,10 @@ jobs:
           cd custom_components/mass/
           zip ../../mass.zip ./* translations/* frontend/dist/* -x '.*'
 
-      - uses: gacts/upload-to-release@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
         with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./mass.zip
-          type: application/zip
+          asset_name: mass.zip
+          tag: ${{ github.ref }}
