@@ -1,11 +1,11 @@
 {
   "domain": "mass",
   "name": "Music Assistant (BETA)",
-  "version": "2023.6.0b0",
+  "version": "0.0.0",
   "documentation": "https://github.com/music-assistant/hass-music-assistant",
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "requirements": [
-    "music-assistant==2.0.0b31"
+    "music-assistant==2.0.0b41"
   ],
   "codeowners": [
     "@music-assistant"

@@ -7,14 +7,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.vars.outputs.tag }}
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v3.4.1
+      - uses: actions/checkout@v3.5.3
+      - name: Get tag
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4.6.1
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          python-version: "3.10"
 
       - name: build frontend
         working-directory: custom_components/mass/frontend/
@@ -28,7 +32,7 @@ jobs:
 
       - name: Patch manifest and zip
         run: |
-          sed -i 's/v0.0.0/${{ steps.version.outputs.version }}/' custom_components/mass/manifest.json
+          sed -i 's/0.0.0/${{ steps.vars.outputs.tag }}/' custom_components/mass/manifest.json
 
           cd custom_components/mass/
           zip ../../mass.zip ./* translations/* frontend/dist/* -x '.*'
