@@ -132,6 +132,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             await addon_manager.async_schedule_start_addon()
+
             # Sleep some seconds to let the add-on start properly before connecting.
             for _ in range(ADDON_SETUP_TIMEOUT_ROUNDS):
                 await asyncio.sleep(ADDON_SETUP_TIMEOUT)

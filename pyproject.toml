@@ -30,9 +30,6 @@ test = [
   "pre-commit==3.3.3"
 ]
 
-[project.scripts]
-mass = "music_assistant.__main__:main"
-
 [tool.black]
 target-version = ['py311']
 line-length = 100
@@ -69,15 +66,6 @@ asyncio_mode = "auto"
 pythonpath = [
   "."
 ]
-
-[tool.setuptools]
-platforms = ["any"]
-zip-safe  = false
-packages = ["music_assistant"]
-include-package-data = true
-
-[tool.setuptools.package-data]
-music_assistant = ["py.typed"]
 
 [tool.ruff]
 fix = true
