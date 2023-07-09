@@ -11,9 +11,7 @@ from homeassistant.components.media_player import (
     MediaPlayerEnqueue,
     MediaPlayerEntity,
 )
-from homeassistant.components.media_player.browse_media import (
-    async_process_play_media_url,
-)
+from homeassistant.components.media_player.browse_media import async_process_play_media_url
 from homeassistant.components.media_player.const import (
     SUPPORT_BROWSE_MEDIA,
     SUPPORT_CLEAR_PLAYLIST,
@@ -207,13 +205,13 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             self._attr_media_position = player.elapsed_time
             self._attr_media_position_updated_at = player.elapsed_time_last_updated
         self._prev_time = self._attr_media_position
-        self._attr_media_image_url = self._get_media_image_url(queue)
+        self._update_media_image_url(queue)
         # update current media item infos
         media_artist = None
         media_album_artist = None
         media_album_name = None
         media_title = player.active_source
-        media_content_id = player.current_item_id
+        media_content_id = player.current_url
         media_duration = None
         # Music Assistant is the active source and actually has a MediaItem loaded
         if queue and queue.current_item and queue.current_item.media_item:
@@ -237,14 +235,14 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         self._attr_media_content_id = media_content_id
         self._attr_media_duration = media_duration
 
-    def _get_media_image_url(self, queue: PlayerQueue) -> str | None:
-        """Get image URL for active queue item."""
+    def _update_media_image_url(self, queue: PlayerQueue) -> None:
+        """Update image URL forthe active queue item."""
         if queue is None or queue.current_item is None:
-            return None
+            self._attr_media_image_url = None
+            return
         if image := queue.current_item.image:
-            # TODO: handle local files via image proxy
-            return image.path
-        return None
+            self._attr_media_image_remotely_accessible = image.provider == "url"
+            self._attr_media_image_url = self.mass.get_image_url(image)
 
     async def async_media_play(self) -> None:
         """Send play command to device."""
