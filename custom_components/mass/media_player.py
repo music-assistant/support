@@ -82,7 +82,6 @@ SUPPORTED_FEATURES = (
 )
 
 STATE_MAPPING = {
-    PlayerState.OFF: STATE_OFF,
     PlayerState.IDLE: STATE_IDLE,
     PlayerState.PLAYING: STATE_PLAYING,
     PlayerState.PAUSED: STATE_PAUSED,
