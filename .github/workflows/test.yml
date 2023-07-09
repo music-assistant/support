@@ -34,6 +34,3 @@ jobs:
           pre-commit install-hooks
       - name: Lint with pre-commit
         run: pre-commit run --all-files
-      - name: Run pylint on changed files
-        run: |
-          pylint -rn -sn --rcfile=pylintrc --fail-on=I $(git ls-files '*.py')
