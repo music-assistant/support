@@ -131,11 +131,11 @@ async def get_item_by_name(mass: MusicAssistantClient, name: str) -> MediaItemTy
     # iterate media controllers one by one,
     # start with playlists and radio as those are the most common one
     for func in (
-        mass.music.get_playlists,
-        mass.music.get_radios,
-        mass.music.get_albums,
-        mass.music.get_tracks,
-        mass.music.get_artists,
+        mass.music.get_library_playlists,
+        mass.music.get_library_radios,
+        mass.music.get_library_albums,
+        mass.music.get_library_tracks,
+        mass.music.get_library_artists,
     ):
         result = await func(search=name)
         for item in result.items:
