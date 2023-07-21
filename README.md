@@ -72,7 +72,7 @@ MA requires a 64bit Operating System and a minimum of 2GB of RAM on the physical
 - Within HACS, search for `Music Assistant` and click the entry in the search results.
 - Click the big (blue) button at the bottom for `Download`.
 - Click the button again and in the dialog make sure `Show beta versions` is selected.
-- Download the latest (beta) version 
+- Download the latest (beta) version
 - Restart Home Assistant.
 - Go to Configuration -> Integrations and click the big `+` button.
 - Look for Music Assistant and click to add it.
