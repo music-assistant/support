@@ -1,6 +1,8 @@
 """MediaPlayer platform for Music Assistant integration."""
 from __future__ import annotations
 
+import time
+
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -199,10 +201,14 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         self._attr_is_volume_muted = player.volume_muted
         if queue is not None:
             self._attr_media_position = queue.elapsed_time
-            self._attr_media_position_updated_at = queue.elapsed_time_last_updated
+            self._attr_media_position_updated_at = time.strftime(
+                "%Y-%m-%dT%H:%M:%S%z", time.gmtime(queue.elapsed_time_last_updated)
+            )
         else:
             self._attr_media_position = player.elapsed_time
-            self._attr_media_position_updated_at = player.elapsed_time_last_updated
+            self._attr_media_position_updated_at = time.strftime(
+                "%Y-%m-%dT%H:%M:%S%z", time.gmtime(player.elapsed_time_last_updated)
+            )
         self._prev_time = self._attr_media_position
         self._update_media_image_url(queue)
         # update current media item infos
