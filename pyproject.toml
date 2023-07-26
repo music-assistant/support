@@ -17,7 +17,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-  "homeassistant==2023.7.2",
+  "homeassistant==2023.7.3",
   "music-assistant",
 ]
 
