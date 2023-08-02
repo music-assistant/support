@@ -26,7 +26,7 @@ test = [
   "black==23.7.0",
   "codespell==2.2.5",
   "mypy==1.4.1",
-  "ruff==0.0.280",
+  "ruff==0.0.282",
   "pre-commit==3.3.3"
 ]
 
