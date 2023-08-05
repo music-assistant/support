@@ -283,8 +283,9 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         else:
             await self.mass.players.queue_command_previous(self.player_id)
 
-    async def async_media_seek(self, position: int) -> None:
+    async def async_media_seek(self, position: float) -> None:
         """Send seek command."""
+        position = int(position)
         if queue := self.mass.players.get_player_queue(self.player.active_source):
             await self.mass.players.queue_command_seek(queue.queue_id, position)
         else:
