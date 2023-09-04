@@ -27,7 +27,7 @@ test = [
   "codespell==2.2.5",
   "mypy==1.4.1",
   "ruff==0.0.282",
-  "pre-commit==3.3.3"
+  "pre-commit==3.4.0"
 ]
 
 [tool.black]
