@@ -11,7 +11,7 @@ jobs:
       version: ${{ steps.vars.outputs.tag }}
 
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4
       - name: Get tag
         id: vars
         run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
