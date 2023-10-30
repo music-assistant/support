@@ -141,4 +141,17 @@ async def get_item_by_name(mass: MusicAssistantClient, name: str) -> MediaItemTy
         for item in result.items:
             if name.lower() == item.name.lower():
                 return item
+    if " - " in name:
+        artistname, title = name.lower().split(" - ", 1)
+        for func in (
+            mass.music.get_library_albums,
+            mass.music.get_library_tracks,
+        ):
+            result = await func(search=title)
+            for item in result.items:
+                if item.name.lower() != title:
+                    continue
+                for artist in item.artists:
+                    if artist.name.lower() == artistname:
+                        return item
     return None
