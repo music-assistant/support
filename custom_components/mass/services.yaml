@@ -1,57 +1,34 @@
 # Descriptions for Music Assistant custom services
 
-queue_command:
-  name: Queue command
-  description: "Send a command directly to a Music Assistant player(queue). Note: Only use this special service for advanced purposes. Usually you can just the builtin HA services."
+play_media:
+  target:
+    entity:
+      domain: media_player
+      integration: mass
+      supported_features:
+        - media_player.MediaPlayerEntityFeature.PLAY_MEDIA
   fields:
-
-    player_id:
-      name: Player ID
-      description: Music Assistant Player ID of the player to execute the command. May also be the HA entity ID of a MA player.
+    media_id:
       required: true
-      advanced: false
-      example: "aa:bb:cc:dd:ee"
+      example: "spotify://playlist/aabbccddeeff"
       selector:
-        text:
-
-    command:
-      name: Command
-      description: The command to issue on the player(queue).
-      required: true
-      advanced: false
-      example: "play"
+        object:
+    media_type:
+      required: false
+      example: "playlist"
       selector:
         select:
           options:
-            - play
-            - pause
-            - next
-            - previous
-            - stop
-            - clear
-            - play_media
-            - shuffle_on
-            - shuffle_off
-            - repeat
-            - snapshot_create
-            - snapshot_restore
-            - play_announcement
-
-    uri:
-      name: Media item(s) to play
-      description: To be used together with play_media command, the uri(s) to play on the queue. May also be the name of an item you want to play.
+            - artist
+            - album
+            - playlist
+            - track
+            - radio
+    enqueue:
+      filter:
+        supported_features:
+          - media_player.MediaPlayerEntityFeature.MEDIA_ENQUEUE
       required: false
-      advanced: false
-      example: "spotify://playlist/aabbccddeeff"
-      selector:
-        text:
-
-    enqueue_mode:
-      name: Enqueue mode.
-      description: "Only to be used with play_media command: Select Enqueue mode."
-      required: false
-      advanced: true
-      default: "play"
       selector:
         select:
           options:
@@ -60,23 +37,47 @@ queue_command:
             - "next"
             - "replace_next"
             - "add"
-
-    repeat_mode:
-      name: Repeat mode.
-      description: "Only to be used with repeat command: Select repeat mode."
+          translation_key: enqueue
+    announce:
+      filter:
+        supported_features:
+          - media_player.MediaPlayerEntityFeature.MEDIA_ANNOUNCE
       required: false
-      advanced: true
+      example: "true"
       selector:
-        select:
-          options:
-            - "one"
-            - "all"
-            - "off"
-
+        boolean:
     radio_mode:
-      name: Enable radio mode.
-      description: "Only to be used with play_media command: Whether to enable radio mode."
       required: false
       advanced: true
       selector:
         boolean:
+
+
+search:
+  fields:
+    query:
+      required: true
+      example: "Queen - Innuendo"
+      selector:
+        text:
+    media_type:
+      required: false
+      example: "playlist"
+      selector:
+        select:
+          multiple: true
+          options:
+            - artist
+            - album
+            - playlist
+            - track
+            - radio
+    limit:
+      required: false
+      example: 25
+      default: 25
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
