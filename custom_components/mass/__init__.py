@@ -31,8 +31,9 @@ CONNECT_TIMEOUT = 10
 LISTEN_READY_TIMEOUT = 30
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  # ruff: noqa: PLR0915
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up from a config entry."""
+    # ruff: noqa: PLR0915
     if use_addon := entry.data.get(CONF_USE_ADDON):
         await _async_ensure_addon_running(hass, entry)
 
@@ -51,13 +52,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
         )
         raise ConfigEntryError("Invalid configuration (migrating from V1 is not possible)")
 
-    mass = MusicAssistantClient(entry.data[CONF_URL], http_session)
+    mass_url = entry.data[CONF_URL]
+    mass = MusicAssistantClient(mass_url, http_session)
 
     try:
         async with async_timeout.timeout(CONNECT_TIMEOUT):
             await mass.connect()
     except (CannotConnect, asyncio.TimeoutError) as err:
-        raise ConfigEntryNotReady("Failed to connect to music assistant server") from err
+        raise ConfigEntryNotReady(
+            f"Failed to connect to music assistant server {mass_url}"
+        ) from err
     except InvalidServerVersion as err:
         if use_addon:
             addon_manager = _get_addon_manager(hass)
@@ -72,10 +76,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:  #
                 translation_key="invalid_server_version",
             )
         raise ConfigEntryNotReady(f"Invalid server version: {err}") from err
-
     except Exception as err:
-        LOGGER.exception("Failed to connect to music assistant server")
-        raise ConfigEntryNotReady("Unknown error connecting to the Music Assistant server") from err
+        LOGGER.exception("Failed to connect to music assistant server", exc_info=err)
+        raise ConfigEntryNotReady(
+            f"Unknown error connecting to the Music Assistant server {mass_url}"
+        ) from err
 
     async_delete_issue(hass, DOMAIN, "invalid_server_version")
 
