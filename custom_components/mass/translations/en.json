@@ -73,7 +73,7 @@
         },
         "enqueue": {
           "name": "Enqueue",
-          "description": "If the content should be played now or be added to the queue."
+          "description": "If the content should be played now or be added to the queue. Options are: play, replace, next. replace_next, add""
         },
         "announce": {
           "name": "Announce",
