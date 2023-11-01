@@ -424,6 +424,12 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         )
 
         # announce/alert support
+        if announce is None and "/api/tts_proxy" in media_id:
+            announce = True
+
+        if announce:
+            raise NotImplementedError("Music Assistant does not yet support announcements")
+
         # is_tts = "/api/tts_proxy" in media_id
         # if announce or is_tts:
         #     self.hass.create_task(
