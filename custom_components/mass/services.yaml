@@ -46,6 +46,16 @@ play_media:
       example: "true"
       selector:
         boolean:
+    artist:
+      required: false
+      example: "Queen"
+      selector:
+        text:
+    album:
+      required: false
+      example: "News of the world"
+      selector:
+        text:
     radio_mode:
       required: false
       advanced: true
@@ -55,9 +65,9 @@ play_media:
 
 search:
   fields:
-    query:
+    name:
       required: true
-      example: "Queen - Innuendo"
+      example: "We Are The Champions"
       selector:
         text:
     media_type:
@@ -72,10 +82,21 @@ search:
             - playlist
             - track
             - radio
+    artist:
+      required: false
+      example: "Queen"
+      selector:
+        text:
+    album:
+      required: false
+      example: "News of the world"
+      selector:
+        text:
     limit:
       required: false
+      advanced: true
       example: 25
-      default: 25
+      default: 5
       selector:
         number:
           min: 1

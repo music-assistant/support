@@ -14,7 +14,9 @@ from .helpers import get_mass
 
 SERVICE_SEARCH = "search"
 ATTR_MEDIA_TYPE = "media_type"
-ATTR_QUERY = "query"
+ATTR_SEARCH_NAME = "name"
+ATTR_SEARCH_ARTIST = "artist"
+ATTR_SEARCH_ALBUM = "album"
 ATTR_LIMIT = "limit"
 
 
@@ -25,8 +27,17 @@ def register_services(hass: HomeAssistant) -> None:
     async def handle_search(call: ServiceCall) -> ServiceResponse:
         """Handle queue_command service."""
         mass = get_mass(hass)
+        search_name = call.data[ATTR_SEARCH_NAME]
+        search_artist = call.data.get(ATTR_SEARCH_ARTIST)
+        search_album = call.data.get(ATTR_SEARCH_ALBUM)
+        if search_album and search_artist:
+            search_name = f"{search_artist} - {search_album} - {search_name}"
+        elif search_album:
+            search_name = f"{search_album} - {search_name}"
+        elif search_artist:
+            search_name = f"{search_artist} - {search_name}"
         result = await mass.music.search(
-            search_query=call.data[ATTR_QUERY],
+            search_query=search_name,
             media_types=call.data.get(ATTR_MEDIA_TYPE, MediaType.ALL),
             limit=call.data[ATTR_LIMIT],
         )
@@ -64,8 +75,10 @@ def register_services(hass: HomeAssistant) -> None:
         handle_search,
         schema=vol.Schema(
             {
-                vol.Required(ATTR_QUERY): cv.string,
+                vol.Required(ATTR_SEARCH_NAME): cv.string,
                 vol.Optional(ATTR_MEDIA_TYPE): vol.All(cv.ensure_list, [vol.Coerce(MediaType)]),
+                vol.Optional(ATTR_SEARCH_ARTIST): cv.string,
+                vol.Optional(ATTR_SEARCH_ALBUM): cv.string,
                 vol.Optional(ATTR_LIMIT, default=5): vol.Coerce(int),
             }
         ),

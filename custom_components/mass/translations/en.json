@@ -79,6 +79,14 @@
           "name": "Announce",
           "description": "If the media should be played as an announcement."
         },
+        "artist": {
+          "name": "Artist name",
+          "description": "When specifying a track or album by name in the Media ID field, you can optionally restrict results by this artist name."
+        },
+        "album": {
+          "name": "Album name",
+          "description": "When specifying a track by name in the Media ID field, you can optionally restrict results by this album name."
+        },
         "radio_mode": {
           "name": "Enable Radio Mode",
           "description": "Enable radio mode to auto generate a playlist based on the selection."
@@ -89,13 +97,21 @@
       "name": "Search Music Assistant",
       "description": "Perform a global search on the Music Assistant library and all providers.",
       "fields": {
-        "query": {
-          "name": "Query",
-          "description": "The search query."
+        "name": {
+          "name": "Search name",
+          "description": "The name/title to search for."
         },
         "media_type": {
           "name": "Media type(s)",
-          "description": "The type of the content to search. Such as artist, album, track or playlist. All types if omitted."
+          "description": "The type of the content to search. Such as artist, album, track, radio or playlist. All types if omitted."
+        },
+        "artist": {
+          "name": "Artist name",
+          "description": "When specifying a track or album name in the name field, you can optionally restrict results by this artist name."
+        },
+        "album": {
+          "name": "Album name",
+          "description": "When specifying a track name in the name field, you can optionally restrict results by this album name."
         },
         "limit": {
           "name": "Limit",

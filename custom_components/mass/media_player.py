@@ -95,6 +95,8 @@ SERVICE_PLAY_MEDIA_ADVANCED = "play_media"
 ATTR_RADIO_MODE = "radio_mode"
 ATTR_MEDIA_ID = "media_id"
 ATTR_MEDIA_TYPE = "media_type"
+ATTR_ARTIST = "artist"
+ATTR_ALBUM = "album"
 
 
 async def async_setup_entry(
@@ -125,10 +127,12 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         SERVICE_PLAY_MEDIA_ADVANCED,
         {
-            vol.Optional(ATTR_MEDIA_TYPE): vol.Coerce(MediaType),
             vol.Required(ATTR_MEDIA_ID): vol.All(cv.ensure_list, [cv.string]),
+            vol.Optional(ATTR_MEDIA_TYPE): vol.Coerce(MediaType),
             vol.Exclusive(ATTR_MEDIA_ENQUEUE, "enqueue_announce"): vol.Coerce(QueueOption),
             vol.Exclusive(ATTR_MEDIA_ANNOUNCE, "enqueue_announce"): cv.boolean,
+            vol.Optional(ATTR_ARTIST): cv.string,
+            vol.Optional(ATTR_ALBUM): cv.string,
             vol.Optional(ATTR_RADIO_MODE): vol.Coerce(bool),
         },
         "_async_play_media_advanced",
@@ -382,10 +386,12 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     async def _async_play_media_advanced(
         self,
         media_id: list[str],
+        artist: str | None = None,
+        album: str | None = None,
         enqueue: MediaPlayerEnqueue | QueueOption | None = QueueOption.PLAY,
         announce: bool | None = None,  # noqa: ARG002
-        radio_mode: bool | None = None,  # noqa: ARG002
-        media_type: str | None = None,  # noqa: ARG002
+        radio_mode: bool | None = None,
+        media_type: str | None = None,
     ) -> None:
         """Send the play_media command to the media player."""
         # pylint: disable=too-many-arguments
@@ -403,7 +409,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
                     media_uris.append(item.uri)
                     continue
             # lookup by name
-            if item := await self._get_item_by_name(media_id_str, media_type):
+            if item := await self._get_item_by_name(media_id_str, artist, album, media_type):
                 media_uris.append(item.uri)
 
         if not media_uris:
@@ -433,7 +439,11 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         return await async_browse_media(self.hass, self.mass, media_content_id, media_content_type)
 
     async def _get_item_by_name(
-        self, name: str, media_type: str | None = None
+        self,
+        name: str,
+        artist: str | None = None,
+        album: str | None = None,
+        media_type: str | None = None,
     ) -> MediaItemType | None:
         """Try to find a media item (such as a playlist) by name."""
         # pylint: disable=too-many-nested-blocks
@@ -443,42 +453,44 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             for x in (
                 self.mass.music.get_library_playlists,
                 self.mass.music.get_library_radios,
-                self.mass.music.get_library_albums,
                 self.mass.music.get_library_tracks,
+                self.mass.music.get_library_albums,
                 self.mass.music.get_library_artists,
             )
             if not media_type or media_type.lower() in x.__name__
         ]
-        if not media_type:
-            # address (possible) voice command with mediatype in search string
-            for media_type_str in ("artist", "album", "track", "playlist"):
-                media_type_subst_str = f"{media_type_str} "
-                if media_type_subst_str in searchname:
-                    media_type = MediaType(media_type_str)
-                    searchname = searchname.replace(media_type_subst_str, "")
-                    break
-
         # prefer (exact) lookup in the library by name
         for func in library_functions:
             result = await func(search=searchname)
             for item in result.items:
+                # handle optional artist filter
+                if (
+                    artist
+                    and (artists := getattr(item, "artists", None))
+                    and not any(x for x in artists if x.name.lower() == artist.lower())
+                ):
+                    continue
+                # handle optional album filter
+                if (
+                    album
+                    and (item_album := getattr(item, "album", None))
+                    and item_album.name.lower() != album.lower()
+                ):
+                    continue
                 if searchname == item.name.lower():
                     return item
-            # repeat but account for tracks or albums where an artist name is used
-            if func in (self.mass.music.get_library_tracks, self.mass.music.get_library_albums):
-                for splitter in (" - ", " by "):
-                    if splitter in searchname:
-                        artistname, title = searchname.split(splitter, 1)
-                        result = await func(search=title)
-                        for item in result.items:
-                            if item.name.lower() != title:
-                                continue
-                            for artist in item.artists:
-                                if artist.name.lower() == artistname:
-                                    return item
-        # nothing found in the library, fallback to search
+        # nothing found in the library, fallback to global search
+        search_name = name
+        if album and artist:
+            search_name = f"{artist} - {album} - {name}"
+        elif album:
+            search_name = f"{album} - {name}"
+        elif artist:
+            search_name = f"{artist} - {name}"
         result = await self.mass.music.search(
-            searchname, media_types=[media_type] if media_type else MediaType.ALL
+            search_query=search_name,
+            media_types=[media_type] if media_type else MediaType.ALL,
+            limit=5,
         )
         for results in (
             result.tracks,
