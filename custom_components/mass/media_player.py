@@ -200,6 +200,8 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
     async def async_on_update(self) -> None:
         """Handle player updates."""
+        # ruff: noqa: PLR0915
+        # pylint: disable=too-many-statements
         if not self.available:
             return
         player = self.player
@@ -209,24 +211,30 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             self._attr_state = STATE_MAPPING[self.player.state]
         else:
             self._attr_state = STATE_OFF
-        self._attr_app_id = DOMAIN if queue else player.active_source
-        self._attr_shuffle = queue.shuffle_enabled if queue else None
-        self._attr_repeat = queue.repeat_mode.value if queue else None
         self._attr_group_members = player.group_childs
         self._attr_volume_level = player.volume_level / 100
         self._attr_is_volume_muted = player.volume_muted
         if queue is not None:
+            # player has MA as active source (either a group player or the players own queue)
+            self._attr_app_id = DOMAIN
+            self._attr_shuffle = queue.shuffle_enabled
+            self._attr_repeat = queue.repeat_mode.value
             self._attr_media_position = queue.elapsed_time
             self._attr_media_position_updated_at = from_utc_timestamp(
                 queue.elapsed_time_last_updated
             )
             self._prev_time = queue.elapsed_time
         else:
+            # player has some external source active
+            self._attr_app_id = player.active_source
+            self._attr_shuffle = queue.shuffle_enabled if queue else None
+            self._attr_repeat = queue.repeat_mode.value if queue else None
             self._attr_media_position = player.elapsed_time
             self._attr_media_position_updated_at = from_utc_timestamp(
                 player.elapsed_time_last_updated
             )
             self._prev_time = player.elapsed_time
+        self._attr_source = player.active_source
         self._update_media_image_url(queue)
         # update current media item infos
         media_artist = None
@@ -247,8 +255,8 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
                     media_title += f" ({media_item.version})"
                 if media_item.album:
                     media_album_name = media_item.album.name
-                    if getattr(media_item.album, "artist", None):
-                        media_album_artist = media_item.album.artist.name
+                    if album_artists := getattr(media_item.album, "artists", None):
+                        media_album_artist = ", ".join([x.name for x in album_artists])
         # set the attributes
         self._attr_media_artist = media_artist
         self._attr_media_album_artist = media_album_artist
@@ -257,7 +265,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         self._attr_media_content_id = media_content_id
         self._attr_media_duration = media_duration
 
-    def _update_media_image_url(self, queue: PlayerQueue) -> None:
+    def _update_media_image_url(self, queue: PlayerQueue | None) -> None:
         """Update image URL for the active queue item."""
         if queue is None or queue.current_item is None:
             self._attr_media_image_url = None
