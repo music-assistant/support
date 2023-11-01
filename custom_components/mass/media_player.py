@@ -413,30 +413,25 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
                 media_uris.append(item.uri)
 
         if not media_uris:
-            return
+            raise MediaNotFoundError(f"Could not resolve {media_id} to playable media item")
 
+        # determine active queue to send the play request to
         if queue := self.mass.players.get_player_queue(self.player.active_source):
             queue_id = queue.queue_id
         else:
             queue_id = self.player_id
-        await self.mass.players.play_media(
-            queue_id, media=media_uris, option=enqueue, radio_mode=radio_mode
-        )
 
-        # announce/alert support
+        # announce/alert support (WIP)
+        if announce and radio_mode:
+            radio_mode = None
         if announce is None and "/api/tts_proxy" in media_id:
             announce = True
-
         if announce:
             raise NotImplementedError("Music Assistant does not yet support announcements")
 
-        # is_tts = "/api/tts_proxy" in media_id
-        # if announce or is_tts:
-        #     self.hass.create_task(
-        #         self.player.active_queue.play_announcement(media_id, is_tts)
-        #     )
-        # else:
-        #     await self.player.active_queue.play_media(media_id, queue_opt)
+        await self.mass.players.play_media(
+            queue_id, media=media_uris, option=enqueue, radio_mode=radio_mode
+        )
 
     async def async_browse_media(
         self, media_content_type=None, media_content_id=None
