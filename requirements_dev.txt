@@ -1,4 +1,4 @@
-mypy==1.6.1
+mypy==1.7.1
 pylint==3.0.2
 pre-commit==3.5.0
 homeassistant==2023.10.5
