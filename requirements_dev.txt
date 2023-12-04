@@ -2,4 +2,4 @@ mypy==1.7.1
 pylint==3.0.2
 pre-commit==3.5.0
 homeassistant==2023.11.3
-music-assistant==2.0.0b74
+music-assistant==2.0.0b75
