@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import intent
 
+from . import DOMAIN, LOGGER
 from .helpers import get_mass
 from .media_player import MassPlayer
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     pass
 if TYPE_CHECKING:
     from music_assistant.client import MusicAssistantClient
-from . import DOMAIN, LOGGER
+
 
 INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER = "MassPlayMediaOnMediaPlayerNameEn"
 CONVERSATION_DOMAIN = "conversation"
