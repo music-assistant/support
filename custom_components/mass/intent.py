@@ -11,7 +11,6 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import intent
 
 from . import DOMAIN
-from .helpers import get_mass
 from .media_player import MassPlayer
 
 if TYPE_CHECKING:
@@ -39,35 +38,30 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
         """Handle the intent."""
         hass = intent_obj.hass
-        mass: MusicAssistantClient = get_mass(hass)
         service_data: dict[str, Any] = {}
         slots = self.async_validate_slots(intent_obj.slots)
 
         query: str = slots.get("query", {}).get("value")
-        service_data["agent_id"] = await self.get_agent_id_config_entry(hass)
         if query is not None:
+            config_entry = await self.get_loaded_config_entry(hass)
+            service_data["agent_id"] = config_entry.data.get("openai_agent_id")
             service_data["text"] = query
 
-        media_id, media_type = await self.get_media_id_and_media_type_from_query_result(
-            hass, service_data, intent_obj
-        )
         name: str = slots.get("name", {}).get("value")
-        best_match_player = None
         if name is not None:
+            media_id, media_type = await self.get_media_id_and_media_type_from_query_result(
+                hass, service_data, intent_obj
+            )
+            mass: MusicAssistantClient = hass.data[DOMAIN][config_entry.entry_id].mass
             players = await mass.players.get_players()
             for player in players:
                 if player.name.casefold() == name.casefold():
-                    best_match_player = player
-                    break
-
-        if best_match_player is not None:
-            player_id = best_match_player.player_id
-            actual_player = MassPlayer(mass, player_id)
-            actual_player.async_play_media(media_id=media_id, media_type=media_type)
+                    actual_player = MassPlayer(mass, player.player_id)
+                    actual_player.async_play_media(media_id=media_id, media_type=media_type)
 
         response = intent_obj.create_response()
         response.response_type = intent.IntentResponseType.ACTION_DONE
-        response.async_set_speech(f"Playing selection on {best_match_player.name}")
+        response.async_set_speech(f"Playing selection on {actual_player.name}")
         return response
 
     async def get_media_id_and_media_type_from_query_result(
@@ -87,10 +81,10 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
         media_type = json_payload.get("media_type")
         return media_id, media_type
 
-    async def get_agent_id_config_entry(self, hass: HomeAssistant) -> str:
+    async def get_loaded_config_entry(self, hass: HomeAssistant) -> str:
         """Get the correct config entry."""
         config_entries = hass.config_entries.async_entries(DOMAIN)
         for config_entry in config_entries:
             if config_entry.state == ConfigEntryState.LOADED:
-                return config_entry.data.get("openai_agent_id")
+                return config_entry
         return None
