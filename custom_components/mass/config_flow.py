@@ -18,7 +18,7 @@ from homeassistant.const import CONF_URL
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import AbortFlow, FlowResult
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import aiohttp_client
+from homeassistant.helpers import aiohttp_client, selector
 from music_assistant.client import MusicAssistantClient
 from music_assistant.client.exceptions import CannotConnect, InvalidServerVersion
 from music_assistant.common.models.api import ServerInfoMessage
@@ -27,6 +27,7 @@ from .addon import get_addon_manager, install_repository
 from .const import (
     ADDON_HOSTNAME,
     CONF_INTEGRATION_CREATED_ADDON,
+    CONF_OPENAI_AGENT_ID,
     CONF_USE_ADDON,
     DOMAIN,
     LOGGER,
@@ -37,13 +38,39 @@ ADDON_SETUP_TIMEOUT_ROUNDS = 40
 DEFAULT_URL = "http://mass.local:8095"
 ADDON_URL = f"http://{ADDON_HOSTNAME}:8095"
 DEFAULT_TITLE = "Music Assistant"
-ON_SUPERVISOR_SCHEMA = vol.Schema({vol.Optional(CONF_USE_ADDON, default=True): bool})
+
+ON_SUPERVISOR_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_USE_ADDON, default=True): bool,
+        vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
+            selector.ConversationAgentSelectorConfig(language="en")
+        ),
+    }
+)
 
 
 def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
     """Return a schema for the manual step."""
     default_url = user_input.get(CONF_URL, DEFAULT_URL)
-    return vol.Schema({vol.Required(CONF_URL, default=default_url): str})
+    return vol.Schema(
+        {
+            vol.Required(CONF_URL, default=default_url): str,
+            vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
+                selector.ConversationAgentSelectorConfig(language="en")
+            ),
+        }
+    )
+
+
+def get_zeroconf_schema() -> vol.Schema:
+    """Return a schema for the zeroconf step."""
+    return vol.Schema(
+        {
+            vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
+                selector.ConversationAgentSelectorConfig(language="en")
+            ),
+        }
+    )
 
 
 async def get_server_info(hass: HomeAssistant, url: str) -> ServerInfoMessage:
@@ -63,6 +90,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Set up flow instance."""
         self.server_info: ServerInfoMessage | None = None
+        self.openai_agent_id: str | None = None
         # If we install the add-on we should uninstall it on entry remove.
         self.integration_created_addon = False
         self.install_task: asyncio.Task | None = None
@@ -182,6 +210,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         try:
             self.server_info = await get_server_info(self.hass, user_input[CONF_URL])
+            self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID]
             await self.async_set_unique_id(self.server_info.server_id)
         except CannotConnect:
             errors["base"] = "cannot_connect"
@@ -223,12 +252,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             # Check that we can connect to the address.
             try:
+                self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID]
                 await get_server_info(self.hass, self.server_info.base_url)
             except CannotConnect:
                 return self.async_abort(reason="cannot_connect")
             return await self._async_create_entry_or_abort()
         return self.async_show_form(
             step_id="discovery_confirm",
+            data_schema=get_zeroconf_schema(),
             description_placeholders={"url": self.server_info.base_url},
         )
 
@@ -279,6 +310,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_URL: self.server_info.base_url,
                     CONF_USE_ADDON: self.use_addon,
                     CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
+                    CONF_OPENAI_AGENT_ID: self.openai_agent_id,
                 },
                 title=DEFAULT_TITLE,
             )
@@ -295,6 +327,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_URL: self.server_info.base_url,
                 CONF_USE_ADDON: self.use_addon,
                 CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
+                CONF_OPENAI_AGENT_ID: self.openai_agent_id,
             },
         )
 
