@@ -8,6 +8,9 @@ from typing import TYPE_CHECKING, Any
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.components import media_source
+from homeassistant.components.homeassistant.exposed_entities import (
+    async_should_expose,
+)
 from homeassistant.components.media_player import (
     BrowseMedia,
     MediaPlayerDeviceClass,
@@ -120,6 +123,7 @@ async def async_setup_entry(
     # add all current players
     for player in mass.players:
         added_ids.add(player.player_id)
+        async_should_expose(hass, DOMAIN, player.player_id)
         async_add_entities([MassPlayer(mass, player.player_id)])
 
     # add platform service for play_media with advanced options
