@@ -26,6 +26,7 @@ from music_assistant.common.models.api import ServerInfoMessage
 from .addon import get_addon_manager, install_repository
 from .const import (
     ADDON_HOSTNAME,
+    CONF_ASSIST_AUTO_EXPOSE_PLAYERS,
     CONF_INTEGRATION_CREATED_ADDON,
     CONF_OPENAI_AGENT_ID,
     CONF_USE_ADDON,
@@ -45,6 +46,7 @@ ON_SUPERVISOR_SCHEMA = vol.Schema(
         vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
             selector.ConversationAgentSelectorConfig(language="en")
         ),
+        vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=True): bool,
     }
 )
 
@@ -58,6 +60,7 @@ def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
             vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
+            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=True): bool,
         }
     )
 
@@ -69,6 +72,7 @@ def get_zeroconf_schema() -> vol.Schema:
             vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
+            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=True): bool,
         }
     )
 
@@ -91,6 +95,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Set up flow instance."""
         self.server_info: ServerInfoMessage | None = None
         self.openai_agent_id: str | None = None
+        self.expose_players_assist: bool | None = None
         # If we install the add-on we should uninstall it on entry remove.
         self.integration_created_addon = False
         self.install_task: asyncio.Task | None = None
@@ -211,6 +216,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             self.server_info = await get_server_info(self.hass, user_input[CONF_URL])
             self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID]
+            self.expose_players_assist = user_input[CONF_ASSIST_AUTO_EXPOSE_PLAYERS]
             await self.async_set_unique_id(self.server_info.server_id)
         except CannotConnect:
             errors["base"] = "cannot_connect"
@@ -253,6 +259,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Check that we can connect to the address.
             try:
                 self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID]
+                self.expose_players_assist = user_input[CONF_ASSIST_AUTO_EXPOSE_PLAYERS]
                 await get_server_info(self.hass, self.server_info.base_url)
             except CannotConnect:
                 return self.async_abort(reason="cannot_connect")
@@ -311,6 +318,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_USE_ADDON: self.use_addon,
                     CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
                     CONF_OPENAI_AGENT_ID: self.openai_agent_id,
+                    CONF_ASSIST_AUTO_EXPOSE_PLAYERS: self.expose_players_assist,
                 },
                 title=DEFAULT_TITLE,
             )
@@ -328,6 +336,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_USE_ADDON: self.use_addon,
                 CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
                 CONF_OPENAI_AGENT_ID: self.openai_agent_id,
+                CONF_ASSIST_AUTO_EXPOSE_PLAYERS: self.expose_players_assist,
             },
         )
 

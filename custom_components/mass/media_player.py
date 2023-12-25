@@ -123,7 +123,8 @@ async def async_setup_entry(
     # add all current players
     for player in mass.players:
         added_ids.add(player.player_id)
-        async_should_expose(hass, DOMAIN, player.player_id)
+        if config_entry.data.get("expose_players_assist"):
+            async_should_expose(hass, DOMAIN, player.player_id)
         async_add_entities([MassPlayer(mass, player.player_id)])
 
     # add platform service for play_media with advanced options
