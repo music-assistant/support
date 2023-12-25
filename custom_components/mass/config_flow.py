@@ -46,7 +46,7 @@ ON_SUPERVISOR_SCHEMA = vol.Schema(
         vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
             selector.ConversationAgentSelectorConfig(language="en")
         ),
-        vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=True): bool,
+        vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
     }
 )
 
@@ -60,7 +60,7 @@ def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
             vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
-            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=True): bool,
+            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
         }
     )
 
@@ -72,7 +72,7 @@ def get_zeroconf_schema() -> vol.Schema:
             vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
-            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=True): bool,
+            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
         }
     )
 

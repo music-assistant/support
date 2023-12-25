@@ -92,6 +92,8 @@ During [Chapter 5 of "Year of the Voice"](https://www.youtube.com/live/djEkgoS5d
 - When setting up the Music Assistant integration, make sure that you select the correct Conversation Agent and also
 allow the auto-exposure of Mass media players to Assist
 
+![Preview image](https://raw.githubusercontent.com/music-assistant/hass-music-assistant/main/screenshots/screen6.png)
+
 ## Usage and notes
 
 - Music from your music sources will be automatically loaded into the Music Assistant library. If you have multiple sources, they will be merged as one library.
