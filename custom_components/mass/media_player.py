@@ -8,9 +8,7 @@ from typing import TYPE_CHECKING, Any
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.components import media_source
-from homeassistant.components.homeassistant.exposed_entities import (
-    async_should_expose,
-)
+from homeassistant.components.homeassistant.exposed_entities import async_expose_entity
 from homeassistant.components.media_player import (
     BrowseMedia,
     MediaPlayerDeviceClass,
@@ -24,7 +22,7 @@ from homeassistant.components.media_player.const import (
     ATTR_MEDIA_EXTRA,
     MediaPlayerEntityFeature,
 )
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import STATE_IDLE, STATE_OFF, STATE_PAUSED, STATE_PLAYING
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, async_get_current_platform
@@ -123,8 +121,6 @@ async def async_setup_entry(
     # add all current players
     for player in mass.players:
         added_ids.add(player.player_id)
-        if config_entry.data.get("expose_players_assist"):
-            async_should_expose(hass, DOMAIN, player.player_id)
         async_add_entities([MassPlayer(mass, player.player_id)])
 
     # add platform service for play_media with advanced options
@@ -170,6 +166,10 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
         await super().async_added_to_hass()
+        # we need to get the hass object in order to get our config entry
+        # and expose the player to the conversation component, assuming that
+        # the config entry has the option enabled.
+        await self._expose_players_assist()
 
         # we subscribe to player queue time update but we only
         # accept a state change on big time jumps (e.g. seeking)
@@ -517,3 +517,13 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
                 # simply return the first item because search is already sorted by best match
                 return item
         return None
+
+    async def _expose_players_assist(self) -> None:
+        """Get the correct config entry."""
+        hass = self.hass
+        config_entries = hass.config_entries.async_entries(DOMAIN)
+        for config_entry in config_entries:
+            if config_entry.state == ConfigEntryState.SETUP_IN_PROGRESS and config_entry.data.get(
+                "expose_players_assist"
+            ):
+                async_expose_entity(hass, "conversation", self.entity_id, True)
