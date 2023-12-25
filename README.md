@@ -82,6 +82,16 @@ MA requires a 64bit Operating System and a minimum of 2GB of RAM on the physical
 NOTE: You need to set-up the players and music sources within Music Assistant itself.
 If you are running Music Assistant in docker, you need to access the webinterface at http://youripaddress:8095, when running the Home Assistant add-on, you can access the webinterface from the add-on (and even show that in the sidebar).
 
+## OpenAI features
+
+During [Chapter 5 of "Year of the Voice"](https://www.youtube.com/live/djEkgoS5dDQ?si=pt8-qYH3PTpsnOq9&t=3699), JLo showed something he had been working on to use the OpenAI integration along with Music Assistant. We now have this feature baked in to the integration code directly, although some extra setup is still required.
+- You need to create/add another OpenAI integration that is purely for Music Assistant.
+- Add the prompt found [here](https://github.com/jozefKruszynski/home-assistant-things/blob/main/blueprints/modified_prompt.txt) to the configuration of the the OpenAI integration.
+- Add a directory in your Home Assistant `config` dir name `custom_sentences/en`
+- Add the file found [here](https://github.com/jozefKruszynski/home-assistant-things/blob/main/custom_sentences/en/play_media_on_mass.yaml), to that dir.
+- When setting up the Music Assistant integration, make sure that you select the correct Gonnversation Agent and also 
+allow the auto-exposure of Mass media players to Assist
+
 ## Usage and notes
 
 - Music from your music sources will be automatically loaded into the Music Assistant library. If you have multiple sources, they will be merged as one library.
