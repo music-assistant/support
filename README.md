@@ -84,7 +84,7 @@ If you are running Music Assistant in docker, you need to access the webinterfac
 
 ## OpenAI features
 
-During [Chapter 5 of "Year of the Voice"](https://www.youtube.com/live/djEkgoS5dDQ?si=pt8-qYH3PTpsnOq9&t=3699), JLo showed something he had been working on to use the OpenAI integration along with Music Assistant. We now have this feature baked in to the integration code directly, although some extra setup is still required.
+During [Chapter 5 of "Year of the Voice"](https://www.youtube.com/live/djEkgoS5dDQ?si=pt8-qYH3PTpsnOq9&t=3699), [JLo](https://blog.jlpouffier.fr/chatgpt-powered-music-search-engine-on-a-local-voice-assistant/) showed something he had been working on to use the OpenAI integration along with Music Assistant. We now have this feature baked in to the integration code directly, although some extra setup is still required.
 - You need to create/add another OpenAI integration that is purely for Music Assistant.
 - Add the prompt found [here](https://github.com/jozefKruszynski/home-assistant-things/blob/main/blueprints/modified_prompt.txt) to the configuration of the the OpenAI integration.
 - Add a directory in your Home Assistant `config` dir name `custom_sentences/en`
