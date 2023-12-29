@@ -61,7 +61,9 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
 
         if actual_player is None:
             raise intent.IntentHandleError(f"No Mass media player found for name {name}")
-        await actual_player._async_play_media_advanced(media_id=[media_id], media_type=media_type)
+        await actual_player.async_play_media(
+            media_id=media_id, media_type=media_type, extra={"radio_mode": False}
+        )
         response = intent_obj.create_response()
         response.response_type = intent.IntentResponseType.ACTION_DONE
         response.async_set_speech(f"Playing selection on {name}")
