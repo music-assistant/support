@@ -57,11 +57,14 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
             for player in players:
                 if player.name.casefold() == name.casefold():
                     actual_player = MassPlayer(mass, player.player_id)
-                    actual_player.async_play_media(media_id=media_id, media_type=media_type)
+                    break
 
+        if actual_player is None:
+            raise intent.IntentHandleError(f"No Mass media player found for name {name}")
+        await actual_player._async_play_media_advanced(media_id=[media_id], media_type=media_type)
         response = intent_obj.create_response()
         response.response_type = intent.IntentResponseType.ACTION_DONE
-        response.async_set_speech(f"Playing selection on {actual_player.name}")
+        response.async_set_speech(f"Playing selection on {name}")
         return response
 
     async def get_media_id_and_media_type_from_query_result(
