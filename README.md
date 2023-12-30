@@ -88,7 +88,7 @@ During [Chapter 5 of "Year of the Voice"](https://www.youtube.com/live/djEkgoS5d
 - You need to create/add another OpenAI integration that is purely for Music Assistant.
 - Add the prompt found [here](https://github.com/jozefKruszynski/home-assistant-things/blob/main/blueprints/modified_prompt.txt) to the configuration of the the OpenAI integration.
 - Add a directory in your Home Assistant `config` dir name `custom_sentences/en`
-- Add the file found [here](https://github.com/jozefKruszynski/home-assistant-things/blob/main/custom_sentences/en/play_media_on_mass.yaml), to that dir.
+- Add the file found [here](https://github.com/music-assistant/hass-music-assistant/blob/main/custom_sentences/en/play_media_on_media_player.yaml), to that dir.
 - When setting up the Music Assistant integration, make sure that you select the correct Conversation Agent and also
 allow the auto-exposure of Mass media players to Assist
 

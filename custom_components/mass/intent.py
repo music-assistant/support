@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from music_assistant.client import MusicAssistantClient
 
 
-INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER = "MassPlayMediaOnMediaPlayerNameEn"
+INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER = "MassPlayMediaOnMediaPlayerEn"
 NAME_SLOT = "name"
 AREA_SLOT = "area"
 QUERY_SLOT = "query"
@@ -35,10 +35,10 @@ SLOT_VALUE = "value"
 
 async def async_setup_intents(hass: HomeAssistant) -> None:
     """Set up the climate intents."""
-    intent.async_register(hass, MassPlayMediaOnMediaPlayerNameEn())
+    intent.async_register(hass, MassPlayMediaOnMediaPlayerEn())
 
 
-class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
+class MassPlayMediaOnMediaPlayerEn(intent.IntentHandler):
     """Handle PlayMediaOnMediaPlayer intents."""
 
     intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
@@ -46,45 +46,47 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
 
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
         """Handle the intent."""
-        hass = intent_obj.hass
-        service_data: dict[str, Any] = {}
         slots = self.async_validate_slots(intent_obj.slots)
-        config_entry = await self.get_loaded_config_entry(hass)
-        mass: MusicAssistantClient = hass.data[DOMAIN][config_entry.entry_id].mass
+        config_entry = await self._get_loaded_config_entry(intent_obj.hass)
 
         query: str = slots.get(QUERY_SLOT, {}).get(SLOT_VALUE)
         if query is not None:
+            service_data: dict[str, Any] = {}
             service_data[ATTR_AGENT_ID] = config_entry.data.get(CONF_OPENAI_AGENT_ID)
             service_data[ATTR_TEXT] = query
 
         # Look up area to fail early
         area_name = slots.get(AREA_SLOT, {}).get(SLOT_VALUE)
-        area: ar.AreaEntry | None = None
         if area_name is not None:
-            areas = ar.async_get(hass)
+            areas = ar.async_get(intent_obj.hass)
             area_name = area_name.casefold()
             area = await self._find_area(area_name, areas)
             if area is None:
                 raise intent.IntentHandleError(f"No area named {area_name}")
-            media_player_entity = await self._filter_by_area(area, hass, config_entry)
+            media_player_entity = await self._get_entity_by_area(
+                area, intent_obj.hass, config_entry
+            )
+            if media_player_entity is None:
+                raise intent.IntentHandleError(f"No media player found matching area: {area_name}")
+
         # Look up name to fail early
         name: str = slots.get(NAME_SLOT, {}).get(SLOT_VALUE)
         if name is not None:
             name = name.casefold()
-            media_player_entity = await self.get_entity_from_registry(name, hass, config_entry)
-
-        if media_player_entity is None:
-            if name is not None:
+            media_player_entity = await self._get_entity_from_registry(
+                name, intent_obj.hass, config_entry
+            )
+            if media_player_entity is None:
                 raise intent.IntentHandleError(f"No media player found matching name: {name}")
-            if area is not None:
-                raise intent.IntentHandleError(f"No media player found matching area: {area_name}")
 
-        actual_player = await self.get_mass_player_from_registry_entry(mass, media_player_entity)
+        actual_player = await self._get_mass_player_from_registry_entry(
+            intent_obj.hass, config_entry, media_player_entity
+        )
         if actual_player is None:
             raise intent.IntentHandleError(f"No Mass media player found for name {name}")
 
-        media_id, media_type = await self.get_media_id_and_media_type_from_query_result(
-            hass, service_data, intent_obj
+        media_id, media_type = await self._get_media_id_and_media_type_from_query_result(
+            intent_obj.hass, service_data, intent_obj
         )
         await actual_player.async_play_media(
             media_id=media_id, media_type=media_type, extra={ATTR_RADIO_MODE: False}
@@ -94,7 +96,7 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
         response.async_set_speech(f"Playing selection on {name}")
         return response
 
-    async def get_media_id_and_media_type_from_query_result(
+    async def _get_media_id_and_media_type_from_query_result(
         self, hass: HomeAssistant, service_data: dict[str, Any], intent_obj: intent.Intent
     ) -> str:
         """Get  from the query."""
@@ -111,7 +113,7 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
         media_type = json_payload.get(ATTR_MEDIA_TYPE)
         return media_id, media_type
 
-    async def get_loaded_config_entry(self, hass: HomeAssistant) -> str:
+    async def _get_loaded_config_entry(self, hass: HomeAssistant) -> str:
         """Get the correct config entry."""
         config_entries = hass.config_entries.async_entries(DOMAIN)
         for config_entry in config_entries:
@@ -119,7 +121,7 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
                 return config_entry
         return None
 
-    async def get_entity_from_registry(
+    async def _get_entity_from_registry(
         self, name: str, hass: HomeAssistant, config_entry: ConfigEntry
     ) -> er.RegistryEntry:
         """Get the entity from the registry."""
@@ -148,10 +150,11 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
 
         return any(name == alias.casefold() for alias in entity.aliases)
 
-    async def get_mass_player_from_registry_entry(
-        self, mass: MusicAssistantClient, media_player_entity: er.RegistryEntry
+    async def _get_mass_player_from_registry_entry(
+        self, hass: HomeAssistant, config_entry: ConfigEntry, media_player_entity: er.RegistryEntry
     ) -> MassPlayer:
         """Return the mass player."""
+        mass: MusicAssistantClient = hass.data[DOMAIN][config_entry.entry_id].mass
         mass_player = mass.players.get_player(media_player_entity.unique_id.strip("mass_"))
         actual_player = MassPlayer(mass, mass_player.player_id)
         return actual_player
@@ -173,20 +176,23 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
 
         return None
 
-    async def _filter_by_area(
+    async def _get_entity_by_area(
         self, area: ar.AreaEntry, hass: HomeAssistant, config_entry: ConfigEntry
     ) -> er.RegistryEntry:
         """Filter state/entity pairs by an area."""
         entity_registry = er.async_get(hass)
-        devices = dr.async_get(hass)
+        device_registry = dr.async_get(hass)
         entity_registry_entries = er.async_entries_for_config_entry(
             entity_registry, config_entry.entry_id
         )
         for entity_registry_entry in entity_registry_entries:
             if entity_registry_entry.area_id == area.id:
+                # Use entity's area id first
                 return entity_registry_entry
-            elif entity_registry_entry.device_id is not None:
-                device = devices.async_get(entity_registry_entry.device_id)
+            if entity_registry_entry.device_id is not None:
+                # Fall back to device area if not set on entity
+                device = device_registry.async_get(entity_registry_entry.device_id)
                 if device is not None and device.area_id == area.id:
                     return entity_registry_entry
+
         return None
