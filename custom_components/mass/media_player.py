@@ -100,6 +100,8 @@ ATTR_MEDIA_TYPE = "media_type"
 ATTR_ARTIST = "artist"
 ATTR_ALBUM = "album"
 
+# pylint: disable=too-many-public-methods
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
