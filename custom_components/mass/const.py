@@ -15,6 +15,7 @@ ATTR_QUEUE_INDEX = "queue_index"
 ATTR_GROUP_LEADER = "group_leader"
 ATTR_MASS_PLAYER_ID = "mass_player_id"
 ATTR_MASS_PLAYER_TYPE = "mass_player_type"
+ATTR_STREAM_TITLE = "stream_title"
 
 ADDON_SLUG = "d5369777_music_assistant_beta"
 ADDON_HOSTNAME = "d5369777-music-assistant-beta"

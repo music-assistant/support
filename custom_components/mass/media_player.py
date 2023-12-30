@@ -47,6 +47,7 @@ from .const import (
     ATTR_MASS_PLAYER_TYPE,
     ATTR_QUEUE_INDEX,
     ATTR_QUEUE_ITEMS,
+    ATTR_STREAM_TITLE,
     DOMAIN,
 )
 from .entity import MassBaseEntity
@@ -194,7 +195,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         """Return additional state attributes."""
         player = self.player
         queue = self.mass.players.get_player_queue(player.active_source)
-        return {
+        attrs = {
             ATTR_MASS_PLAYER_ID: self.player_id,
             ATTR_MASS_PLAYER_TYPE: player.type.value,
             ATTR_GROUP_MEMBERS: player.group_childs,
@@ -203,6 +204,23 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             ATTR_QUEUE_ITEMS: queue.items if queue else None,
             ATTR_QUEUE_INDEX: queue.current_index if queue else None,
         }
+        # add optional stream_title for radio streams
+        if (
+            queue
+            and queue.current_item
+            and queue.current_item.streamdetails
+            and queue.current_item.streamdetails.stream_title
+        ):
+            attrs[ATTR_STREAM_TITLE] = queue.current_item.streamdetails.stream_title
+        elif (
+            queue
+            and queue.current_item
+            and queue.current_item.media_type == MediaType.RADIO
+            and queue.current_item.media_item
+            and queue.current_item.media_item.metadata
+        ):
+            attrs[ATTR_STREAM_TITLE] = queue.current_item.media_item.metadata.description
+        return attrs
 
     async def async_on_update(self) -> None:
         """Handle player updates."""
