@@ -93,7 +93,10 @@ class MassPlayMediaOnMediaPlayerEn(intent.IntentHandler):
         )
         response = intent_obj.create_response()
         response.response_type = intent.IntentResponseType.ACTION_DONE
-        response.async_set_speech(f"Playing selection on {name}")
+        if area_name is not None:
+            response.async_set_speech(f"Playing selection in {area_name}")
+        if name is not None:
+            response.async_set_speech(f"Playing selection on {name}")
         return response
 
     async def _get_media_id_and_media_type_from_query_result(
