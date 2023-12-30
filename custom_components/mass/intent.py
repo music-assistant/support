@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import intent
 
@@ -61,19 +62,24 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
         area: ar.AreaEntry | None = None
         if area_name is not None:
             areas = ar.async_get(hass)
-            area = areas.async_get_area(area_name) or areas.async_get_area_by_name(area_name)
+            area_name = area_name.casefold()
+            area = await self._find_area(area_name, areas)
             if area is None:
                 raise intent.IntentHandleError(f"No area named {area_name}")
-
+            media_player_entity = await self._filter_by_area(area, hass, config_entry)
         # Look up name to fail early
         name: str = slots.get(NAME_SLOT, {}).get(SLOT_VALUE)
         if name is not None:
             name = name.casefold()
             media_player_entity = await self.get_entity_from_registry(name, hass, config_entry)
-            actual_player = await self.get_mass_player_from_registry_entry(
-                mass, media_player_entity
-            )
 
+        if media_player_entity is None:
+            if name is not None:
+                raise intent.IntentHandleError(f"No media player found matching name: {name}")
+            if area is not None:
+                raise intent.IntentHandleError(f"No media player found matching area: {area_name}")
+
+        actual_player = await self.get_mass_player_from_registry_entry(mass, media_player_entity)
         if actual_player is None:
             raise intent.IntentHandleError(f"No Mass media player found for name {name}")
 
@@ -149,3 +155,38 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
         mass_player = mass.players.get_player(media_player_entity.unique_id.strip("mass_"))
         actual_player = MassPlayer(mass, mass_player.player_id)
         return actual_player
+
+    async def _find_area(self, area_name: str, areas: ar.AreaRegistry) -> ar.AreaEntry | None:
+        """Find an area by id or name, checking aliases too."""
+        area = areas.async_get_area(area_name) or areas.async_get_area_by_name(area_name)
+        if area is not None:
+            return area
+
+        # Check area aliases
+        for maybe_area in areas.areas.values():
+            if not maybe_area.aliases:
+                continue
+
+            for area_alias in maybe_area.aliases:
+                if area_name == area_alias.casefold():
+                    return maybe_area
+
+        return None
+
+    async def _filter_by_area(
+        self, area: ar.AreaEntry, hass: HomeAssistant, config_entry: ConfigEntry
+    ) -> er.RegistryEntry:
+        """Filter state/entity pairs by an area."""
+        entity_registry = er.async_get(hass)
+        devices = dr.async_get(hass)
+        entity_registry_entries = er.async_entries_for_config_entry(
+            entity_registry, config_entry.entry_id
+        )
+        for entity_registry_entry in entity_registry_entries:
+            if entity_registry_entry.area_id == area.id:
+                return entity_registry_entry
+            elif entity_registry_entry.device_id is not None:
+                device = devices.async_get(entity_registry_entry.device_id)
+                if device is not None and device.area_id == area.id:
+                    return entity_registry_entry
+        return None
