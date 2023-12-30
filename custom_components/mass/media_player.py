@@ -1,6 +1,7 @@
 """MediaPlayer platform for Music Assistant integration."""
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any
@@ -30,6 +31,7 @@ from music_assistant.common.helpers.datetime import from_utc_timestamp
 from music_assistant.common.models.enums import (
     EventType,
     MediaType,
+    PlayerFeature,
     PlayerState,
     QueueOption,
     RepeatMode,
@@ -46,6 +48,7 @@ from .const import (
     ATTR_MASS_PLAYER_TYPE,
     ATTR_QUEUE_INDEX,
     ATTR_QUEUE_ITEMS,
+    ATTR_STREAM_TITLE,
     DOMAIN,
 )
 from .entity import MassBaseEntity
@@ -99,6 +102,8 @@ ATTR_MEDIA_TYPE = "media_type"
 ATTR_ARTIST = "artist"
 ATTR_ALBUM = "album"
 
+# pylint: disable=too-many-public-methods
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -150,6 +155,8 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         super().__init__(mass, player_id)
         self._attr_media_image_remotely_accessible = True
         self._attr_supported_features = SUPPORTED_FEATURES
+        if PlayerFeature.SYNC in self.player.supported_features:
+            self._attr_supported_features |= MediaPlayerEntityFeature.GROUPING
         self._attr_device_class = MediaPlayerDeviceClass.SPEAKER
         self._attr_media_position_updated_at = None
         self._attr_media_position = None
@@ -193,7 +200,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         """Return additional state attributes."""
         player = self.player
         queue = self.mass.players.get_player_queue(player.active_source)
-        return {
+        attrs = {
             ATTR_MASS_PLAYER_ID: self.player_id,
             ATTR_MASS_PLAYER_TYPE: player.type.value,
             ATTR_GROUP_MEMBERS: player.group_childs,
@@ -202,6 +209,23 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             ATTR_QUEUE_ITEMS: queue.items if queue else None,
             ATTR_QUEUE_INDEX: queue.current_index if queue else None,
         }
+        # add optional stream_title for radio streams
+        if (
+            queue
+            and queue.current_item
+            and queue.current_item.streamdetails
+            and queue.current_item.streamdetails.stream_title
+        ):
+            attrs[ATTR_STREAM_TITLE] = queue.current_item.streamdetails.stream_title
+        elif (
+            queue
+            and queue.current_item
+            and queue.current_item.media_type == MediaType.RADIO
+            and queue.current_item.media_item
+            and queue.current_item.media_item.metadata
+        ):
+            attrs[ATTR_STREAM_TITLE] = queue.current_item.media_item.metadata.description
+        return attrs
 
     async def async_on_update(self) -> None:
         """Handle player updates."""
@@ -232,8 +256,8 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         else:
             # player has some external source active
             self._attr_app_id = player.active_source
-            self._attr_shuffle = queue.shuffle_enabled if queue else None
-            self._attr_repeat = queue.repeat_mode.value if queue else None
+            self._attr_shuffle = None
+            self._attr_repeat = None
             self._attr_media_position = player.elapsed_time
             self._attr_media_position_updated_at = from_utc_timestamp(
                 player.elapsed_time_last_updated
@@ -395,6 +419,23 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             media_type=media_type,
             radio_mode=kwargs[ATTR_MEDIA_EXTRA].get(ATTR_RADIO_MODE),
         )
+
+    async def async_join_players(self, group_members: list[str]) -> None:
+        """Join `group_members` as a player group with the current player."""
+        async with asyncio.TaskGroup() as tg:
+            for child_entity_id in group_members:
+                # resolve HA entity_id to MA player_id
+                if (hass_state := self.hass.states.get(child_entity_id)) is None:
+                    continue
+                if (mass_player_id := hass_state.attributes.get("mass_player_id")) is None:
+                    continue
+                tg.create_task(
+                    self.mass.players.player_command_sync(mass_player_id, self.player_id)
+                )
+
+    async def async_unjoin_player(self) -> None:
+        """Remove this player from any group."""
+        await self.mass.players.player_command_unsync(self.player_id)
 
     async def _async_play_media_advanced(
         self,
