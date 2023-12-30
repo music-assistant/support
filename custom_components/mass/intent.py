@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import intent
 
@@ -33,7 +34,7 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
     """Handle PlayMediaOnMediaPlayer intents."""
 
     intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
-    slot_schema = {vol.Optional("query"): cv.string, vol.Optional("name"): cv.string}
+    slot_schema = {vol.Any("name", "area"): cv.string, vol.Optional("query"): cv.string}
 
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
         """Handle the intent."""
@@ -46,6 +47,15 @@ class MassPlayMediaOnMediaPlayerNameEn(intent.IntentHandler):
             config_entry = await self.get_loaded_config_entry(hass)
             service_data["agent_id"] = config_entry.data.get("openai_agent_id")
             service_data["text"] = query
+
+        # Look up area first to fail early
+        area_name = slots.get("area", {}).get("value")
+        area: ar.AreaEntry | None = None
+        if area_name is not None:
+            areas = ar.async_get(hass)
+            area = areas.async_get_area(area_name) or areas.async_get_area_by_name(area_name)
+            if area is None:
+                raise intent.IntentHandleError(f"No area named {area_name}")
 
         name: str = slots.get("name", {}).get("value")
         if name is not None:
