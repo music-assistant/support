@@ -1,6 +1,6 @@
 language: "en"
 intents:
-  MassPlayMediaOnMediaPlayerEn:
+  MassPlayMediaOnMediaPlayer:
     data:
       - sentences:
           - "(play|listen to) {query} <in> [the] (<name>|[<player_devices> <in> the] <area> [<in> the <player_devices>])"

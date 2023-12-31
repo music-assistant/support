@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from music_assistant.client import MusicAssistantClient
 
 
-INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER = "MassPlayMediaOnMediaPlayerEn"
+INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER = "MassPlayMediaOnMediaPlayer"
 NAME_SLOT = "name"
 AREA_SLOT = "area"
 QUERY_SLOT = "query"
@@ -35,10 +35,10 @@ SLOT_VALUE = "value"
 
 async def async_setup_intents(hass: HomeAssistant) -> None:
     """Set up the climate intents."""
-    intent.async_register(hass, MassPlayMediaOnMediaPlayerEn())
+    intent.async_register(hass, MassPlayMediaOnMediaPlayerHandler())
 
 
-class MassPlayMediaOnMediaPlayerEn(intent.IntentHandler):
+class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     """Handle PlayMediaOnMediaPlayer intents."""
 
     intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
