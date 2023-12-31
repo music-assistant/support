@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant.components.conversation import ATTR_AGENT_ID, ATTR_TEXT
 from homeassistant.components.conversation import SERVICE_PROCESS as CONVERSATION_SERVICE
 from homeassistant.components.conversation.const import DOMAIN as CONVERSATION_DOMAIN
+from homeassistant.components.media_player.const import DOMAIN as MEDIA_PLAYER_DOMAIN
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
@@ -158,7 +159,10 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     ) -> MassPlayer:
         """Return the mass player."""
         mass: MusicAssistantClient = hass.data[DOMAIN][config_entry.entry_id].mass
-        mass_player = mass.players.get_player(media_player_entity.unique_id.strip("mass_"))
+        player_entity = hass.data[MEDIA_PLAYER_DOMAIN].get_entity(media_player_entity.entity_id)
+        mass_player = mass.players.get_player(
+            player_entity.extra_state_attributes.get("mass_player_id")
+        )
         actual_player = MassPlayer(mass, mass_player.player_id)
         return actual_player
 
