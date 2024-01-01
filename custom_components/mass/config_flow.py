@@ -299,6 +299,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Check that we can connect to the address.
             try:
                 self.server_info = await get_server_info(self.hass, ADDON_URL)
+                self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID]
+                self.expose_players_assist = user_input[CONF_ASSIST_AUTO_EXPOSE_PLAYERS]
             except CannotConnect:
                 return self.async_abort(reason="cannot_connect")
         return await self._async_create_entry_or_abort()
