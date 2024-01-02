@@ -25,7 +25,7 @@ dependencies = [
 test = [
   "black==23.12.1",
   "codespell==2.2.6",
-  "mypy==1.7.1",
+  "mypy==1.8.0",
   "ruff==0.1.9",
   "pre-commit==3.6.0"
 ]
