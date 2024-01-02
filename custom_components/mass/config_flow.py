@@ -43,7 +43,7 @@ DEFAULT_TITLE = "Music Assistant"
 ON_SUPERVISOR_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_USE_ADDON, default=True): bool,
-        vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
+        vol.Optional(CONF_OPENAI_AGENT_ID, default=""): selector.ConversationAgentSelector(
             selector.ConversationAgentSelectorConfig(language="en")
         ),
         vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
@@ -57,7 +57,7 @@ def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(CONF_URL, default=default_url): str,
-            vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
+            vol.Optional(CONF_OPENAI_AGENT_ID, default=""): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
             vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
@@ -69,7 +69,7 @@ def get_zeroconf_schema() -> vol.Schema:
     """Return a schema for the zeroconf step."""
     return vol.Schema(
         {
-            vol.Optional(CONF_OPENAI_AGENT_ID, default=None): selector.ConversationAgentSelector(
+            vol.Optional(CONF_OPENAI_AGENT_ID, default=""): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
             vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
@@ -398,7 +398,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ),
             vol.Optional(
                 CONF_ASSIST_AUTO_EXPOSE_PLAYERS,
-                default=config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS),
+                default=config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS)
+                if config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS) is not None
+                else False,
             ): bool,
         }
 
