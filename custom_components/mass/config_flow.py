@@ -350,11 +350,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class OptionsFlowHandler(config_entries.OptionsFlow):
     """Class to handle options flow."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry):
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(self, user_input=None):
+    async def async_step_init(self, user_input=None) -> FlowResult:
         """Manage the options."""
         LOGGER.debug(
             "OptionsFlowHandler:async_step_init user_input [%s] data [%s]",
@@ -381,7 +381,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(schema),
         )
 
-    def mass_config_option_schema(self, config_entry: config_entries.ConfigEntry) -> dict:
+    def mass_config_option_schema(self, config_entry: config_entries.ConfigEntry) -> vol.Schema:
         """Return a schema for MusicAssistant completion options."""
         return {
             vol.Required(
