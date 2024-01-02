@@ -15,7 +15,7 @@ from homeassistant.components.hassio import (
     is_hassio,
 )
 from homeassistant.const import CONF_URL
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import AbortFlow, FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import aiohttp_client, selector
@@ -339,6 +339,66 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_ASSIST_AUTO_EXPOSE_PLAYERS: self.expose_players_assist,
             },
         )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Class to handle options flow."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+        LOGGER.debug(
+            "OptionsFlowHandler:async_step_init user_input [%s] data [%s]",
+            user_input,
+            self.config_entry.data,
+        )
+        if user_input is not None:
+            if CONF_USE_ADDON in self.config_entry.data:
+                user_input[CONF_USE_ADDON] = self.config_entry.data[CONF_USE_ADDON]
+            if CONF_INTEGRATION_CREATED_ADDON in self.config_entry.data:
+                user_input[CONF_INTEGRATION_CREATED_ADDON] = self.config_entry.data[
+                    CONF_INTEGRATION_CREATED_ADDON
+                ]
+
+            self.hass.config_entries.async_update_entry(
+                self.config_entry, data=user_input, options=self.config_entry.options
+            )
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            return self.async_create_entry(title="", data={})
+
+        schema = self.mass_config_option_schema(self.config_entry)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(schema),
+        )
+
+    def mass_config_option_schema(self, config_entry: config_entries.ConfigEntry) -> dict:
+        """Return a schema for MusicAssistant completion options."""
+        return {
+            vol.Required(
+                CONF_URL,
+                default=config_entry.data.get(CONF_URL),
+            ): str,
+            vol.Optional(
+                CONF_OPENAI_AGENT_ID,
+                default=config_entry.data.get(CONF_OPENAI_AGENT_ID),
+            ): selector.ConversationAgentSelector(
+                selector.ConversationAgentSelectorConfig(language="en")
+            ),
+            vol.Optional(
+                CONF_ASSIST_AUTO_EXPOSE_PLAYERS,
+                default=config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS),
+            ): bool,
+        }
 
 
 class FailedConnect(HomeAssistantError):

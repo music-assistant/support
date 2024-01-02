@@ -12,6 +12,13 @@
   "config": {
     "flow_title": "{name}",
     "step": {
+      "init": {
+        "data": {
+          "url": "URL of the Music Assistant server",
+          "use_addon": "Use the official Music Assistant Server add-on",
+          "expose_players_assist": "Expose players to Assist"
+        }
+      },
       "manual": {
         "data": {
           "url": "URL of the Music Assistant server",
@@ -133,6 +140,18 @@
         "add": "Add to queue",
         "replace": "Play now and clear queue",
         "replace_next": "Play next and clear queue"
+      }
+    }
+  },
+  "options": {
+    "flow_title": "{name}",
+    "step": {
+      "init": {
+        "data": {
+          "url": "URL of the Music Assistant server",
+          "use_addon": "Use the official Music Assistant Server add-on",
+          "expose_players_assist": "Expose players to Assist"
+        }
       }
     }
   }
