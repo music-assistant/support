@@ -11,7 +11,7 @@ intents:
           - "(play|listen to) {query}"
         requires_context:
           area:
-            slot: true    
+            slot: true
 lists:
   query:
     wildcard: true
