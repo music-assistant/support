@@ -7,6 +7,11 @@ intents:
           - "<in> (<name>|[<player_devices> <in>] <area> [<in> <player_devices>]) (play|listen to) {query}"
         expansion_rules:
           player_devices: "([the] speaker[s]|[the] [media] player[s])"
+      - sentences:
+          - "(play|listen to) {query}"
+        requires_context:
+          area:
+            slot: true    
 lists:
   query:
     wildcard: true
