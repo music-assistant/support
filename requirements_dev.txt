@@ -3,4 +3,4 @@ pylint==3.0.3
 pre-commit==3.6.0
 homeassistant==2023.12.4
 music-assistant==2.0.0b79
-async_timeout==4.0.2
+async_timeout==4.0.3
