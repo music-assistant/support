@@ -25,7 +25,6 @@ Just a track if the artist is not known like this {"media_id":"track name", "med
 
 You must reply with only the JSON model, nothing before nor after because your response will be processed by a search component of a media listening service.
 
-Note that the input query can be in any language but most likely be English.
 
 Here are a few examples of input with the expected output:
 "Hells Bells by ACDC" >> {"media_id":"AC/DC - Hells Bells",  "media_type":"track"}.
