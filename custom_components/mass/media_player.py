@@ -272,7 +272,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         media_album_artist = None
         media_album_name = None
         media_title = player.active_source
-        media_content_id = player.current_url
+        media_content_id = player.current_item_id
         media_duration = None
         # Music Assistant is the active source and actually has a MediaItem loaded
         if queue and queue.current_item and queue.current_item.media_item:
