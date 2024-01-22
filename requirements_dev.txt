@@ -1,6 +1,6 @@
 mypy==1.8.0
 pylint==3.0.3
 pre-commit==3.6.0
-homeassistant==2023.12.4
+homeassistant==2024.1.5
 music-assistant==2.0.0b83
 async_timeout==4.0.3
