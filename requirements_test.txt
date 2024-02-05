@@ -3,6 +3,6 @@ pylint==3.0.3
 pre-commit==3.6.0
 music-assistant==2.0.0b85
 async_timeout==4.0.3
-pytest-homeassistant-custom-component==0.13.91
+pytest-homeassistant-custom-component==0.13.96
 voluptuous==0.14.1
 zeroconf==0.131.0
