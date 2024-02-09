@@ -7,10 +7,10 @@ from unittest.mock import patch
 
 import pytest
 from homeassistant.components import zeroconf
+from homeassistant.data_entry_flow import InvalidData
 from homeassistant.helpers.selector import ConversationAgentSelector
 from music_assistant.client.exceptions import CannotConnect, InvalidServerVersion
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from voluptuous.error import MultipleInvalid
 
 from custom_components.mass import config_flow
 from custom_components.mass.config_flow import (
@@ -227,7 +227,7 @@ async def test_flow_discovery_confirm_creates_config_entry_with_none_type_conver
     m_mass, hass  # noqa: ARG001
 ):
     """Test the config entry is successfully created."""
-    with pytest.raises(MultipleInvalid):
+    with pytest.raises(InvalidData):
         config_flow.ConfigFlow.data = VALID_CONFIG
         _result = await hass.config_entries.flow.async_init(
             config_flow.DOMAIN, context={"source": "zeroconf"}, data=ZEROCONF_DATA
