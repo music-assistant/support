@@ -1,4 +1,5 @@
 """Intents for the client integration."""
+
 from __future__ import annotations
 
 import json
@@ -8,7 +9,6 @@ import voluptuous as vol
 from homeassistant.components.conversation import ATTR_AGENT_ID, ATTR_TEXT
 from homeassistant.components.conversation import SERVICE_PROCESS as CONVERSATION_SERVICE
 from homeassistant.components.conversation.const import DOMAIN as CONVERSATION_DOMAIN
-from homeassistant.components.media_player import MediaPlayerEnqueue
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import area_registry as ar
@@ -102,14 +102,10 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
             json_payload = json.loads(ai_response["response"]["speech"]["plain"]["speech"])
             media_id = json_payload.get(ATTR_MEDIA_ID)
             media_type = json_payload.get(ATTR_MEDIA_TYPE)
-            if isinstance(media_id, str) and media_type == "track":
-                enqueue = MediaPlayerEnqueue.PLAY
-            else:
-                enqueue = MediaPlayerEnqueue.REPLACE
             await actual_player.async_play_media(
                 media_type=media_type,
                 media_id=media_id,
-                enqueue=enqueue,
+                enqueue=None,
                 extra={ATTR_RADIO_MODE: False},
             )
             response.response_type = intent.IntentResponseType.ACTION_DONE
