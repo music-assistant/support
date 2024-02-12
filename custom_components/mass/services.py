@@ -59,16 +59,18 @@ def register_services(hass: HomeAssistant) -> None:
                     item[key] = compact_item(value)
                 elif isinstance(value, list):
                     for subitem in value:
-                        if isinstance(subitem, dict):
-                            compact_item(subitem)
+                        if not isinstance(subitem, dict):
+                            continue
+                        compact_item(subitem)
                     # item[key] = [compact_item(x) if isinstance(x, dict) else x for x in value]
             return item
 
         dict_result: dict[str, list[dict[str, Any]]] = result.to_dict()
         for media_type_key in dict_result:
             for item in dict_result[media_type_key]:
-                if isinstance(item, dict):
-                    compact_item(item)
+                if not isinstance(item, dict):
+                    continue
+                compact_item(item)
         return dict_result
 
     hass.services.async_register(
