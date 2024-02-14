@@ -1,7 +1,7 @@
 mypy==1.8.0
 pylint==3.0.3
 pre-commit==3.6.0
-music-assistant==2.0.0b92
+music-assistant==2.0.0b93
 async_timeout==4.0.3
 pytest-homeassistant-custom-component==0.13.100
 voluptuous==0.14.2
