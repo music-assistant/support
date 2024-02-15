@@ -1,4 +1,4 @@
-name: Report bug Music Assistant
+name: Report a Bug in Music Assistant
 description: Report an issue with Music Assistant.
 labels: ["triage"]
 body:
@@ -20,8 +20,28 @@ body:
       label: What version of Music Assistant has the issue?
       placeholder: 2022.x.y
       description: >
-        Can be found in: HACS -> Integrations -> Music Assistant -> Information
-        For example: 2022.6.2
+        Can be found in: MA SETTINIGS>>CORE
+        For example: 2.0.0b94
+  - type: input
+    id: version_integration
+    validations:
+      required: false
+    attributes:
+      label: What version of the Home Assistant Integration have you got installed?
+      placeholder: 2022.x.y
+      description: >
+        Can be found in: HACS>>INTEGRATIONS>>MUSIC ASSISTANT
+        For example: 2024.1.0
+  - type: dropdown
+    validations:
+      required: true
+    attributes:
+      label: Have you tried everything in the Troubleshooting FAQ and reviewed the Open and Closed Issues and Discussions to resolve this yourself?
+      description: |
+        You must answer yes to this
+      options:
+        - Yes
+        - No
   - type: textarea
     validations:
       required: true
@@ -38,6 +58,20 @@ body:
       description: |
         Describe the least amount of steps possible to reproduce your error
   - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Music Providers
+      description: |
+        List the music providers that you have tried which result in the problem. Also list the music providers you have tried that don't show the problem
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: Player Providers
+      description: |
+        List the player providers that you have tried which result in the problem. Also list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players.
+  - type: textarea
     id: logs
     attributes:
       label: Relevant log output
@@ -47,7 +81,7 @@ body:
     attributes:
       label: Additional information
       description: |
-        If you have any additional information for us. Use the field below.
+        If you have any additional information for us. Use the field below. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
   - type: markdown
     attributes:
       value: |
@@ -58,10 +92,10 @@ body:
       required: true
     attributes:
       label: What version of Home Assistant Core are your running
-      placeholder: 2022.5.4
+      placeholder: 2024.2.0
       description: |
         Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
-        For example: 2022.5.4
+        For example: 2024.2.0
         [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
   - type: dropdown
     validations:
