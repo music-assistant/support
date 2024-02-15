@@ -21,7 +21,7 @@ version = "0.0.0"
 
 [project.optional-dependencies]
 test = [
-  "black==23.12.1",
+  "black==24.2.0",
   "codespell==2.2.6",
   "flake8==7.0.0",
   "flake8-docstrings==1.7.0",
