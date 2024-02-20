@@ -26,7 +26,7 @@ test = [
   "pre-commit==3.6.1",
   "pre-commit-hooks==4.5.0",
   "pylint==3.0.3",
-  "ruff==0.2.1",
+  "ruff==0.2.2",
   "safety==3.0.1",
   "tomli==2.0.1",
   "pytest-homeassistant-custom-component==0.13.88",
