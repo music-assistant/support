@@ -9,7 +9,7 @@ classifiers = [
 ]
 dependencies = [
   "async_timeout~=4.0.3",
-  "homeassistant~=2024.1.2",
+  "homeassistant~=2024.2.2",
   "music-assistant~=2.0.0b93",
 ]
 description = "Music Assistant (BETA) Home Assistant Integration"
