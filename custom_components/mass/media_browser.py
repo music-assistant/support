@@ -163,7 +163,8 @@ async def build_playlists_listing(mass: MusicAssistantClient):
                 build_item(mass, item, can_expand=True)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for item in (await mass.music.get_library_playlists(limit=250)).items
+                for item in (await mass.music.get_library_playlists(limit=500)).items
+                if item.available
             ],
             key=lambda x: x.title,
         ),
@@ -183,7 +184,11 @@ async def build_playlist_items_listing(mass: MusicAssistantClient, identifier: s
         can_play=True,
         can_expand=True,
         children_media_class=MEDIA_CLASS_TRACK,
-        children=[build_item(mass, track, can_expand=False) for track in tracks],
+        children=[
+            build_item(mass, track, can_expand=False)
+            for track in tracks
+            if track.available
+        ],
     )
 
 
@@ -204,7 +209,8 @@ async def build_artists_listing(mass: MusicAssistantClient):
                 build_item(mass, artist, can_expand=True)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for artist in (await mass.music.get_library_artists(limit=250)).items
+                for artist in (await mass.music.get_library_artists(limit=500)).items
+                if artist.available
             ],
             key=lambda x: x.title,
         ),
@@ -224,7 +230,11 @@ async def build_artist_items_listing(mass: MusicAssistantClient, identifier: str
         can_play=True,
         can_expand=True,
         children_media_class=MEDIA_CLASS_ALBUM,
-        children=[build_item(mass, album, can_expand=True) for album in albums],
+        children=[
+            build_item(mass, album, can_expand=True)
+            for album in albums
+            if album.available
+        ],
     )
 
 
@@ -245,7 +255,8 @@ async def build_albums_listing(mass: MusicAssistantClient):
                 build_item(mass, album, can_expand=True)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for album in (await mass.music.get_library_albums(limit=250)).items
+                for album in (await mass.music.get_library_albums(limit=500)).items
+                if album.available
             ],
             key=lambda x: x.title,
         ),
@@ -265,7 +276,9 @@ async def build_album_items_listing(mass: MusicAssistantClient, identifier: str)
         can_play=True,
         can_expand=True,
         children_media_class=MEDIA_CLASS_TRACK,
-        children=[build_item(mass, track, False) for track in tracks],
+        children=[
+            build_item(mass, track, False) for track in tracks if track.available
+        ],
     )
 
 
@@ -286,7 +299,8 @@ async def build_tracks_listing(mass: MusicAssistantClient):
                 build_item(mass, track, can_expand=False)
                 # we only grab the first page here because the
                 # HA media browser does not support paging
-                for track in (await mass.music.get_library_tracks(limit=250)).items
+                for track in (await mass.music.get_library_tracks(limit=500)).items
+                if track.available
             ],
             key=lambda x: x.title,
         ),
@@ -308,7 +322,8 @@ async def build_radio_listing(mass: MusicAssistantClient):
             build_item(mass, track, can_expand=False, media_class=media_class)
             # we only grab the first page here because the
             # HA media browser does not support paging
-            for track in (await mass.music.get_library_radios(limit=250)).items
+            for track in (await mass.music.get_library_radios(limit=500)).items
+            if track.available
         ],
     )
 
