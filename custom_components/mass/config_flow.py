@@ -264,6 +264,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         This flow is triggered by the Zeroconf component. It will check if the
         host is already configured and delegate to the import step if not.
         """
+        # abort if discovery info is not what we expect
+        if "server_id" not in discovery_info.properties:
+            return None
         # abort if we already have exactly this server_id
         # reload the integration if the host got updated
         server_id = discovery_info.properties["server_id"]
