@@ -78,7 +78,7 @@ body:
     attributes:
       label: Full log output
       description: |
-        Please copy and paste the full log output from MA SETTINGS>>CORE. Use the field below. Please do NOT use debug logging unless asked to do so. You can post a link to a log paste site if the log file is exceedingly long.
+        Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>>CORE into the field below. Please do NOT use debug logging unless asked to do so.
   - type: textarea
     attributes:
       label: Additional information
