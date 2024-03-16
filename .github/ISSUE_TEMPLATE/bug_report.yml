@@ -5,13 +5,15 @@ body:
   - type: markdown
     attributes:
       value: |
-        This issue form is for reporting bugs only!
+        This issue form is for reporting bugs only! Read this for what you MUST include [Troubleshooting][ft]
         For questions read our [FAQ section][fq] or visit our community on [Discord][cf].
         If you have a feature or enhancement request, please enter them in our discussions section [feature request][fr]
 
         [fq]: https://github.com/music-assistant/hass-music-assistant/discussions/categories/q-a-faq
         [cf]: https://discord.com/channels/753947050995089438/753947050995089442
         [fr]: https://github.com/music-assistant/hass-music-assistant/discussions/categories/feature-requests-and-ideas
+        [ft]: https://music-assistant.io/faq/troubleshooting/
+        
   - type: input
     id: version_MA
     validations:
@@ -21,24 +23,24 @@ body:
       placeholder: 2022.x.y
       description: >
         Can be found in: MA SETTINIGS>>CORE
-        For example: 2.0.0b94
+        For example: 2.0.0b100
   - type: input
     id: version_integration
     validations:
       required: false
     attributes:
       label: What version of the Home Assistant Integration have you got installed?
-      placeholder: 2022.x.y
+      placeholder: 2024.x.y
       description: >
         Can be found in: HACS>>INTEGRATIONS>>MUSIC ASSISTANT
-        For example: 2024.1.0
+        For example: 2024.3.1
   - type: checkboxes
     validations:
       required: true
     attributes:
       label: Have you tried everything in the Troubleshooting FAQ and reviewed the Open and Closed Issues and Discussions to resolve this yourself?
       description: |
-        You must answer yes to this
+        Explain below what you have tried and what did not help from the troubleshooting steps
       options:
         - label: "Yes"
           required: true
@@ -63,25 +65,25 @@ body:
     attributes:
       label: Music Providers
       description: |
-        List the music providers that you have tried which result in the problem. Also list the music providers you have tried that don't show the problem
+        List the music providers that you have tried which result in the problem. ALSO list the music providers you have tried that don't show the problem
   - type: textarea
     validations:
       required: true
     attributes:
       label: Player Providers
       description: |
-        List the player providers that you have tried which result in the problem. Also list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players.
+        List the player providers that you have tried which result in the problem. ALSO list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players.
   - type: textarea
     id: logs
     attributes:
-      label: Relevant log output
+      label: Full log output
       description: |
-        Please copy and paste any relevant log output. Use the field below. Please do NOT use debug logging unless asked to do so
+        Please copy and paste the full log output from MA SETTINGS>>CORE. Use the field below. Please do NOT use debug logging unless asked to do so. You can post a link to a log paste site if the log file is exceedingly long.
   - type: textarea
     attributes:
       label: Additional information
       description: |
-        If you have any additional information for us. Use the field below. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
+        Supply additional information requested which is not captured above. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
   - type: markdown
     attributes:
       value: |
