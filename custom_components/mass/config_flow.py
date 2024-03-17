@@ -30,6 +30,7 @@ from .const import (
     CONF_ASSIST_AUTO_EXPOSE_PLAYERS,
     CONF_INTEGRATION_CREATED_ADDON,
     CONF_OPENAI_AGENT_ID,
+    CONF_PRE_ANNOUNCE_TTS,
     CONF_USE_ADDON,
     DOMAIN,
     LOGGER,
@@ -437,6 +438,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     is not None
                     else False
                 ),
+            ): bool,
+            vol.Optional(
+                CONF_PRE_ANNOUNCE_TTS,
+                default=True,
             ): bool,
         }
 

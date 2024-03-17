@@ -26,5 +26,6 @@ CONF_INTEGRATION_CREATED_ADDON = "integration_created_addon"
 CONF_USE_ADDON = "use_addon"
 CONF_OPENAI_AGENT_ID = "openai_agent_id"
 CONF_ASSIST_AUTO_EXPOSE_PLAYERS = "expose_players_assist"
+CONF_PRE_ANNOUNCE_TTS = "pre_announce_tts"
 
 LOGGER = logging.getLogger(__package__)

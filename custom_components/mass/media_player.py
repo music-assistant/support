@@ -55,6 +55,7 @@ from .const import (
     ATTR_QUEUE_INDEX,
     ATTR_QUEUE_ITEMS,
     ATTR_STREAM_TITLE,
+    CONF_PRE_ANNOUNCE_TTS,
     DOMAIN,
 )
 from .entity import MassBaseEntity
@@ -471,6 +472,16 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     ) -> None:
         """Send the play_media command to the media player."""
         # pylint: disable=too-many-arguments
+        # announce/alert support
+        if announce:
+            conf_entry = self.hass.config_entries.async_get_entry(
+                self.registry_entry.config_entry_id
+            )
+            use_pre_announce = conf_entry.options.get(CONF_PRE_ANNOUNCE_TTS, True)
+            await self.mass.players.play_announcement(
+                self.player_id, media_id[0], use_pre_announce
+            )
+            return
         media_uris: list[str] = []
         # work out (all) uri(s) to play
         for media_id_str in media_id:
@@ -502,16 +513,6 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             queue_id = queue.queue_id
         else:
             queue_id = self.player_id
-
-        # announce/alert support (WIP)
-        if announce and radio_mode:
-            radio_mode = None
-        if announce is None and "/api/tts_proxy" in media_id:
-            announce = True
-        if announce:
-            raise NotImplementedError(
-                "Music Assistant does not yet support announcements"
-            )
 
         await self.mass.players.play_media(
             queue_id, media=media_uris, option=enqueue, radio_mode=radio_mode
