@@ -53,7 +53,7 @@
     "error": {
       "cannot_connect": "Failed to connect",
       "unknown": "Unexpected error"
-  },
+    },
     "abort": {
       "addon_get_discovery_info_failed": "Failed to get Music Assistant Server add-on discovery info.",
       "addon_info_failed": "Failed to get Music Assistant Server add-on info.",
@@ -64,7 +64,7 @@
       "not_matter_addon": "Discovered add-on is not the official Music Assistant Server add-on.",
       "reconfiguration_successful": "Successfully reconfigured the Music Assistant integration.",
       "cannot_connect": "Failed to connect"
-  },
+    },
     "progress": {
       "install_addon": "Please wait while the Music Assistant Server add-on installation finishes. This can take several minutes.",
       "start_addon": "Please wait while the Music Assistant Server add-on starts. This add-on is what powers Music Assistant in Home Assistant. This may take some seconds."
@@ -150,7 +150,8 @@
         "data": {
           "url": "URL of the Music Assistant server",
           "use_addon": "Use the official Music Assistant Server add-on",
-          "expose_players_assist": "Expose players to Assist"
+          "expose_players_assist": "Expose players to Assist",
+          "pre_announce_tts": "Prepend notification sound to TTS announcements"
         }
       }
     }
