@@ -441,7 +441,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): bool,
             vol.Optional(
                 CONF_PRE_ANNOUNCE_TTS,
-                default=True,
+                default=False,
             ): bool,
         }
 
