@@ -390,21 +390,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Manage the options."""
-        LOGGER.debug(
-            "OptionsFlowHandler:async_step_init user_input [%s] data [%s]",
-            user_input,
-            self.config_entry.data,
-        )
         if user_input is not None:
-            if CONF_USE_ADDON in self.config_entry.data:
-                user_input[CONF_USE_ADDON] = self.config_entry.data[CONF_USE_ADDON]
-            if CONF_INTEGRATION_CREATED_ADDON in self.config_entry.data:
-                user_input[CONF_INTEGRATION_CREATED_ADDON] = self.config_entry.data[
-                    CONF_INTEGRATION_CREATED_ADDON
-                ]
-
             self.hass.config_entries.async_update_entry(
-                self.config_entry, data=user_input, options=self.config_entry.options
+                self.config_entry,
+                # store as data instead of options - adjust this once the reconfigure flow is available
+                data={
+                    CONF_URL: user_input[CONF_URL],
+                    CONF_OPENAI_AGENT_ID: user_input[CONF_OPENAI_AGENT_ID],
+                    CONF_ASSIST_AUTO_EXPOSE_PLAYERS: user_input[
+                        CONF_ASSIST_AUTO_EXPOSE_PLAYERS
+                    ],
+                    CONF_PRE_ANNOUNCE_TTS: user_input[CONF_PRE_ANNOUNCE_TTS],
+                },
             )
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
@@ -441,7 +438,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): bool,
             vol.Optional(
                 CONF_PRE_ANNOUNCE_TTS,
-                default=False,
+                default=config_entry.data.get(CONF_PRE_ANNOUNCE_TTS, False),
             ): bool,
         }
 

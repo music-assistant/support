@@ -477,7 +477,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             conf_entry = self.hass.config_entries.async_get_entry(
                 self.registry_entry.config_entry_id
             )
-            use_pre_announce = conf_entry.options.get(CONF_PRE_ANNOUNCE_TTS) is True
+            use_pre_announce = conf_entry.data.get(CONF_PRE_ANNOUNCE_TTS) is True
             await self.mass.players.play_announcement(
                 self.player_id, media_id[0], use_pre_announce
             )
