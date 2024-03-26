@@ -46,6 +46,25 @@ play_media:
       example: "true"
       selector:
         boolean:
+    use_pre_announce:
+      filter:
+        supported_features:
+          - media_player.MediaPlayerEntityFeature.MEDIA_ANNOUNCE
+      required: false
+      example: "true"
+      selector:
+        boolean:
+    announce_volume:
+      filter:
+        supported_features:
+          - media_player.MediaPlayerEntityFeature.MEDIA_ANNOUNCE
+      required: false
+      example: 75
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
     artist:
       required: false
       example: "Queen"
@@ -61,7 +80,6 @@ play_media:
       advanced: true
       selector:
         boolean:
-
 
 search:
   fields:

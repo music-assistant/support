@@ -55,7 +55,6 @@ from .const import (
     ATTR_QUEUE_INDEX,
     ATTR_QUEUE_ITEMS,
     ATTR_STREAM_TITLE,
-    CONF_PRE_ANNOUNCE_TTS,
     DOMAIN,
 )
 from .entity import MassBaseEntity
@@ -108,6 +107,8 @@ ATTR_MEDIA_ID = "media_id"
 ATTR_MEDIA_TYPE = "media_type"
 ATTR_ARTIST = "artist"
 ATTR_ALBUM = "album"
+ATTR_USE_PRE_ANNOUNCE = "use_pre_announce"
+ATTR_ANNOUNCE_VOLUME = "announce_volume"
 
 # pylint: disable=too-many-public-methods
 
@@ -151,6 +152,8 @@ async def async_setup_entry(
             vol.Optional(ATTR_ARTIST): cv.string,
             vol.Optional(ATTR_ALBUM): cv.string,
             vol.Optional(ATTR_RADIO_MODE): vol.Coerce(bool),
+            vol.Optional(ATTR_USE_PRE_ANNOUNCE): vol.Coerce(bool),
+            vol.Optional(ATTR_ANNOUNCE_VOLUME): vol.Coerce(int),
         },
         "_async_play_media_advanced",
     )
@@ -437,6 +440,8 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             announce=announce,
             media_type=media_type,
             radio_mode=kwargs[ATTR_MEDIA_EXTRA].get(ATTR_RADIO_MODE),
+            use_pre_announce=kwargs[ATTR_MEDIA_EXTRA].get("use_pre_announce"),
+            announce_volume=kwargs[ATTR_MEDIA_EXTRA].get("announce_volume"),
         )
 
     async def async_join_players(self, group_members: list[str]) -> None:
@@ -469,17 +474,15 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         announce: bool | None = None,
         radio_mode: bool | None = None,
         media_type: str | None = None,
+        use_pre_announce: bool | None = None,
+        announce_volume: int | None = None,
     ) -> None:
         """Send the play_media command to the media player."""
         # pylint: disable=too-many-arguments
         # announce/alert support
         if announce:
-            conf_entry = self.hass.config_entries.async_get_entry(
-                self.registry_entry.config_entry_id
-            )
-            use_pre_announce = conf_entry.data.get(CONF_PRE_ANNOUNCE_TTS) is True
             await self.mass.players.play_announcement(
-                self.player_id, media_id[0], use_pre_announce
+                self.player_id, media_id[0], use_pre_announce, announce_volume
             )
             return
         media_uris: list[str] = []
