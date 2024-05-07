@@ -352,7 +352,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
     async def async_clear_playlist(self) -> None:
         """Clear players playlist."""
-        if queue := self.mass.players.get_player_queue(self.player.active_source):
+        if queue := self.mass.player_queues.get(self.player.active_source):
             await self.mass.player_queues.queue_command_clear(queue.queue_id)
 
     async def async_play_media(
