@@ -6,5 +6,8 @@
       "source.organizeImports": "explicit"
     }
   },
-  "python.formatting.provider": "black"
+  "python.formatting.provider": "black",
+  "python.analysis.extraPaths": [
+    "/Users/marcelvanderveldt/Workdir/music-assistant/core/"
+  ]
 }

@@ -174,7 +174,6 @@ async def build_playlists_listing(mass: MusicAssistantClient):
 async def build_playlist_items_listing(mass: MusicAssistantClient, identifier: str):
     """Build Playlist items browse listing."""
     playlist = await mass.music.get_item_by_uri(identifier)
-    tracks = await mass.music.get_playlist_tracks(playlist.item_id, playlist.provider)
 
     return BrowseMedia(
         media_class=MEDIA_CLASS_PLAYLIST,
@@ -185,9 +184,15 @@ async def build_playlist_items_listing(mass: MusicAssistantClient, identifier: s
         can_expand=True,
         children_media_class=MEDIA_CLASS_TRACK,
         children=[
-            build_item(mass, track, can_expand=False)
-            for track in tracks
-            if track.available
+            build_item(mass, item, can_expand=False)
+            # we only grab the first page here because the
+            # HA media browser does not support paging
+            for item in (
+                await mass.music.get_playlist_tracks(
+                    playlist.item_id, playlist.provider
+                )
+            ).items
+            if item.available
         ],
     )
 
@@ -335,12 +340,11 @@ def build_item(
     media_class=None,
 ) -> BrowseMedia:
     """Return BrowseMedia for MediaItem."""
-    title = (
-        f"{item.artists[0].name} - {item.name}"
-        if hasattr(item, "artists")
-        else item.name
-    )
-    img_url = mass.get_image_url(image) if (image := item.image) else None
+    if artists := getattr(item, "artists", None):
+        title = f"{artists[0].name} - {item.name}"
+    else:
+        title = item.name
+    img_url = mass.get_media_item_image_url(item)
 
     return BrowseMedia(
         media_class=media_class or item.media_type.value,

@@ -25,7 +25,7 @@ class MassBaseEntity(Entity):
         self.mass = mass
         self.player_id = player_id
         self._attr_should_poll = False
-        player = mass.players.get_player(player_id)
+        player = mass.players.get(player_id)
         dev_mod = player.device_info.model or player.name
         model = (
             f"{dev_man} {dev_mod}"
@@ -58,7 +58,7 @@ class MassBaseEntity(Entity):
     @property
     def player(self) -> Player:
         """Return the Mass Player attached to this HA entity."""
-        player = self.mass.players.get_player(self.player_id)
+        player = self.mass.players.get(self.player_id)
         assert player is not None
         return player
 
