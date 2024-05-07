@@ -53,26 +53,27 @@ play_media:
       advanced: true
       selector:
         boolean:
-    announce:
-      filter:
-        supported_features:
-          - media_player.MediaPlayerEntityFeature.MEDIA_ANNOUNCE
-      required: false
-      example: "true"
+
+play_announcement:
+  target:
+    entity:
+      domain: media_player
+      integration: mass
+      supported_features:
+        - media_player.MediaPlayerEntityFeature.PLAY_MEDIA
+        - media_player.MediaPlayerEntityFeature.MEDIA_ANNOUNCE
+  fields:
+    url:
+      required: true
+      example: "http://someremotesite.com/doorbell.mp3"
       selector:
-        boolean:
+        text:
     use_pre_announce:
-      filter:
-        supported_features:
-          - media_player.MediaPlayerEntityFeature.MEDIA_ANNOUNCE
       required: false
       example: "true"
       selector:
         boolean:
     announce_volume:
-      filter:
-        supported_features:
-          - media_player.MediaPlayerEntityFeature.MEDIA_ANNOUNCE
       required: false
       example: 75
       selector:

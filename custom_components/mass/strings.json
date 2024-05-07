@@ -87,18 +87,6 @@
           "name": "Enqueue",
           "description": "If the content should be played now or be added to the queue. Options are: play, replace, next. replace_next, add"
         },
-        "announce": {
-          "name": "Announce",
-          "description": "If the media should be played as an announcement."
-        },
-        "use_pre_announce": {
-          "name": "Use pre-announce",
-          "description": "Use pre-announcement sound for the announcement. Used with the announce option, omit to use player default."
-        },
-        "announce_volume": {
-          "name": "Announce volume",
-          "description": "Use a forced volume level for the announcement. Used with the announce option, omit to use player default."
-        },
         "artist": {
           "name": "Artist name",
           "description": "When specifying a track or album by name in the Media ID field, you can optionally restrict results by this artist name."
@@ -110,6 +98,24 @@
         "radio_mode": {
           "name": "Enable Radio Mode",
           "description": "Enable radio mode to auto generate a playlist based on the selection."
+        }
+      }
+    },
+    "play_announcement": {
+      "name": "Play Announcement (advanced)",
+      "description": "Play announcement on a Music Assistant player with more fine grained control options.",
+      "fields": {
+        "media_id": {
+          "name": "URL",
+          "description": "URL to the notification sound."
+        },
+        "use_pre_announce": {
+          "name": "Use pre-announce",
+          "description": "Use pre-announcement sound for the announcement. Omit to use the player default."
+        },
+        "announce_volume": {
+          "name": "Announce volume",
+          "description": "Use a forced volume level for the announcement. Omit to use player default."
         }
       }
     },

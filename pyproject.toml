@@ -8,9 +8,9 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "async_timeout>=4.0.3",
-  "homeassistant>=2024.3.0",
-  "music-assistant>=2.0.0b112",
+  "async_timeout",
+  "homeassistant",
+  "music-assistant",
 ]
 description = "Music Assistant (BETA) Home Assistant Integration"
 license = {text = "Apache-2.0"}

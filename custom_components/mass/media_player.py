@@ -102,11 +102,13 @@ QUEUE_OPTION_MAP = {
 }
 
 SERVICE_PLAY_MEDIA_ADVANCED = "play_media"
+SERVICE_PLAY_ANNOUNCEMEMT = "play_announcement"
 ATTR_RADIO_MODE = "radio_mode"
 ATTR_MEDIA_ID = "media_id"
 ATTR_MEDIA_TYPE = "media_type"
 ATTR_ARTIST = "artist"
 ATTR_ALBUM = "album"
+ATTR_URL = "url"
 ATTR_USE_PRE_ANNOUNCE = "use_pre_announce"
 ATTR_ANNOUNCE_VOLUME = "announce_volume"
 
@@ -156,6 +158,15 @@ async def async_setup_entry(
             vol.Optional(ATTR_ANNOUNCE_VOLUME): vol.Coerce(int),
         },
         "_async_play_media_advanced",
+    )
+    platform.async_register_entity_service(
+        SERVICE_PLAY_ANNOUNCEMEMT,
+        {
+            vol.Required(ATTR_URL): cv.string,
+            vol.Optional(ATTR_USE_PRE_ANNOUNCE): vol.Coerce(bool),
+            vol.Optional(ATTR_ANNOUNCE_VOLUME): vol.Coerce(int),
+        },
+        "_async_play_announcement",
     )
 
 
@@ -361,15 +372,20 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             media_id = sourced_media.url
             media_id = async_process_play_media_url(self.hass, media_id)
 
+        if announce:
+            await self._async_play_announcement(
+                media_id,
+                use_pre_announce=kwargs[ATTR_MEDIA_EXTRA].get("use_pre_announce"),
+                announce_volume=kwargs[ATTR_MEDIA_EXTRA].get("announce_volume"),
+            )
+            return
+
         # forward to our advanced play_media handler
         await self._async_play_media_advanced(
             media_id=media_id if isinstance(media_id, list) else [media_id],
             enqueue=enqueue,
-            announce=announce,
             media_type=media_type,
             radio_mode=kwargs[ATTR_MEDIA_EXTRA].get(ATTR_RADIO_MODE),
-            use_pre_announce=kwargs[ATTR_MEDIA_EXTRA].get("use_pre_announce"),
-            announce_volume=kwargs[ATTR_MEDIA_EXTRA].get("announce_volume"),
         )
 
     async def async_join_players(self, group_members: list[str]) -> None:
@@ -394,20 +410,11 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         artist: str | None = None,
         album: str | None = None,
         enqueue: MediaPlayerEnqueue | QueueOption | None = None,
-        announce: bool | None = None,
         radio_mode: bool | None = None,
         media_type: str | None = None,
-        use_pre_announce: bool | None = None,
-        announce_volume: int | None = None,
     ) -> None:
         """Send the play_media command to the media player."""
         # pylint: disable=too-many-arguments
-        # announce/alert support
-        if announce:
-            await self.mass.players.play_announcement(
-                self.player_id, media_id[0], use_pre_announce, announce_volume
-            )
-            return
         media_uris: list[str] = []
         # work out (all) uri(s) to play
         for media_id_str in media_id:
@@ -446,6 +453,17 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
         await self.mass.player_queues.play_media(
             queue_id, media=media_uris, option=enqueue, radio_mode=radio_mode
+        )
+
+    async def _async_play_announcement(
+        self,
+        url: str,
+        use_pre_announce: bool | None = None,
+        announce_volume: int | None = None,
+    ) -> None:
+        """Send the play_announcement command to the media player."""
+        await self.mass.players.play_announcement(
+            self.player_id, url, use_pre_announce, announce_volume
         )
 
     async def async_browse_media(
