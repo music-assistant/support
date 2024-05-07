@@ -30,7 +30,7 @@ test = [
   "ruff==0.4.3",
   "safety==3.0.1",
   "tomli==2.0.1",
-  "pytest-homeassistant-custom-component==0.13.109",
+  "pytest-homeassistant-custom-component==0.13.122",
   "zeroconf",
 ]
 
