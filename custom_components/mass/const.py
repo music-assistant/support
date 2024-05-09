@@ -18,8 +18,8 @@ ATTR_MASS_PLAYER_ID = "mass_player_id"
 ATTR_MASS_PLAYER_TYPE = "mass_player_type"
 ATTR_STREAM_TITLE = "stream_title"
 
-ADDON_SLUG = "d5369777_music_assistant_beta"
-ADDON_HOSTNAME = "d5369777-music-assistant-beta"
+ADDON_SLUG = "d5369777_music_assistant"
+ADDON_HOSTNAME = "d5369777-music-assistant"
 ADDON_REPOSITORY = "https://github.com/music-assistant/home-assistant-addon"
 
 CONF_INTEGRATION_CREATED_ADDON = "integration_created_addon"
