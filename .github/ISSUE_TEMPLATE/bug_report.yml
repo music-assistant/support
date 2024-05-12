@@ -77,6 +77,7 @@ body:
     id: logs
     attributes:
       label: Full log output
+      placeholder: DO NOT PASTE the log here. ATTACH IT.
       description: |
         Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>>CORE into the field below. Please do NOT use debug logging unless asked to do so.
   - type: textarea
