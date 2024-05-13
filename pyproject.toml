@@ -24,7 +24,7 @@ test = [
   "aiofiles",
   "codespell==2.2.6",
   "mypy==1.10.0",
-  "pre-commit==3.7.0",
+  "pre-commit==3.7.1",
   "pre-commit-hooks==4.6.0",
   "pylint==3.1.0",
   "ruff==0.4.3",
