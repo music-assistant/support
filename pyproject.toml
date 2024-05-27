@@ -22,7 +22,7 @@ version = "0.0.0"
 [project.optional-dependencies]
 test = [
   "aiofiles",
-  "codespell==2.2.6",
+  "codespell==2.3.0",
   "mypy==1.10.0",
   "pre-commit==3.7.0",
   "pre-commit-hooks==4.6.0",
