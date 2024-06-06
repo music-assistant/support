@@ -24,7 +24,7 @@ from .media_player import ATTR_MEDIA_ID, ATTR_MEDIA_TYPE, ATTR_RADIO_MODE, MassP
 
 INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER = "MassPlayMediaOnMediaPlayer"
 NAME_SLOT = "name"
-AREA_SLOT = "area"
+AREA_SLOT = "area_name"
 QUERY_SLOT = "query"
 SLOT_VALUE = "value"
 
