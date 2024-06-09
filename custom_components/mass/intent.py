@@ -13,14 +13,12 @@ from homeassistant.components.conversation import (
 from homeassistant.components.conversation.const import DOMAIN as CONVERSATION_DOMAIN
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, State
-from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import intent
 
 from . import DOMAIN
 from .const import CONF_OPENAI_AGENT_ID
 from .media_player import ATTR_MEDIA_ID, ATTR_MEDIA_TYPE, ATTR_RADIO_MODE, MassPlayer
-
 
 INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER = "MassPlayMediaOnMediaPlayer"
 NAME_SLOT = "name"
@@ -59,15 +57,9 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
             # Don't match on name if targeting all entities
             name = None
         # Look up area first to fail early
-        area_name = slots.get(AREA_SLOT, {}).get(SLOT_VALUE)
-        area: ar.AreaEntry | None = None
-        if area_name is not None:
-            areas = ar.async_get(intent_obj.hass)
-            area = areas.async_get_area(area_name) or areas.async_get_area_by_name(
-                area_name
-            )
-            if area is None:
-                raise intent.IntentHandleError(f"No area named {area_name}")
+        area: str | None = None
+        if AREA_SLOT in slots:
+            area = slots[AREA_SLOT][SLOT_VALUE]
 
         state = await self._get_matched_state(intent_obj, name, area)
         actual_player = MassPlayer(
@@ -133,7 +125,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
         return None
 
     async def _get_matched_state(
-        self, intent_obj: intent.Intent, name: str | None, area: ar.AreaEntry | None
+        self, intent_obj: intent.Intent, name: str | None, area: str | None
     ) -> State:
         mass_states: set[str] = set()
         initial_states = intent_obj.hass.states.async_all()
@@ -145,7 +137,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
             intent.async_match_states(
                 intent_obj.hass,
                 name=name,
-                area=area,
+                area_name=area,
                 states=mass_states,
             )
         )
