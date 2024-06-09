@@ -145,7 +145,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
             intent.async_match_states(
                 intent_obj.hass,
                 name=name,
-                area=area,
+                area_name=area,
                 states=mass_states,
             )
         )
