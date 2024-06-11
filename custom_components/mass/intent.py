@@ -113,7 +113,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
         intent_obj: intent.Intent,
         slots: intent._SlotsType,
         config_entry: ConfigEntry,
-    ):
+    ) -> MassPlayer:
         name: str | None = slots.get(NAME_SLOT, {}).get(SLOT_VALUE)
         if name == "all":
             # Don't match on name if targeting all entities
@@ -132,7 +132,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
 
     async def _async_query_ai(
         self, intent_obj: intent.Intent, query: str, config_entry: ConfigEntry
-    ):
+    ) -> str:
         service_data: dict[str, Any] = {}
         service_data[ATTR_AGENT_ID] = config_entry.data.get(CONF_OPENAI_AGENT_ID)
         service_data[ATTR_TEXT] = query
@@ -174,12 +174,12 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
 
         if not states:
             raise intent.IntentHandleError(
-                f"No entities matched for: name={name}, area={area}"
+                f"No entities matched for: name={name}, area_name={area_name}"
             )
 
         if len(states) > 1:
             raise intent.IntentHandleError(
-                f"Multiple entities matched for: name={name}, area={area}"
+                f"Multiple entities matched for: name={name}, area_name={area_name}"
             )
 
         return states[0]
