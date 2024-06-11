@@ -5,18 +5,17 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from music_assistant.common.models.errors import MusicAssistantError
 import voluptuous as vol
-
+from homeassistant.components.conversation import ATTR_AGENT_ID, ATTR_TEXT
 from homeassistant.components.conversation import (
-    ATTR_AGENT_ID,
-    ATTR_TEXT,
     SERVICE_PROCESS as CONVERSATION_SERVICE,
 )
 from homeassistant.components.conversation.const import DOMAIN as CONVERSATION_DOMAIN
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, State
-from homeassistant.helpers import config_validation as cv, intent
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import intent
+from music_assistant.common.models.errors import MusicAssistantError
 
 from . import DOMAIN
 from .const import CONF_OPENAI_AGENT_ID
