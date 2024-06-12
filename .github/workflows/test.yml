@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo apt-get update
           python -m pip install --upgrade pip
-          pip install -e .[test]
+          pip install .[test]
       - name: Lint/test with pre-commit
         run: pre-commit run --all-files
 
@@ -33,7 +33,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.11"
           - "3.12"
 
     steps:
@@ -47,6 +46,6 @@ jobs:
         run: |
           sudo apt-get update
           python -m pip install --upgrade pip
-          pip install -e .[test]
+          pip install .[test]
       - name: Pytest
         run: pytest tests/
