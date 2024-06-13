@@ -28,26 +28,6 @@ def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(CONF_URL, default=default_url): str,
-            vol.Optional(
-                CONF_OPENAI_AGENT_ID, default=""
-            ): selector.ConversationAgentSelector(
-                selector.ConversationAgentSelectorConfig(language="en")
-            ),
-            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
-        }
-    )
-
-
-def get_zeroconf_schema() -> vol.Schema:
-    """Return a schema for the zeroconf step."""
-    return vol.Schema(
-        {
-            vol.Optional(
-                CONF_OPENAI_AGENT_ID, default=""
-            ): selector.ConversationAgentSelector(
-                selector.ConversationAgentSelectorConfig(language="en")
-            ),
-            vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
         }
     )
 
@@ -71,8 +51,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Set up flow instance."""
         self.server_info: ServerInfoMessage | None = None
-        self.openai_agent_id: str | None = None
-        self.expose_players_assist: bool | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -92,8 +70,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         try:
             self.server_info = await get_server_info(self.hass, user_input[CONF_URL])
-            self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID] or ""
-            self.expose_players_assist = user_input[CONF_ASSIST_AUTO_EXPOSE_PLAYERS]
             await self.async_set_unique_id(self.server_info.server_id)
         except CannotConnect:
             errors["base"] = "cannot_connect"
@@ -140,15 +116,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             # Check that we can connect to the address.
             try:
-                self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID] or ""
-                self.expose_players_assist = user_input[CONF_ASSIST_AUTO_EXPOSE_PLAYERS]
                 await get_server_info(self.hass, self.server_info.base_url)
             except CannotConnect:
                 return self.async_abort(reason="cannot_connect")
             return await self._async_create_entry_or_abort()
         return self.async_show_form(
             step_id="discovery_confirm",
-            data_schema=get_zeroconf_schema(),
             description_placeholders={"url": self.server_info.base_url},
         )
 
@@ -164,8 +137,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={
                     **config_entry.data,
                     CONF_URL: self.server_info.base_url,
-                    CONF_OPENAI_AGENT_ID: self.openai_agent_id,
-                    CONF_ASSIST_AUTO_EXPOSE_PLAYERS: self.expose_players_assist,
                 },
                 title=DEFAULT_TITLE,
             )
@@ -180,8 +151,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             title=DEFAULT_TITLE,
             data={
                 CONF_URL: self.server_info.base_url,
-                CONF_OPENAI_AGENT_ID: self.openai_agent_id,
-                CONF_ASSIST_AUTO_EXPOSE_PLAYERS: self.expose_players_assist,
             },
         )
 

@@ -9,7 +9,7 @@
     "@music-assistant"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/music-assistant/hass-music-assistant",
+  "documentation": "https://music-assistant.io",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "loggers": [
