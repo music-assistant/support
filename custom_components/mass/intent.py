@@ -92,6 +92,8 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
             elif artist:
                 media_type = "artist"
                 media_id = artist
+            else:
+                raise intent.IntentHandleError("No media item parsed from query")
 
         try:
             await mass_player.async_play_media(

@@ -32,7 +32,7 @@ class MassBaseEntity(Entity):
             manufacturer=player.device_info.manufacturer or provider.name,
             model=player.device_info.model or player.name,
             name=player.display_name,
-            configuration_url=mass.server_url,
+            configuration_url=f"{mass.server_url}/#/settings/editplayer/{player_id}",
         )
 
     async def async_added_to_hass(self) -> None:
