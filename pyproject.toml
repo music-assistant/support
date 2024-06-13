@@ -11,7 +11,7 @@ dependencies = [
   "homeassistant",
   "music-assistant",
 ]
-description = "Music Assistant (BETA) Home Assistant Integration"
+description = "Music Assistant Home Assistant Integration"
 license = {text = "Apache-2.0"}
 name = "mass"
 readme = "README.md"
