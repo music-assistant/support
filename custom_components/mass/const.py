@@ -18,12 +18,6 @@ ATTR_MASS_PLAYER_ID = "mass_player_id"
 ATTR_MASS_PLAYER_TYPE = "mass_player_type"
 ATTR_STREAM_TITLE = "stream_title"
 
-ADDON_SLUG = "d5369777_music_assistant"
-ADDON_HOSTNAME = "d5369777-music-assistant"
-ADDON_REPOSITORY = "https://github.com/music-assistant/home-assistant-addon"
-
-CONF_INTEGRATION_CREATED_ADDON = "integration_created_addon"
-CONF_USE_ADDON = "use_addon"
 CONF_OPENAI_AGENT_ID = "openai_agent_id"
 CONF_ASSIST_AUTO_EXPOSE_PLAYERS = "expose_players_assist"
 CONF_PRE_ANNOUNCE_TTS = "pre_announce_tts"

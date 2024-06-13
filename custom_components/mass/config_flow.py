@@ -2,21 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-from contextlib import suppress
 from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import zeroconf
-from homeassistant.components.hassio import (
-    AddonError,
-    AddonInfo,
-    AddonManager,
-    AddonState,
-    is_hassio,
-)
-from homeassistant.components.hassio.handler import HassioAPIError
 from homeassistant.const import CONF_URL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import AbortFlow, FlowResult
@@ -26,34 +16,10 @@ from music_assistant.client import MusicAssistantClient
 from music_assistant.client.exceptions import CannotConnect, InvalidServerVersion
 from music_assistant.common.models.api import ServerInfoMessage
 
-from .addon import get_addon_manager, install_repository
-from .const import (
-    ADDON_HOSTNAME,
-    CONF_ASSIST_AUTO_EXPOSE_PLAYERS,
-    CONF_INTEGRATION_CREATED_ADDON,
-    CONF_OPENAI_AGENT_ID,
-    CONF_USE_ADDON,
-    DOMAIN,
-    LOGGER,
-)
+from .const import CONF_ASSIST_AUTO_EXPOSE_PLAYERS, CONF_OPENAI_AGENT_ID, DOMAIN, LOGGER
 
-ADDON_SETUP_TIMEOUT = 5
-ADDON_SETUP_TIMEOUT_ROUNDS = 40
 DEFAULT_URL = "http://mass.local:8095"
-ADDON_URL = f"http://{ADDON_HOSTNAME}:8095"
 DEFAULT_TITLE = "Music Assistant"
-
-ON_SUPERVISOR_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_USE_ADDON, default=True): bool,
-        vol.Optional(
-            CONF_OPENAI_AGENT_ID, default=""
-        ): selector.ConversationAgentSelector(
-            selector.ConversationAgentSelectorConfig(language="en")
-        ),
-        vol.Optional(CONF_ASSIST_AUTO_EXPOSE_PLAYERS, default=False): bool,
-    }
-)
 
 
 def get_manual_schema(user_input: dict[str, Any]) -> vol.Schema:
@@ -107,124 +73,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.server_info: ServerInfoMessage | None = None
         self.openai_agent_id: str | None = None
         self.expose_players_assist: bool | None = None
-        # If we install the add-on we should uninstall it on entry remove.
-        self.integration_created_addon = False
-        self.install_task: asyncio.Task | None = None
-        self.start_task: asyncio.Task | None = None
-        self.use_addon = False
-
-    async def async_step_install_addon(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Install MusicAssistant Server add-on."""
-        if not self.install_task:
-            self.install_task = self.hass.async_create_task(self._async_install_addon())
-            return self.async_show_progress(
-                step_id="install_addon", progress_action="install_addon"
-            )
-        try:
-            await self.install_task
-        except AddonError as err:
-            self.install_task = None
-            LOGGER.error(err)
-            return self.async_show_progress_done(next_step_id="install_failed")
-
-        self.integration_created_addon = True
-        self.install_task = None
-
-        return self.async_show_progress_done(next_step_id="start_addon")
-
-    async def async_step_install_failed(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Add-on installation failed."""
-        return self.async_abort(reason="addon_install_failed")
-
-    async def _async_install_addon(self) -> None:
-        """Install the MusicAssistant Server add-on."""
-        addon_manager: AddonManager = get_addon_manager(self.hass)
-        try:
-            await addon_manager.async_schedule_install_addon()
-        finally:
-            # Continue the flow after show progress when the task is done.
-            self.hass.async_create_task(
-                self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
-            )
-
-    async def async_step_start_addon(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Start MusicAssistant Server add-on."""
-        if not self.start_task:
-            self.start_task = self.hass.async_create_task(self._async_start_addon())
-            return self.async_show_progress(
-                step_id="start_addon", progress_action="start_addon"
-            )
-        try:
-            await self.start_task
-        except (FailedConnect, AddonError, AbortFlow) as err:
-            self.start_task = None
-            LOGGER.error(err)
-            return self.async_show_progress_done(next_step_id="start_failed")
-
-        self.start_task = None
-        return self.async_show_progress_done(next_step_id="finish_addon_setup")
-
-    async def async_step_start_failed(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Add-on start failed."""
-        return self.async_abort(reason="addon_start_failed")
-
-    async def _async_start_addon(self) -> None:
-        """Start the MusicAssistant Server add-on."""
-        addon_manager: AddonManager = get_addon_manager(self.hass)
-
-        try:
-            await addon_manager.async_schedule_start_addon()
-
-            # Sleep some seconds to let the add-on start properly before connecting.
-            for _ in range(ADDON_SETUP_TIMEOUT_ROUNDS):
-                await asyncio.sleep(ADDON_SETUP_TIMEOUT)
-                try:
-                    self.server_info = await get_server_info(self.hass, ADDON_URL)
-                    await self.async_set_unique_id(self.server_info.server_id)
-                except (AbortFlow, CannotConnect) as err:
-                    LOGGER.debug(
-                        "Add-on not ready yet, waiting %s seconds: %s",
-                        ADDON_SETUP_TIMEOUT,
-                        err,
-                    )
-                else:
-                    break
-            else:
-                raise FailedConnect(
-                    "Failed to start MusicAssistant Server add-on: timeout"
-                )
-        finally:
-            # Continue the flow after show progress when the task is done.
-            self.hass.async_create_task(
-                self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
-            )
-
-    async def _async_get_addon_info(self) -> AddonInfo:
-        """Return MusicAssistant Server add-on info."""
-        addon_manager: AddonManager = get_addon_manager(self.hass)
-        try:
-            addon_info: AddonInfo = await addon_manager.async_get_addon_info()
-        except AddonError as err:
-            LOGGER.error(err)
-            raise AbortFlow("addon_info_failed") from err
-
-        return addon_info
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
-        if is_hassio(self.hass):
-            return await self.async_step_on_supervisor()
-
         return await self.async_step_manual()
 
     async def async_step_manual(
@@ -237,7 +90,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         errors = {}
-
         try:
             self.server_info = await get_server_info(self.hass, user_input[CONF_URL])
             self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID] or ""
@@ -300,46 +152,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={"url": self.server_info.base_url},
         )
 
-    async def async_step_on_supervisor(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle logic when on Supervisor host."""
-        if user_input is None:
-            return self.async_show_form(
-                step_id="on_supervisor", data_schema=ON_SUPERVISOR_SCHEMA
-            )
-        if not user_input[CONF_USE_ADDON]:
-            return await self.async_step_manual()
-
-        self.use_addon = True
-        with suppress(HassioAPIError):
-            # ignore when the repo is already installed
-            await install_repository(self.hass)
-        addon_info = await self._async_get_addon_info()
-
-        if addon_info.state == AddonState.RUNNING:
-            return await self.async_step_finish_addon_setup()
-
-        if addon_info.state == AddonState.NOT_RUNNING:
-            return await self.async_step_start_addon()
-
-        return await self.async_step_install_addon()
-
-    async def async_step_finish_addon_setup(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Prepare info needed to complete the config entry."""
-        if not self.server_info:
-            # Check that we can connect to the address.
-            try:
-                self.server_info = await get_server_info(self.hass, ADDON_URL)
-            except CannotConnect:
-                return self.async_abort(reason="cannot_connect")
-        if user_input is not None:
-            self.openai_agent_id = user_input[CONF_OPENAI_AGENT_ID] or ""
-            self.expose_players_assist = user_input[CONF_ASSIST_AUTO_EXPOSE_PLAYERS]
-        return await self._async_create_entry_or_abort()
-
     async def _async_create_entry_or_abort(self) -> FlowResult:
         """Return a config entry for the flow or abort if already configured."""
         assert self.server_info is not None
@@ -352,8 +164,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={
                     **config_entry.data,
                     CONF_URL: self.server_info.base_url,
-                    CONF_USE_ADDON: self.use_addon,
-                    CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
                     CONF_OPENAI_AGENT_ID: self.openai_agent_id,
                     CONF_ASSIST_AUTO_EXPOSE_PLAYERS: self.expose_players_assist,
                 },
@@ -370,8 +180,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             title=DEFAULT_TITLE,
             data={
                 CONF_URL: self.server_info.base_url,
-                CONF_USE_ADDON: self.use_addon,
-                CONF_INTEGRATION_CREATED_ADDON: self.integration_created_addon,
                 CONF_OPENAI_AGENT_ID: self.openai_agent_id,
                 CONF_ASSIST_AUTO_EXPOSE_PLAYERS: self.expose_players_assist,
             },
