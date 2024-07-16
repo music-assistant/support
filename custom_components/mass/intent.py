@@ -40,6 +40,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     """Handle PlayMediaOnMediaPlayer intents."""
 
     intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
+    description = f"Play media on a media player, `{QUERY_SLOT}:` sends a query to a conversation agent if configured for ambiguous commands, `{TRACK_SLOT}:`, `{ARTIST_SLOT}:`and `{ALBUM_SLOT}:` should be preferred."
     slot_schema = {
         vol.Any(NAME_SLOT, AREA_SLOT): cv.string,
         vol.Optional(QUERY_SLOT): cv.string,
