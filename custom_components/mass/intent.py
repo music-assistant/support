@@ -62,7 +62,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
         if query:
             if not config_entry.data.get(CONF_OPENAI_AGENT_ID):
                 raise intent.IntentHandleError(
-                    "query requires using a conversation agent"
+                    "query requires using a conversation agent https://music-assistant.io/integration/voice/#ma-specific-conversation-agent"
                 )
             ai_response = await self._async_query_ai(intent_obj, query, config_entry)
             try:
