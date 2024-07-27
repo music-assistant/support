@@ -33,20 +33,29 @@ SLOT_VALUE = "value"
 
 async def async_setup_intents(hass: HomeAssistant) -> None:
     """Set up the Music Assistant intents."""
-    intent.async_register(hass, MassPlayMediaOnMediaPlayerHandler())
+    intent.async_register(hass, MassPlayMediaOnMediaPlayerHandler(hass))
 
 
 class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     """Handle PlayMediaOnMediaPlayer intents."""
 
     intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
-    slot_schema = {
-        vol.Any(NAME_SLOT, AREA_SLOT): cv.string,
-        vol.Optional(QUERY_SLOT): cv.string,
-        vol.Optional(ARTIST_SLOT): cv.string,
-        vol.Optional(TRACK_SLOT): cv.string,
-        vol.Optional(ALBUM_SLOT): cv.string,
-    }
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Initialize MassPlayMediaOnMediaPlayerHandler."""
+        self.hass = hass
+
+    @property
+    def slot_schema(self) -> dict | None:
+        """Return a slot schema."""
+        slot_schema = {
+            vol.Any(NAME_SLOT, AREA_SLOT): cv.string,
+            vol.Optional(ARTIST_SLOT): cv.string,
+            vol.Optional(TRACK_SLOT): cv.string,
+            vol.Optional(ALBUM_SLOT): cv.string,
+        }
+        if any(config_entry.data.get(CONF_OPENAI_AGENT_ID) for config_entry in self.hass.config_entries.async_entries(DOMAIN)):
+            slot_schema[vol.Optional(QUERY_SLOT)] = cv.string
+        return slot_schema
 
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
         """Handle the intent."""
