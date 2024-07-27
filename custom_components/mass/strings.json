@@ -8,26 +8,16 @@
   "config": {
     "flow_title": "{name}",
     "step": {
-      "init": {
-        "data": {
-          "url": "URL of the Music Assistant server",
-          "expose_players_assist": "Expose players to Assist"
-        }
-      },
       "manual": {
         "title": "Manually add Music Assistant Server",
         "description": "Enter the URL to your already running Music Assistant Server. If you do not have the Music Assistant Server running, you should install it first.",
         "data": {
-          "url": "URL of the Music Assistant server",
-          "expose_players_assist": "Expose players to Assist"
+          "url": "URL of the Music Assistant server"
         }
       },
       "discovery_confirm": {
         "description": "Do you want to add the Music Assistant Server `{url}` to Home Assistant?",
-        "title": "Discovered Music Assistant Server",
-        "data": {
-          "expose_players_assist": "Expose players to Assist"
-        }
+        "title": "Discovered Music Assistant Server"
       }
     },
     "error": {
