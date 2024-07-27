@@ -174,13 +174,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
                 # store as data instead of options - adjust this once the reconfigure flow is available
-                data={
-                    CONF_URL: user_input[CONF_URL],
-                    CONF_OPENAI_AGENT_ID: user_input[CONF_OPENAI_AGENT_ID],
-                    CONF_ASSIST_AUTO_EXPOSE_PLAYERS: user_input[
-                        CONF_ASSIST_AUTO_EXPOSE_PLAYERS
-                    ],
-                },
+                data=user_input,
             )
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
@@ -198,22 +192,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         return {
             vol.Required(
                 CONF_URL,
-                default=config_entry.data.get(CONF_URL),
+                description={"suggested_value": config_entry.data.get(CONF_URL)},
             ): str,
             vol.Optional(
                 CONF_OPENAI_AGENT_ID,
-                default=config_entry.data.get(CONF_OPENAI_AGENT_ID),
+                description={"suggested_value": config_entry.data.get(CONF_OPENAI_AGENT_ID)},
             ): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
             vol.Optional(
                 CONF_ASSIST_AUTO_EXPOSE_PLAYERS,
-                default=(
-                    config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS)
-                    if config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS)
-                    is not None
-                    else False
-                ),
+                description={"suggested_value": config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS)},
             ): bool,
         }
 
