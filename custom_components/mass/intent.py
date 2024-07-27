@@ -40,6 +40,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     """Handle PlayMediaOnMediaPlayer intents."""
 
     intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
+
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize MassPlayMediaOnMediaPlayerHandler."""
         self.hass = hass
@@ -53,7 +54,10 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
             vol.Optional(TRACK_SLOT): cv.string,
             vol.Optional(ALBUM_SLOT): cv.string,
         }
-        if any(config_entry.data.get(CONF_OPENAI_AGENT_ID) for config_entry in self.hass.config_entries.async_entries(DOMAIN)):
+        if any(
+            config_entry.data.get(CONF_OPENAI_AGENT_ID)
+            for config_entry in self.hass.config_entries.async_entries(DOMAIN)
+        ):
             slot_schema[vol.Optional(QUERY_SLOT)] = cv.string
         return slot_schema
 
