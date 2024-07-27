@@ -196,13 +196,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ): str,
             vol.Optional(
                 CONF_OPENAI_AGENT_ID,
-                description={"suggested_value": config_entry.data.get(CONF_OPENAI_AGENT_ID)},
+                description={
+                    "suggested_value": config_entry.data.get(CONF_OPENAI_AGENT_ID)
+                },
             ): selector.ConversationAgentSelector(
                 selector.ConversationAgentSelectorConfig(language="en")
             ),
             vol.Optional(
                 CONF_ASSIST_AUTO_EXPOSE_PLAYERS,
-                description={"suggested_value": config_entry.data.get(CONF_ASSIST_AUTO_EXPOSE_PLAYERS)},
+                description={
+                    "suggested_value": config_entry.data.get(
+                        CONF_ASSIST_AUTO_EXPOSE_PLAYERS
+                    )
+                },
             ): bool,
         }
 
