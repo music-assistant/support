@@ -75,7 +75,7 @@
       "name": "Play Announcement (advanced)",
       "description": "Play announcement on a Music Assistant player with more fine grained control options.",
       "fields": {
-        "media_id": {
+        "url": {
           "name": "URL",
           "description": "URL to the notification sound."
         },
