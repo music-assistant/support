@@ -132,8 +132,10 @@
     "flow_title": "{name}",
     "step": {
       "init": {
+        "description": "For the last 2 options see [here]({docs_voice_url})",
         "data": {
           "url": "URL of the Music Assistant server",
+          "openai_agent_id": "Music Assistant specific LLM Conversation Agent",
           "expose_players_assist": "Expose players to Assist"
         }
       }
