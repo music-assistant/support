@@ -96,6 +96,7 @@ SUPPORTED_FEATURES = (
     | MediaPlayerEntityFeature.BROWSE_MEDIA
     | MediaPlayerEntityFeature.MEDIA_ENQUEUE
     | MediaPlayerEntityFeature.MEDIA_ANNOUNCE
+    | MediaPlayerEntityFeature.VOLUME_MUTE
 )
 
 STATE_MAPPING = {
