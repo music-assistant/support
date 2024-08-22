@@ -148,7 +148,7 @@ async def test_flow_user_init_connect_issue(m_server_info, hass):
     result = await hass.config_entries.flow.async_configure(
         _result["flow_id"], user_input={CONF_URL: "bad"}
     )
-    assert {"base": "cannot_connect"} == result["errors"]
+    assert result["errors"] == {"base": "cannot_connect"}
 
 
 @patch("custom_components.mass.config_flow.get_server_info")
@@ -162,7 +162,7 @@ async def test_flow_user_init_server_version_invalid(m_server_info, hass):
     result = await hass.config_entries.flow.async_configure(
         _result["flow_id"], user_input={CONF_URL: "bad"}
     )
-    assert {"base": "invalid_server_version"} == result["errors"]
+    assert result["errors"] == {"base": "invalid_server_version"}
 
 
 @patch("custom_components.mass.config_flow.MusicAssistantClient")
