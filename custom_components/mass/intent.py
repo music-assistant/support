@@ -72,6 +72,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
         )
 
         query = slots.get(QUERY_SLOT, {}).get(SLOT_VALUE)
+        radio_mode = False
         if query:
             if not config_entry.data.get(CONF_OPENAI_AGENT_ID):
                 raise intent.IntentHandleError(
