@@ -88,7 +88,7 @@ transfer_queue:
       domain: media_player
       integration: mass
   fields:
-    source_entity:
+    source_player:
       required: true
       selector:
         entity:

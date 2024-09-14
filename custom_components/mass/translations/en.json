@@ -84,9 +84,9 @@
       "name": "Transfer Queue",
       "description": "Transfer the player's queue to another player.",
       "fields": {
-        "source_entity": {
+        "source_player": {
           "name": "Source media player",
-          "description": "The source media player which queue you want to transfer."
+          "description": "he source media player which has the queue you want to transfer."
         },
         "auto_play": {
           "name": "Auto play",
