@@ -63,6 +63,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
 
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
         """Handle the intent."""
+        # pylint: disable=too-many-locals
         response = intent_obj.create_response()
         slots = self.async_validate_slots(intent_obj.slots)
         config_entry = await self._get_loaded_config_entry(intent_obj.hass)
