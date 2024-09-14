@@ -125,7 +125,7 @@ ATTR_ALBUM = "album"
 ATTR_URL = "url"
 ATTR_USE_PRE_ANNOUNCE = "use_pre_announce"
 ATTR_ANNOUNCE_VOLUME = "announce_volume"
-ATTR_TARGET_PLAYER = "target_player"
+ATTR_SOURCE_PLAYER = "source_player"
 ATTR_AUTO_PLAY = "auto_play"
 
 # pylint: disable=too-many-public-methods
@@ -209,7 +209,7 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         SERVICE_TRANSFER_QUEUE,
         {
-            vol.Required(ATTR_TARGET_PLAYER): cv.entity_id,
+            vol.Required(ATTR_SOURCE_PLAYER): cv.entity_id,
             vol.Optional(ATTR_AUTO_PLAY): vol.Coerce(bool),
         },
         "_async_transfer_queue",
@@ -549,17 +549,17 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
     @catch_musicassistant_error
     async def _async_transfer_queue(
-        self, target_player: str, auto_play: bool | None = None
+        self, source_player: str, auto_play: bool | None = None
     ) -> None:
         """Transfer the current queue to another player."""
         # resolve HA entity_id to MA player_id
-        if (hass_state := self.hass.states.get(target_player)) is None:
+        if (hass_state := self.hass.states.get(source_player)) is None:
             return  # guard
         if (mass_player_id := hass_state.attributes.get("mass_player_id")) is None:
             return  # guard
         if queue := self.mass.player_queues.get(self.player.active_source):
             await self.mass.player_queues.transfer_queue(
-                queue.queue_id, mass_player_id, auto_play
+                mass_player_id, queue.queue_id, auto_play
             )
 
     async def async_browse_media(
