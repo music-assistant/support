@@ -247,7 +247,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         async def queue_time_updated(event: MassEvent) -> None:
             if event.object_id != self.player.active_source:
                 return
-            if abs(self._prev_time - event.data) > 5:
+            if abs((self._prev_time or 0) - event.data) > 5:
                 await self.async_on_update()
                 self.async_write_ha_state()
             self._prev_time = event.data
@@ -304,11 +304,13 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         queue = self.mass.player_queues.get(player.active_source)
         # update generic attributes
         if player.powered:
-            self._attr_state = STATE_MAPPING[self.player.state]
+            self._attr_state = STATE_MAPPING.get(self.player.state)
         else:
             self._attr_state = STATE_OFF
         self._attr_group_members = player.group_childs
-        self._attr_volume_level = player.volume_level / 100
+        self._attr_volume_level = (
+            player.volume_level / 100 if player.volume_level is not None else None
+        )
         self._attr_is_volume_muted = player.volume_muted
         self._update_media_attributes(player, queue)
         self._update_media_image_url(player, queue)
@@ -638,8 +640,10 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             self._attr_shuffle = None
             self._attr_repeat = None
             self._attr_media_position = player.elapsed_time
-            self._attr_media_position_updated_at = from_utc_timestamp(
-                player.elapsed_time_last_updated
+            self._attr_media_position_updated_at = (
+                from_utc_timestamp(player.elapsed_time_last_updated)
+                if player.elapsed_time_last_updated
+                else None
             )
             self._prev_time = player.elapsed_time
             return
