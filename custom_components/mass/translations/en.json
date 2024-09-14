@@ -80,6 +80,20 @@
         }
       }
     },
+    "transfer_queue": {
+      "name": "Transfer Queue",
+      "description": "Transfer the player's queue to another player.",
+      "fields": {
+        "target_player": {
+          "name": "Target player",
+          "description": "The target media player entity to send the queue to."
+        },
+        "auto_play": {
+          "name": "Auto play",
+          "description": "Start playing the queue on the target player. Omit to use the default behavior."
+        }
+      }
+    },
     "search": {
       "name": "Search Music Assistant",
       "description": "Perform a global search on the Music Assistant library and all providers.",
@@ -103,6 +117,10 @@
         "limit": {
           "name": "Limit",
           "description": "Maximum number of items to return (per media type)."
+        },
+        "library_only": {
+          "name": "Only library items",
+          "description": "Only include results that are in the library."
         }
       }
     }

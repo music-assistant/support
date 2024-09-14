@@ -24,6 +24,7 @@ ATTR_SEARCH_NAME = "name"
 ATTR_SEARCH_ARTIST = "artist"
 ATTR_SEARCH_ALBUM = "album"
 ATTR_LIMIT = "limit"
+ATTR_LIBRARY_ONLY = "library_only"
 
 
 @callback
@@ -46,6 +47,7 @@ def register_services(hass: HomeAssistant) -> None:
             search_query=search_name,
             media_types=call.data.get(ATTR_MEDIA_TYPE, MediaType.ALL),
             limit=call.data[ATTR_LIMIT],
+            library_only=call.data[ATTR_LIBRARY_ONLY],
         )
 
         # return limited result to prevent it being too verbose
@@ -92,6 +94,7 @@ def register_services(hass: HomeAssistant) -> None:
                 vol.Optional(ATTR_SEARCH_ARTIST): cv.string,
                 vol.Optional(ATTR_SEARCH_ALBUM): cv.string,
                 vol.Optional(ATTR_LIMIT, default=5): vol.Coerce(int),
+                vol.Optional(ATTR_LIBRARY_ONLY, default=False): cv.boolean,
             }
         ),
         supports_response=SupportsResponse.ONLY,

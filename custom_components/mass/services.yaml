@@ -82,6 +82,24 @@ play_announcement:
           max: 100
           step: 1
 
+transfer_queue:
+  target:
+    entity:
+      domain: media_player
+      integration: mass
+  fields:
+    target_player:
+      required: true
+      selector:
+        entity:
+          domain: media_player
+          integration: mass
+    auto_play:
+      required: false
+      example: "true"
+      selector:
+        boolean:
+
 search:
   fields:
     name:
@@ -121,3 +139,9 @@ search:
           min: 1
           max: 100
           step: 1
+    library_only:
+      required: false
+      example: "true"
+      default: false
+      selector:
+        boolean:

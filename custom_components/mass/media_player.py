@@ -62,7 +62,6 @@ from .const import (
     ATTR_ACTIVE_GROUP,
     ATTR_ACTIVE_QUEUE,
     ATTR_GROUP_LEADER,
-    ATTR_GROUP_MEMBERS,
     ATTR_MASS_PLAYER_ID,
     ATTR_MASS_PLAYER_TYPE,
     ATTR_QUEUE_INDEX,
@@ -117,6 +116,7 @@ QUEUE_OPTION_MAP = {
 
 SERVICE_PLAY_MEDIA_ADVANCED = "play_media"
 SERVICE_PLAY_ANNOUNCEMEMT = "play_announcement"
+SERVICE_TRANSFER_QUEUE = "transfer_queue"
 ATTR_RADIO_MODE = "radio_mode"
 ATTR_MEDIA_ID = "media_id"
 ATTR_MEDIA_TYPE = "media_type"
@@ -125,6 +125,8 @@ ATTR_ALBUM = "album"
 ATTR_URL = "url"
 ATTR_USE_PRE_ANNOUNCE = "use_pre_announce"
 ATTR_ANNOUNCE_VOLUME = "announce_volume"
+ATTR_TARGET_PLAYER = "target_player"
+ATTR_AUTO_PLAY = "auto_play"
 
 # pylint: disable=too-many-public-methods
 
@@ -204,6 +206,14 @@ async def async_setup_entry(
         },
         "_async_play_announcement",
     )
+    platform.async_register_entity_service(
+        SERVICE_TRANSFER_QUEUE,
+        {
+            vol.Required(ATTR_TARGET_PLAYER): cv.entity_id,
+            vol.Optional(ATTR_AUTO_PLAY): vol.Coerce(bool),
+        },
+        "_async_transfer_queue",
+    )
 
 
 class MassPlayer(MassBaseEntity, MediaPlayerEntity):
@@ -267,7 +277,6 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         attrs = {
             ATTR_MASS_PLAYER_ID: self.player_id,
             ATTR_MASS_PLAYER_TYPE: player.type.value,
-            ATTR_GROUP_MEMBERS: player.group_childs,
             ATTR_GROUP_LEADER: player.synced_to,
             ATTR_ACTIVE_QUEUE: player.active_source,
             ATTR_ACTIVE_GROUP: player.active_group,
@@ -307,7 +316,20 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             self._attr_state = STATE_MAPPING.get(self.player.state)
         else:
             self._attr_state = STATE_OFF
-        self._attr_group_members = player.group_childs
+
+        # translate MA group_childs to HA group_members as entity id's
+        # TODO: find a way to optimize this a tiny bit more
+        # e.g. by holding a lookup dict in memory on integration level
+        group_members_entity_ids: list[str] = []
+        if player.group_childs:
+            for state in self.hass.states.async_all("media_player"):
+                if not (mass_player_id := state.attributes.get("mass_player_id")):
+                    continue
+                if mass_player_id not in player.group_childs:
+                    continue
+                group_members_entity_ids.append(state.entity_id)
+        self._attr_group_members = group_members_entity_ids
+
         self._attr_volume_level = (
             player.volume_level / 100 if player.volume_level is not None else None
         )
@@ -524,6 +546,21 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         await self.mass.players.play_announcement(
             self.player_id, url, use_pre_announce, announce_volume
         )
+
+    @catch_musicassistant_error
+    async def _async_transfer_queue(
+        self, target_player: str, auto_play: bool | None = None
+    ) -> None:
+        """Transfer the current queue to another player."""
+        # resolve HA entity_id to MA player_id
+        if (hass_state := self.hass.states.get(target_player)) is None:
+            return  # guard
+        if (mass_player_id := hass_state.attributes.get("mass_player_id")) is None:
+            return  # guard
+        if queue := self.mass.player_queues.get(self.player.active_source):
+            await self.mass.player_queues.transfer_queue(
+                queue.queue_id, mass_player_id, auto_play
+            )
 
     async def async_browse_media(
         self, media_content_type=None, media_content_id=None
