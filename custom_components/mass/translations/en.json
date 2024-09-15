@@ -86,7 +86,7 @@
       "fields": {
         "source_player": {
           "name": "Source media player",
-          "description": "he source media player which has the queue you want to transfer."
+          "description": "The source media player which has the queue you want to transfer."
         },
         "auto_play": {
           "name": "Auto play",
