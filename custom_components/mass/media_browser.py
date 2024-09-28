@@ -19,7 +19,7 @@ from .const import DEFAULT_NAME, DOMAIN
 if TYPE_CHECKING:
     from music_assistant.client import MusicAssistantClient
 
-MEDIA_TYPE_RADIO = "radio"
+MediaType.RADIO = "radio"
 
 PLAYABLE_MEDIA_TYPES = [
     MediaType.PLAYLIST,
