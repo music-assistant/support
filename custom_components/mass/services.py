@@ -20,7 +20,7 @@ from .helpers import get_mass
 
 SERVICE_SEARCH = "search"
 ATTR_MEDIA_TYPE = "media_type"
-ATTR_SEARCH_NAME = "name"
+ATTR_SEARCH_NAME = "searchname"
 ATTR_SEARCH_ARTIST = "artist"
 ATTR_SEARCH_ALBUM = "album"
 ATTR_LIMIT = "limit"

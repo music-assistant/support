@@ -102,7 +102,7 @@ transfer_queue:
 
 search:
   fields:
-    name:
+    searchname:
       required: true
       example: "We Are The Champions"
       selector:

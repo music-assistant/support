@@ -97,7 +97,7 @@
       "name": "Search Music Assistant",
       "description": "Perform a global search on the Music Assistant library and all providers.",
       "fields": {
-        "name": {
+        "searchname": {
           "name": "Search name",
           "description": "The name/title to search for."
         },
