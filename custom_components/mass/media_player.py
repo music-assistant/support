@@ -646,14 +646,19 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         self, player: Player, queue: PlayerQueue | None
     ) -> None:
         """Update image URL for the active queue item."""
-        if queue is None or queue.current_item is None:
-            self._attr_media_image_url = None
-            return
-        if image_url := self.mass.get_media_item_image_url(queue.current_item):
+        if (
+            queue
+            and queue.current_item
+            and (image_url := self.mass.get_media_item_image_url(queue.current_item))
+        ):
             self._attr_media_image_remotely_accessible = (
                 self.mass.server_url not in image_url
             )
             self._attr_media_image_url = image_url
+            return
+        if player.current_media and player.current_media.image_url:
+            self._attr_media_image_remotely_accessible = True
+            self._attr_media_image_url = player.current_media.image_url
             return
         self._attr_media_image_url = None
 
