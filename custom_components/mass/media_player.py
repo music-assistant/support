@@ -344,10 +344,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     @catch_musicassistant_error
     async def async_media_play(self) -> None:
         """Send play command to device."""
-        if queue := self.mass.player_queues.get(self.player.active_source):
-            await self.mass.player_queues.queue_command_play(queue.queue_id)
-        else:
-            await self.mass.players.player_command_play(self.player_id)
+        await self.mass.players.player_command_play(self.player_id)
 
     @catch_musicassistant_error
     async def async_media_pause(self) -> None:
