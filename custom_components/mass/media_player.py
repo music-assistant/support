@@ -278,7 +278,7 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             ATTR_MASS_PLAYER_ID: self.player_id,
             ATTR_MASS_PLAYER_TYPE: player.type.value,
             ATTR_GROUP_LEADER: player.synced_to,
-            ATTR_ACTIVE_QUEUE: player.active_source,
+            ATTR_ACTIVE_QUEUE: queue.queue_id if queue else None,
             ATTR_ACTIVE_GROUP: player.active_group,
             ATTR_QUEUE_ITEMS: queue.items if queue else None,
             ATTR_QUEUE_INDEX: queue.current_index if queue else None,
@@ -316,7 +316,6 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             self._attr_state = STATE_MAPPING.get(self.player.state)
         else:
             self._attr_state = STATE_OFF
-
         # translate MA group_childs to HA group_members as entity id's
         # TODO: find a way to optimize this a tiny bit more
         # e.g. by holding a lookup dict in memory on integration level
@@ -329,7 +328,6 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
                     continue
                 group_members_entity_ids.append(state.entity_id)
         self._attr_group_members = group_members_entity_ids
-
         self._attr_volume_level = (
             player.volume_level / 100 if player.volume_level is not None else None
         )
@@ -348,18 +346,12 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
     @catch_musicassistant_error
     async def async_media_pause(self) -> None:
         """Send pause command to device."""
-        if queue := self.mass.player_queues.get(self.player.active_source):
-            await self.mass.player_queues.queue_command_pause(queue.queue_id)
-        else:
-            await self.mass.players.player_command_pause(self.player_id)
+        await self.mass.players.player_command_pause(self.player_id)
 
     @catch_musicassistant_error
     async def async_media_stop(self) -> None:
         """Send stop command to device."""
-        if queue := self.mass.player_queues.get(self.player.active_source):
-            await self.mass.player_queues.queue_command_stop(queue.queue_id)
-        else:
-            await self.mass.players.player_command_stop(self.player_id)
+        await self.mass.players.player_command_stop(self.player_id)
 
     @catch_musicassistant_error
     async def async_media_next_track(self) -> None:
