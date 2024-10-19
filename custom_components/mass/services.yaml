@@ -89,7 +89,7 @@ transfer_queue:
       integration: mass
   fields:
     source_player:
-      required: true
+      required: false
       selector:
         entity:
           domain: media_player

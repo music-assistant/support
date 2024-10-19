@@ -209,7 +209,7 @@ async def async_setup_entry(
     platform.async_register_entity_service(
         SERVICE_TRANSFER_QUEUE,
         {
-            vol.Required(ATTR_SOURCE_PLAYER): cv.entity_id,
+            vol.Optional(ATTR_SOURCE_PLAYER): cv.entity_id,
             vol.Optional(ATTR_AUTO_PLAY): vol.Coerce(bool),
         },
         "_async_transfer_queue",
@@ -549,18 +549,29 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
 
     @catch_musicassistant_error
     async def _async_transfer_queue(
-        self, source_player: str, auto_play: bool | None = None
+        self, source_player: str | None = None, auto_play: bool | None = None
     ) -> None:
         """Transfer the current queue to another player."""
-        # resolve HA entity_id to MA player_id
-        if (hass_state := self.hass.states.get(source_player)) is None:
-            return  # guard
-        if (mass_player_id := hass_state.attributes.get("mass_player_id")) is None:
-            return  # guard
-        if queue := self.mass.player_queues.get(self.player.active_source):
-            await self.mass.player_queues.transfer_queue(
-                mass_player_id, queue.queue_id, auto_play
-            )
+        if not source_player:
+            # no source player given; try to find a playing player
+            for queue in self.mass.player_queues:
+                if queue.state == PlayerState.PLAYING:
+                    mass_queue_id = queue.queue_id
+                    break
+            else:
+                raise HomeAssistantError(
+                    "Source player not specified and no playing player found."
+                )
+        else:
+            # resolve HA entity_id to MA player_id
+            if (hass_state := self.hass.states.get(source_player)) is None:
+                return  # guard
+            if (mass_queue_id := hass_state.attributes.get("mass_player_id")) is None:
+                return  # guard
+
+        await self.mass.player_queues.transfer_queue(
+            mass_queue_id, queue.queue_id, auto_play
+        )
 
     async def async_browse_media(
         self, media_content_type=None, media_content_id=None
