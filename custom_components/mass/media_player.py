@@ -310,8 +310,11 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
         if not self.available:
             return
         player = self.player
-        queue = self.mass.player_queues.get(player.active_source)
+        active_queue_id = player.active_source or player.player_id
+        active_queue = self.mass.player_queues.get(active_queue_id)
         # update generic attributes
+        if player.powered and active_queue:
+            self._attr_state = STATE_MAPPING.get(active_queue.state)
         if player.powered:
             self._attr_state = STATE_MAPPING.get(self.player.state)
         else:
@@ -332,8 +335,11 @@ class MassPlayer(MassBaseEntity, MediaPlayerEntity):
             player.volume_level / 100 if player.volume_level is not None else None
         )
         self._attr_is_volume_muted = player.volume_muted
-        self._update_media_attributes(player, queue)
-        self._update_media_image_url(player, queue)
+        self._update_media_attributes(player, active_queue)
+        self._update_media_image_url(player, active_queue)
+        # some features can dynamically change
+        if PlayerFeature.SYNC in player.supported_features:
+            self._attr_supported_features |= MediaPlayerEntityFeature.GROUPING
 
     @catch_musicassistant_error
     async def async_media_play(self) -> None:
