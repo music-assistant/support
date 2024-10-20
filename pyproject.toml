@@ -24,7 +24,7 @@ test = [
   "codespell==2.3.0",
   "mypy==1.12.1",
   "pre-commit==4.0.1",
-  "pre-commit-hooks==4.6.0",
+  "pre-commit-hooks==5.0.0",
   "pylint==3.2.7",
   "ruff==0.7.0",
   "tomli==2.0.2",
