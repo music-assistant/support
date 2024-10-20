@@ -13,10 +13,6 @@ from homeassistant.components.media_player.const import (
     MEDIA_CLASS_MUSIC,
     MEDIA_CLASS_PLAYLIST,
     MEDIA_CLASS_TRACK,
-    MEDIA_TYPE_ALBUM,
-    MEDIA_TYPE_ARTIST,
-    MEDIA_TYPE_PLAYLIST,
-    MEDIA_TYPE_TRACK,
     MediaClass,
     MediaType,
 )
@@ -31,11 +27,11 @@ if TYPE_CHECKING:
 MEDIA_TYPE_RADIO = "radio"
 
 PLAYABLE_MEDIA_TYPES = [
-    MEDIA_TYPE_PLAYLIST,
-    MEDIA_TYPE_ALBUM,
-    MEDIA_TYPE_ARTIST,
+    MediaType.PLAYLIST,
+    MediaType.ALBUM,
+    MediaType.ARTIST,
     MEDIA_TYPE_RADIO,
-    MEDIA_TYPE_TRACK,
+    MediaType.TRACK,
 ]
 
 LIBRARY_ARTISTS = "artists"
@@ -153,7 +149,7 @@ async def build_playlists_listing(mass: MusicAssistantClient):
     return BrowseMedia(
         media_class=MEDIA_CLASS_DIRECTORY,
         media_content_id=LIBRARY_PLAYLISTS,
-        media_content_type=MEDIA_TYPE_PLAYLIST,
+        media_content_type=MediaType.PLAYLIST,
         title=LIBRARY_TITLE_MAP[LIBRARY_PLAYLISTS],
         can_play=False,
         can_expand=True,
@@ -178,7 +174,7 @@ async def build_playlist_items_listing(mass: MusicAssistantClient, identifier: s
     return BrowseMedia(
         media_class=MEDIA_CLASS_PLAYLIST,
         media_content_id=playlist.uri,
-        media_content_type=MEDIA_TYPE_PLAYLIST,
+        media_content_type=MediaType.PLAYLIST,
         title=playlist.name,
         can_play=True,
         can_expand=True,
@@ -202,7 +198,7 @@ async def build_artists_listing(mass: MusicAssistantClient):
     return BrowseMedia(
         media_class=MEDIA_CLASS_DIRECTORY,
         media_content_id=LIBRARY_ARTISTS,
-        media_content_type=MEDIA_TYPE_ARTIST,
+        media_content_type=MediaType.ARTIST,
         title=LIBRARY_TITLE_MAP[LIBRARY_ARTISTS],
         can_play=False,
         can_expand=True,
@@ -226,9 +222,9 @@ async def build_artist_items_listing(mass: MusicAssistantClient, identifier: str
     albums = await mass.music.get_artist_albums(artist.item_id, artist.provider)
 
     return BrowseMedia(
-        media_class=MEDIA_TYPE_ARTIST,
+        media_class=MediaType.ARTIST,
         media_content_id=artist.uri,
-        media_content_type=MEDIA_TYPE_ARTIST,
+        media_content_type=MediaType.ARTIST,
         title=artist.name,
         can_play=True,
         can_expand=True,
@@ -248,7 +244,7 @@ async def build_albums_listing(mass: MusicAssistantClient):
     return BrowseMedia(
         media_class=MEDIA_CLASS_DIRECTORY,
         media_content_id=LIBRARY_ALBUMS,
-        media_content_type=MEDIA_TYPE_ALBUM,
+        media_content_type=MediaType.ALBUM,
         title=LIBRARY_TITLE_MAP[LIBRARY_ALBUMS],
         can_play=False,
         can_expand=True,
@@ -272,9 +268,9 @@ async def build_album_items_listing(mass: MusicAssistantClient, identifier: str)
     tracks = await mass.music.get_album_tracks(album.item_id, album.provider)
 
     return BrowseMedia(
-        media_class=MEDIA_TYPE_ALBUM,
+        media_class=MediaType.ALBUM,
         media_content_id=album.uri,
-        media_content_type=MEDIA_TYPE_ALBUM,
+        media_content_type=MediaType.ALBUM,
         title=album.name,
         can_play=True,
         can_expand=True,
@@ -292,7 +288,7 @@ async def build_tracks_listing(mass: MusicAssistantClient):
     return BrowseMedia(
         media_class=MEDIA_CLASS_DIRECTORY,
         media_content_id=LIBRARY_ALBUMS,
-        media_content_type=MEDIA_TYPE_TRACK,
+        media_content_type=MediaType.TRACK,
         title=LIBRARY_TITLE_MAP[LIBRARY_TRACKS],
         can_play=False,
         can_expand=True,
