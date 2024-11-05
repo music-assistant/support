@@ -94,24 +94,36 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
                 return response
             media_id = json_payload.get(ATTR_MEDIA_ID)
             media_type = json_payload.get(ATTR_MEDIA_TYPE)
-            media_item = mass.music.get_item_by_name(
-                media_id, media_type=MediaType(media_type)
-            )
+            media_items = []
+            if isinstance(media_id, list):
+                media_items = [
+                    (
+                        await mass.music.get_item_by_name(
+                            item, media_type=MediaType(media_type)
+                        )
+                    ).to_dict()
+                    for item in media_id
+                ]
+                media_item = media_items
+            else:
+                media_item = await mass.music.get_item_by_name(
+                    media_id, media_type=MediaType(media_type)
+                )
             radio_mode = json_payload.get(ATTR_RADIO_MODE, False)
         else:
             artist = slots.get(ARTIST_SLOT, {}).get(SLOT_VALUE, "")
             track = slots.get(TRACK_SLOT, {}).get(SLOT_VALUE, "")
             album = slots.get(ALBUM_SLOT, {}).get(SLOT_VALUE, "")
             if track:
-                media_item = mass.music.get_item_by_name(
+                media_item = await mass.music.get_item_by_name(
                     track, artist=artist, album=album, media_type=MediaType.TRACK
                 )
             elif album:
-                media_item = mass.music.get_item_by_name(
+                media_item = await mass.music.get_item_by_name(
                     album, artist=artist, media_type=MediaType.ALBUM
                 )
             elif artist:
-                media_item = mass.music.get_item_by_name(
+                media_item = await mass.music.get_item_by_name(
                     artist, artist=artist, album=album, media_type=MediaType.ARTIST
                 )
             else:
@@ -120,7 +132,9 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
         try:
             await mass.player_queues.play_media(
                 queue_id=mass_player_id,
-                media=media_item,
+                media=(
+                    media_item if isinstance(media_item, list) else media_item.to_dict()
+                ),
                 radio_mode=radio_mode,
             )
         except MusicAssistantError as err:
