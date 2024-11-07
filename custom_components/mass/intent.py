@@ -11,13 +11,16 @@ from homeassistant.components.conversation import (
     SERVICE_PROCESS as CONVERSATION_SERVICE,
 )
 from homeassistant.components.conversation.const import DOMAIN as CONVERSATION_DOMAIN
+from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import intent
+from music_assistant_client.client import MusicAssistantClient
 from music_assistant_models.enums import MediaType
 from music_assistant_models.errors import MusicAssistantError
+from music_assistant_models.media_items import MediaItemType
 
 from . import DOMAIN
 from .const import ATTR_MASS_PLAYER_TYPE, CONF_OPENAI_AGENT_ID
@@ -71,12 +74,11 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
         # pylint: disable=too-many-locals
         response = intent_obj.create_response()
         slots = self.async_validate_slots(intent_obj.slots)
-        config_entry: MusicAssistantConfigEntry
-        config_entry = await self._get_loaded_config_entry(intent_obj.hass)
-        mass = config_entry.runtime_data.mass
-        mass_player_id = await self._async_get_matched_mass_player(
-            intent_obj, slots, config_entry
+        config_entry: MusicAssistantConfigEntry = await self._get_loaded_config_entry(
+            intent_obj.hass
         )
+        mass = config_entry.runtime_data.mass
+        mass_player_id = await self._async_get_matched_mass_player(intent_obj, slots)
         query = slots.get(QUERY_SLOT, {}).get(SLOT_VALUE)
         radio_mode = False
         if query:
@@ -94,21 +96,7 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
                 return response
             media_id = json_payload.get(ATTR_MEDIA_ID)
             media_type = json_payload.get(ATTR_MEDIA_TYPE)
-            media_items = []
-            if isinstance(media_id, list):
-                media_items = [
-                    (
-                        await mass.music.get_item_by_name(
-                            item, media_type=MediaType(media_type)
-                        )
-                    ).to_dict()
-                    for item in media_id
-                ]
-                media_item = media_items
-            else:
-                media_item = await mass.music.get_item_by_name(
-                    media_id, media_type=MediaType(media_type)
-                )
+            media_item = await self._get_media_items(mass, media_id, media_type)
             radio_mode = json_payload.get(ATTR_RADIO_MODE, False)
         else:
             artist = slots.get(ARTIST_SLOT, {}).get(SLOT_VALUE, "")
@@ -144,11 +132,24 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
         response.async_set_speech("Okay")
         return response
 
+    async def _get_media_items(
+        self, mass: MusicAssistantClient, media_id: str | list[str], media_type
+    ) -> MediaItemType | list[MediaItemType]:
+        if isinstance(media_id, list):
+            return [
+                (
+                    await mass.music.get_item_by_name(
+                        item, media_type=MediaType(media_type)
+                    )
+                ).to_dict()
+                for item in media_id
+            ]
+        return await mass.music.get_item_by_name(
+            media_id, media_type=MediaType(media_type)
+        )
+
     async def _async_get_matched_mass_player(
-        self,
-        intent_obj: intent.Intent,
-        slots: intent._SlotsType,
-        config_entry: ConfigEntry,
+        self, intent_obj: intent.Intent, slots: intent._SlotsType
     ) -> str:
         name: str | None = slots.get(NAME_SLOT, {}).get(SLOT_VALUE)
         if name == "all":
@@ -190,11 +191,11 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     async def _get_matched_state(
         self, intent_obj: intent.Intent, name: str | None, area_name: str | None
     ) -> State:
-        mass_states: set[str] = set()
-        initial_states = intent_obj.hass.states.async_all()
-        for state in initial_states:
-            if state.attributes.get(ATTR_MASS_PLAYER_TYPE) is not None:
-                mass_states.add(state)
+        mass_states = {
+            state
+            for state in intent_obj.hass.states.async_all(MEDIA_PLAYER_DOMAIN)
+            if state.attributes.get(ATTR_MASS_PLAYER_TYPE) is not None
+        }
         states = list(
             intent.async_match_states(
                 intent_obj.hass,
