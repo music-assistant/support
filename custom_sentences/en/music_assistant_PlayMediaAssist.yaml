@@ -31,13 +31,13 @@ intents:
           "on": "(on|using)"
           artist: "[the ](artist|band|group)"
           track: "[the ](track|song)"
-          album: "[the ](album|ep|record)"     
+          album: "[the ](album|ep|record)"
           playlist: "[the ]playlist"
           radio_station: "[the ]((radio station)|(radio)|(station))"
         requires_context:
           domain: "media_player"
 
-      # CONTEXT AWARNESS 
+      # CONTEXT AWARNESS
       - sentences:
           - "<play> <artist> {artist}"
           - "<play> <album> {album} [by <artist> {artist}]"
