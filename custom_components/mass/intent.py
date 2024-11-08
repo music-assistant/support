@@ -139,7 +139,8 @@ class MassPlayMediaAssistHandler(MassIntentHandlerBase):
         vol.Optional(ALBUM_SLOT): cv.string,
         vol.Optional(RADIO_SLOT): cv.string,
         vol.Optional(PLAYLIST_SLOT): cv.string,
-        vol.Optional(DONT_STOP_SLOT): cv.boolean,
+        # TODO: Implement dont_stopß
+        # vol.Optional(DONT_STOP_SLOT): cv.boolean,
     }
 
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
@@ -182,6 +183,8 @@ class MassPlayMediaAssistHandler(MassIntentHandlerBase):
             )
         else:
             raise intent.IntentHandleError("No media item parsed from query")
+        if not media_item:
+            raise intent.IntentHandleError("No media item found")
         try:
             await mass.player_queues.play_media(
                 queue_id=mass_player_id,
@@ -241,6 +244,8 @@ class MassPlayMediaOnMediaPlayerHandler(MassIntentHandlerBase):
             media_type = json_payload.get(ATTR_MEDIA_TYPE)
             media_item = await self._get_media_items(mass, media_id, media_type)
             radio_mode = json_payload.get(ATTR_RADIO_MODE, False)
+        if not media_item:
+            raise intent.IntentHandleError("No media item found")
         try:
             await mass.player_queues.play_media(
                 queue_id=mass_player_id,

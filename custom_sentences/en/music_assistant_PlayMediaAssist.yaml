@@ -1,0 +1,67 @@
+language: "en"
+intents:
+  MassPlayMediaAssist:
+    data:
+
+      # TARGET AN AREA
+      - sentences:
+          - "<play> <artist> {artist} in [the ]<area>"
+          - "<play> <album> {album} [by <artist> {artist}] in [the ]<area>"
+          - "<play> <track> {track} [by <artist> {artist}] in [the ]<area>"
+          - "<play> <playlist> {playlist} in [the ]<area>"
+          - "<play> <radio_station> {radio} in [the ]<area>"
+        expansion_rules:
+          play: "((play)|(listen to))"
+          artist: "[the ](artist|band|group)"
+          track: "[the ](track|song)"
+          album: "[the ](album|ep|record)"
+          playlist: "[the ]playlist"
+          radio_station: "[the ]((radio station)|(radio)|(station))"
+
+      # TARGET A NAME
+      - sentences:
+          - "<play> <artist> {artist} <on> [the ]{name} [<player_devices>]"
+          - "<play> <album> {album} [by <artist> {artist}] <on> [the ]{name} [<player_devices>]"
+          - "<play> <track> {track} [by <artist> {artist}] <on> [the ]{name} [<player_devices>]"
+          - "<play> <playlist> {playlist} <on> [the ]{name} [<player_devices>]"
+          - "<play> <radio_station> {radio} <on> [the ]{name} [<player_devices>]"
+        expansion_rules:
+          play: "((play)|(listen to))"
+          player_devices: "((speaker)|([media] player))"
+          "on": "(on|using)"
+          artist: "[the ](artist|band|group)"
+          track: "[the ](track|song)"
+          album: "[the ](album|ep|record)"     
+          playlist: "[the ]playlist"
+          radio_station: "[the ]((radio station)|(radio)|(station))"
+        requires_context:
+          domain: "media_player"
+
+      # CONTEXT AWARNESS 
+      - sentences:
+          - "<play> <artist> {artist}"
+          - "<play> <album> {album} [by <artist> {artist}]"
+          - "<play> <track> {track} [by <artist> {artist}]"
+          - "<play> <playlist> {playlist}"
+          - "<play> <radio_station> {radio}"
+        expansion_rules:
+          play: "((play)|(listen to))"
+          artist: "[the ](artist|band|group)"
+          track: "[the ](track|song)"
+          album: "[the ](album|ep|record)"
+          playlist: "[the ]playlist"
+          radio_station: "[the ]((radio station)|(radio)|(station))"
+        requires_context:
+          area:
+            slot: true
+lists:
+  artist:
+    wildcard: true
+  album:
+    wildcard: true
+  track:
+    wildcard: true
+  playlist:
+    wildcard: true
+  radio:
+    wildcard: true
