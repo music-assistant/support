@@ -155,6 +155,10 @@ class MassPlayMediaAssistHandler(MassIntentHandlerBase):
         artist = slots.get(ARTIST_SLOT, {}).get(SLOT_VALUE, "")
         track = slots.get(TRACK_SLOT, {}).get(SLOT_VALUE, "")
         album = slots.get(ALBUM_SLOT, {}).get(SLOT_VALUE, "")
+        radio = slots.get(RADIO_SLOT, {}).get(SLOT_VALUE, "")
+        playlist = slots.get(PLAYLIST_SLOT, {}).get(SLOT_VALUE, "")
+        # TODO: Implement dont_stop
+        # dont_stop = slots.get(DONT_STOP_SLOT, {}).get(SLOT_VALUE, False)
         radio_mode = False
         if track:
             media_item = await mass.music.get_item_by_name(
@@ -167,6 +171,14 @@ class MassPlayMediaAssistHandler(MassIntentHandlerBase):
         elif artist:
             media_item = await mass.music.get_item_by_name(
                 artist, artist=artist, album=album, media_type=MediaType.ARTIST
+            )
+        elif radio:
+            media_item = await mass.music.get_item_by_name(
+                radio, artist=artist, album=album, media_type=MediaType.RADIO
+            )
+        elif playlist:
+            media_item = await mass.music.get_item_by_name(
+                playlist, artist=artist, album=album, media_type=MediaType.PLAYLIST
             )
         else:
             raise intent.IntentHandleError("No media item parsed from query")
