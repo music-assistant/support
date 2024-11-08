@@ -110,6 +110,7 @@ class MassIntentHandlerBase(intent.IntentHandler):
                 name=name,
                 area_name=area_name,
                 states=mass_states,
+                domains=[MEDIA_PLAYER_DOMAIN],
             )
         )
         if not states:
