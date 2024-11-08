@@ -3,11 +3,17 @@ intents:
   MassPlayMediaOnMediaPlayer:
     data:
       - sentences:
-          - "((play|listen to) {query};(<on> <name>|<local_in> <area>|<on> [the ]{area} <player_devices>|<on> [the ]<player_devices> <local_in> <area>))"
+          - "<play> {query};in [the ]<area>"
         expansion_rules:
-          player_devices: "(speaker|[media] player)"
+          play: "((play)|(listen to))"
+          player_devices: "((speaker)|([media] player))"
           "on": "(on|using)"
-          local_in: "(in|on)"
+      - sentences:
+          - "<play> {query};<on> [the ]{name} [<player_devices>]"
+        expansion_rules:
+          play: "((play)|(listen to))"
+          player_devices: "((speaker)|([media] player))"
+          "on": "(on|using)"
         requires_context:
           domain: "media_player"
 lists:
