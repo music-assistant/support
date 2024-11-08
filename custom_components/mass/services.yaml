@@ -146,12 +146,12 @@ search:
         boolean:
 
 get_queue:
-  fields:
-    queue_id:
-      required: true
-      example: "00:11:22:33:44:55"
-      selector:
-        text:
+  target:
+    entity:
+      domain: media_player
+      integration: mass
+      supported_features:
+        - media_player.MediaPlayerEntityFeature.PLAY_MEDIA
 
 get_library:
   fields:

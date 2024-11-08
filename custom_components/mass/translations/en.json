@@ -125,13 +125,7 @@
     },
     "get_queue": {
       "name": "Get PlayerQueue details (advanced)",
-      "description": "Get the full queue details of a Music Assistant Queue.",
-      "fields": {
-        "queue_id": {
-          "name": "Queue ID",
-          "description": "The Music Assistant Queue ID to request details for."
-        }
-      }
+      "description": "Get the full details of the currently active queue of a Music Assistant player."
     },
     "get_library": {
       "name": "Get Library items",
