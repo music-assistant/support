@@ -3,13 +3,13 @@ intents:
   MassPlayMediaOnMediaPlayer:
     data:
       - sentences:
-          - "<play> {query};in [the ]<area>"
+          - "<play> {query};in [the ]<area> [((with)|(using)) {radio_mode}]"
         expansion_rules:
           play: "((play)|(listen to))"
           player_devices: "((speaker)|([media] player))"
           "on": "(on|using)"
       - sentences:
-          - "<play> {query};<on> [the ]{name} [<player_devices>]"
+          - "<play> {query};<on> [the ]{name} [<player_devices>] [((with)|(using)) {radio_mode}]"
         expansion_rules:
           play: "((play)|(listen to))"
           player_devices: "((speaker)|([media] player))"
@@ -19,3 +19,6 @@ intents:
 lists:
   query:
     wildcard: true
+  radio_mode:
+    values:
+      - "radio mode"  

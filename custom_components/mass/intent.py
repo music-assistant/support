@@ -39,7 +39,7 @@ TRACK_SLOT = "track"
 ALBUM_SLOT = "album"
 RADIO_SLOT = "radio"
 PLAYLIST_SLOT = "playlist"
-DONT_STOP_SLOT = "dont_stop"
+RADIO_MODE_SLOT = "radio_mode"
 SLOT_VALUE = "value"
 
 
@@ -140,8 +140,7 @@ class MassPlayMediaAssistHandler(MassIntentHandlerBase):
         vol.Optional(ALBUM_SLOT): cv.string,
         vol.Optional(RADIO_SLOT): cv.string,
         vol.Optional(PLAYLIST_SLOT): cv.string,
-        # TODO: Implement dont_stopß
-        # vol.Optional(DONT_STOP_SLOT): cv.boolean,
+        vol.Optional(RADIO_MODE_SLOT): cv.string,
     }
 
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
@@ -159,9 +158,10 @@ class MassPlayMediaAssistHandler(MassIntentHandlerBase):
         album = slots.get(ALBUM_SLOT, {}).get(SLOT_VALUE, "")
         radio = slots.get(RADIO_SLOT, {}).get(SLOT_VALUE, "")
         playlist = slots.get(PLAYLIST_SLOT, {}).get(SLOT_VALUE, "")
-        # TODO: Implement dont_stop
-        # dont_stop = slots.get(DONT_STOP_SLOT, {}).get(SLOT_VALUE, False)
+        radio_mode_text = slots.get(RADIO_MODE_SLOT, {}).get(SLOT_VALUE, "")
         radio_mode = False
+        if radio_mode_text:
+            radio_mode = True
         if track:
             media_item = await mass.music.get_item_by_name(
                 track, artist=artist, album=album, media_type=MediaType.TRACK
@@ -214,6 +214,7 @@ class MassPlayMediaOnMediaPlayerHandler(MassIntentHandlerBase):
     slot_schema = {
         vol.Any(NAME_SLOT, AREA_SLOT): cv.string,
         vol.Optional(QUERY_SLOT): cv.string,
+        vol.Optional(RADIO_MODE_SLOT): cv.string,
     }
 
     async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
@@ -227,7 +228,10 @@ class MassPlayMediaOnMediaPlayerHandler(MassIntentHandlerBase):
         mass = config_entry.runtime_data.mass
         mass_player_id = await self._async_get_matched_mass_player(intent_obj, slots)
         query = slots.get(QUERY_SLOT, {}).get(SLOT_VALUE)
+        radio_mode_text = slots.get(RADIO_MODE_SLOT, {}).get(SLOT_VALUE, "")
         radio_mode = False
+        if radio_mode_text:
+            radio_mode = True
         if query:
             if not config_entry.data.get(CONF_OPENAI_AGENT_ID):
                 raise intent.IntentHandleError(
