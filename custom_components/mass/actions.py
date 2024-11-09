@@ -33,6 +33,12 @@ ATTR_SEARCH_ARTIST = "artist"
 ATTR_SEARCH_ALBUM = "album"
 ATTR_LIMIT = "limit"
 ATTR_LIBRARY_ONLY = "library_only"
+ATTR_FAVORITE = "favorite"
+ATTR_SEARCH = "search"
+ATTR_OFFSET = "offset"
+ATTR_ORDER_BY = "order_by"
+ATTR_ALBUM_TYPE = "album_type"
+ATTR_ALBUM_ARTISTS_ONLY = "album_artists_only"
 
 
 @callback
@@ -105,21 +111,21 @@ def register_get_library_action(hass: HomeAssistant) -> None:
         mass = get_music_assistant_client(hass)
         media_type = call.data[ATTR_MEDIA_TYPE]
         base_params = {
-            "favorite": call.data.get("favorite"),
-            "search": call.data.get("search"),
-            "limit": call.data.get("limit"),
-            "offset": call.data.get("offset"),
-            "order_by": call.data.get("order_by"),
+            "favorite": call.data.get(ATTR_FAVORITE),
+            "search": call.data.get(ATTR_SEARCH),
+            "limit": call.data.get(ATTR_LIMIT),
+            "offset": call.data.get(ATTR_OFFSET),
+            "order_by": call.data.get(ATTR_ORDER_BY),
         }
         if media_type == MediaType.ALBUM:
             library_result = await mass.music.get_library_albums(
                 **base_params,
-                album_types=call.data.get("album_type"),
+                album_types=call.data.get(ATTR_ALBUM_TYPE),
             )
         elif media_type == MediaType.ARTIST:
             library_result = await mass.music.get_library_artists(
                 **base_params,
-                album_artists_only=call.data.get("album_artists_only"),
+                album_artists_only=call.data.get(ATTR_ALBUM_ARTISTS_ONLY),
             )
         elif media_type == MediaType.TRACK:
             library_result = await mass.music.get_library_tracks(
@@ -146,12 +152,13 @@ def register_get_library_action(hass: HomeAssistant) -> None:
         schema=vol.Schema(
             {
                 vol.Required(ATTR_MEDIA_TYPE): vol.Coerce(MediaType),
-                vol.Optional("favorite"): cv.boolean,
-                vol.Optional("search"): cv.string,
-                vol.Optional("limit"): cv.positive_int,
-                vol.Optional("offset"): int,
-                vol.Optional("order_by"): cv.string,
-                vol.Optional("album_types"): cv.ensure_list,
+                vol.Optional(ATTR_FAVORITE): cv.boolean,
+                vol.Optional(ATTR_SEARCH): cv.string,
+                vol.Optional(ATTR_LIMIT): cv.positive_int,
+                vol.Optional(ATTR_OFFSET): int,
+                vol.Optional(ATTR_ORDER_BY): cv.string,
+                vol.Optional(ATTR_ALBUM_TYPE): list[MediaType],
+                vol.Optional(ATTR_ALBUM_ARTISTS_ONLY): cv.boolean,
             }
         ),
         supports_response=SupportsResponse.ONLY,
