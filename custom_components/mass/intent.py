@@ -134,7 +134,8 @@ class MassPlayMediaAssistHandler(MassIntentHandlerBase):
         self.hass = hass
 
     slot_schema = {
-        vol.Any(NAME_SLOT, AREA_SLOT): cv.string,
+        vol.Optional(NAME_SLOT): cv.string,
+        vol.Optional(AREA_SLOT): cv.string,
         vol.Optional(ARTIST_SLOT): cv.string,
         vol.Optional(TRACK_SLOT): cv.string,
         vol.Optional(ALBUM_SLOT): cv.string,

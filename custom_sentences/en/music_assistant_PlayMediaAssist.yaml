@@ -37,6 +37,23 @@ intents:
         requires_context:
           domain: "media_player"
 
+      # TARGET AN AREA AND A NAME
+      - sentences:
+          - "<play> <artist> {artist} in [the ]<area> <on> [the ]{name} [<player_devices>] [((with)|(using)) {radio_mode}]"
+          - "<play> <album> {album} [by <artist> {artist}] in [the ]<area> <on> [the ]{name} [<player_devices>] [((with)|(using)) {radio_mode}]"
+          - "<play> <track> {track} [by <artist> {artist}] in [the ]<area> <on> [the ]{name} [<player_devices>][((with)|(using)) {radio_mode}]"
+          - "<play> <playlist> {playlist} in [the ]<area> <on> [the ]{name} [<player_devices>][((with)|(using)) {radio_mode}]"
+          - "<play> <radio_station> {radio} in [the ]<area> <on> [the ]{name} [<player_devices>]"
+        expansion_rules:
+          play: "((play)|(listen to))"
+          player_devices: "((speaker)|([media] player))"
+          "on": "(on|using)"
+          artist: "[the ](artist|band|group)"
+          track: "[the ](track|song)"
+          album: "[the ](album|ep|record|compilation|single)"
+          playlist: "[the ]playlist"
+          radio_station: "[the ]((radio station)|(radio)|(station))"    
+
       # CONTEXT AWARNESS
       - sentences:
           - "<play> <artist> {artist} [((with)|(using)) {radio_mode}]"
