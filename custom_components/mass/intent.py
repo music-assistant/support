@@ -213,7 +213,8 @@ class MassPlayMediaOnMediaPlayerHandler(MassIntentHandlerBase):
         self.hass = hass
 
     slot_schema = {
-        vol.Any(NAME_SLOT, AREA_SLOT): cv.string,
+        vol.Optional(NAME_SLOT): cv.string,
+        vol.Optional(AREA_SLOT): cv.string,
         vol.Optional(QUERY_SLOT): cv.string,
         vol.Optional(RADIO_MODE_SLOT): cv.string,
     }

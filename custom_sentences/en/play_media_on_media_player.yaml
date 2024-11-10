@@ -9,7 +9,7 @@ intents:
         expansion_rules:
           play: "((play)|(listen to))"
 
-      # TARGET A NAME    
+      # TARGET A NAME
       - sentences:
           - "<play> {query};<on> [the ]{name} [<player_devices>] [((with)|(using)) {radio_mode}]"
         expansion_rules:
@@ -19,7 +19,7 @@ intents:
         requires_context:
           domain: "media_player"
 
-      # TARGET AN AREA AND A NAME    
+      # TARGET AN AREA AND A NAME
       - sentences:
           - "<play> {query};in [the ]<area> <on> [the ]{name} [<player_devices>] [((with)|(using)) {radio_mode}]"
         expansion_rules:
@@ -28,7 +28,7 @@ intents:
           "on": "(on|using)"
         requires_context:
           domain: "media_player"
-   
+
 lists:
   query:
     wildcard: true
