@@ -14,7 +14,7 @@ intents:
           play: "((play)|(listen to))"
           artist: "[the ](artist|band|group)"
           track: "[the ](track|song)"
-          album: "[the ](album|ep|record)"
+          album: "[the ](album|ep|record|compilation|single)"
           playlist: "[the ]playlist"
           radio_station: "[the ]((radio station)|(radio)|(station))"
 
@@ -31,7 +31,7 @@ intents:
           "on": "(on|using)"
           artist: "[the ](artist|band|group)"
           track: "[the ](track|song)"
-          album: "[the ](album|ep|record)"
+          album: "[the ](album|ep|record|compilation|single)"
           playlist: "[the ]playlist"
           radio_station: "[the ]((radio station)|(radio)|(station))"
         requires_context:
@@ -48,7 +48,7 @@ intents:
           play: "((play)|(listen to))"
           artist: "[the ](artist|band|group)"
           track: "[the ](track|song)"
-          album: "[the ](album|ep|record)"
+          album: "[the ](album|ep|record|compilation|single)"
           playlist: "[the ]playlist"
           radio_station: "[the ]((radio station)|(radio)|(station))"
         requires_context:
