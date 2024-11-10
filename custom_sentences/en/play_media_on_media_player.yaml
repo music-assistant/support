@@ -34,4 +34,4 @@ lists:
     wildcard: true
   radio_mode:
     values:
-      - "radio mode"  
+      - "radio mode"
