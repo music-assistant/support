@@ -2,7 +2,7 @@ language: "en"
 intents:
   MassPlayMediaOnMediaPlayer:
     data:
-  
+
       # TARGET AN AREA
       - sentences:
           - "<play> {query};in [the ]<area> [((with)|(using)) {radio_mode}]"

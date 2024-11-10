@@ -52,7 +52,7 @@ intents:
           track: "[the ](track|song)"
           album: "[the ](album|ep|record|compilation|single)"
           playlist: "[the ]playlist"
-          radio_station: "[the ]((radio station)|(radio)|(station))"    
+          radio_station: "[the ]((radio station)|(radio)|(station))"
 
       # CONTEXT AWARNESS
       - sentences:
