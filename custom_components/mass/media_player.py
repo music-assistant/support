@@ -104,9 +104,9 @@ ATTR_SOURCE_PLAYER = "source_player"
 ATTR_AUTO_PLAY = "auto_play"
 
 
-def catch_musicassistant_error[
-    _R, **P
-](func: Callable[..., Awaitable[_R]]) -> Callable[..., Coroutine[Any, Any, _R | None]]:
+def catch_musicassistant_error[_R, **P](
+    func: Callable[..., Awaitable[_R]],
+) -> Callable[..., Coroutine[Any, Any, _R | None]]:
     """Check and log commands to players."""
 
     @functools.wraps(func)
