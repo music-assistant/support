@@ -23,12 +23,10 @@ from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
-)
-from homeassistant.components.media_player import MediaType as HAMediaType
-from homeassistant.components.media_player import (
     RepeatMode,
     async_process_play_media_url,
 )
+from homeassistant.components.media_player import MediaType as HAMediaType
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_OFF
 from homeassistant.core import HomeAssistant, ServiceResponse, SupportsResponse
@@ -39,9 +37,13 @@ from homeassistant.helpers.entity_platform import (
     async_get_current_platform,
 )
 from homeassistant.util.dt import utc_from_timestamp
-from music_assistant_models.enums import EventType, MediaType, PlayerFeature
+from music_assistant_models.enums import (
+    EventType,
+    MediaType,
+    PlayerFeature,
+    QueueOption,
+)
 from music_assistant_models.enums import PlayerState as MassPlayerState
-from music_assistant_models.enums import QueueOption
 from music_assistant_models.enums import RepeatMode as MassRepeatMode
 from music_assistant_models.errors import MediaNotFoundError, MusicAssistantError
 from music_assistant_models.event import MassEvent
@@ -102,9 +104,9 @@ ATTR_SOURCE_PLAYER = "source_player"
 ATTR_AUTO_PLAY = "auto_play"
 
 
-def catch_musicassistant_error[_R, **P](
-    func: Callable[..., Awaitable[_R]],
-) -> Callable[..., Coroutine[Any, Any, _R | None]]:
+def catch_musicassistant_error[
+    _R, **P
+](func: Callable[..., Awaitable[_R]]) -> Callable[..., Coroutine[Any, Any, _R | None]]:
     """Check and log commands to players."""
 
     @functools.wraps(func)
@@ -275,7 +277,7 @@ class MusicAssistantPlayer(MusicAssistantBaseEntity, MediaPlayerEntity):
                 for child_id in player.group_childs
                 if (
                     entity_id := entity_registry.async_get_entity_id(
-                        self.platform.domain, DOMAIN, child_id
+                        self.platform.domain, DOMAIN, f"mass_{child_id}"
                     )
                 )
             ]

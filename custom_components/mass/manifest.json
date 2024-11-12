@@ -8,7 +8,7 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/music-assistant/hass-music-assistant/issues",
   "loggers": ["music_assistant"],
-  "requirements": ["music-assistant-client==1.0.5"],
+  "requirements": ["music-assistant-client==1.0.6"],
   "version": "0.0.0",
   "zeroconf": ["_mass._tcp.local."]
 }
