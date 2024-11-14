@@ -539,8 +539,10 @@ class MusicAssistantPlayer(MusicAssistantBaseEntity, MediaPlayerEntity):
             # resolve HA entity_id to MA player_id
             if (hass_state := self.hass.states.get(source_player)) is None:
                 return  # guard
-            if (source_queue_id := hass_state.attributes.get("mass_player_id")) is None:
+            entity_registry = er.async_get(self.hass)
+            if (entity := entity_registry.async_get(hass_state.entity_id)) is None:
                 return  # guard
+            source_queue_id = entity.unique_id.split("mass_", 1)[1]
         target_queue_id = self.player_id
         await self.mass.player_queues.transfer_queue(
             source_queue_id, target_queue_id, auto_play
