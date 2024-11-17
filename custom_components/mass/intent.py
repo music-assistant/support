@@ -155,7 +155,6 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
                 constraints=match_constraints,
             )
         return match_result.states[0]
-        # return states[0]
 
     slot_schema = {
         vol.Optional(NAME_SLOT): cv.string,
