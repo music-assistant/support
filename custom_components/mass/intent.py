@@ -85,7 +85,7 @@ async def async_setup_intents(hass: HomeAssistant) -> None:
         intent.async_register(hass, MassPlayMediaOnMediaPlayerHandler(hass))
 
 
-class MassPlayMediaOnMediaPlayerHandler(intent.ServiceIntentHandler):
+class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     """Handle PlayMediaOnMediaPlayer intents."""
 
     intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
