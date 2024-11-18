@@ -49,7 +49,15 @@ from music_assistant_models.errors import MediaNotFoundError, MusicAssistantErro
 from music_assistant_models.event import MassEvent
 from music_assistant_models.media_items import ItemMapping, MediaItemType, Track
 
-from .const import ATTR_ACTIVE_QUEUE, ATTR_MASS_PLAYER_TYPE, DOMAIN
+from .const import (
+    ATTR_ACTIVE_QUEUE,
+    ATTR_MASS_PLAYER_TYPE,
+    DOMAIN,
+    ATTR_RADIO_MODE,
+    ATTR_MEDIA_ID,
+    ATTR_MEDIA_TYPE,
+    SERVICE_PLAY_MEDIA_ADVANCED,
+)
 from .entity import MusicAssistantBaseEntity
 from .media_browser import async_browse_media
 
@@ -87,14 +95,9 @@ QUEUE_OPTION_MAP = {
     MediaPlayerEnqueue.PLAY: QueueOption.PLAY,
     MediaPlayerEnqueue.REPLACE: QueueOption.REPLACE,
 }
-
-SERVICE_PLAY_MEDIA_ADVANCED = "play_media"
 SERVICE_PLAY_ANNOUNCEMEMT = "play_announcement"
 SERVICE_TRANSFER_QUEUE = "transfer_queue"
 SERVICE_GET_QUEUE = "get_queue"
-ATTR_RADIO_MODE = "radio_mode"
-ATTR_MEDIA_ID = "media_id"
-ATTR_MEDIA_TYPE = "media_type"
 ATTR_ARTIST = "artist"
 ATTR_ALBUM = "album"
 ATTR_URL = "url"

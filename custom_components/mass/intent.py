@@ -31,8 +31,8 @@ from music_assistant_models.errors import MusicAssistantError
 from music_assistant_models.media_items import MediaItemType
 
 from . import DOMAIN
-from .const import CONF_OPENAI_AGENT_ID
-from .media_player import (
+from .const import (
+    CONF_OPENAI_AGENT_ID,
     ATTR_MEDIA_ID,
     ATTR_MEDIA_TYPE,
     ATTR_RADIO_MODE,
