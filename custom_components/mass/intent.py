@@ -11,20 +11,33 @@ from homeassistant.components.conversation import (
     SERVICE_PROCESS as CONVERSATION_SERVICE,
 )
 from homeassistant.components.conversation.const import DOMAIN as CONVERSATION_DOMAIN
-from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER_DOMAIN
+from homeassistant.components.media_player import (
+    MediaPlayerDeviceClass,
+    DOMAIN as MEDIA_PLAYER_DOMAIN,
+)
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import intent
+from homeassistant.helpers.intent import (
+    IntentHandleError,
+    MatchTargetsConstraints,
+    MatchFailedError,
+)
 from music_assistant_client.client import MusicAssistantClient
 from music_assistant_models.enums import MediaType
 from music_assistant_models.errors import MusicAssistantError
 from music_assistant_models.media_items import MediaItemType
 
 from . import DOMAIN
-from .const import ATTR_MASS_PLAYER_TYPE, CONF_OPENAI_AGENT_ID
-from .media_player import ATTR_MEDIA_ID, ATTR_MEDIA_TYPE, ATTR_RADIO_MODE
+from .const import (
+    CONF_OPENAI_AGENT_ID,
+    ATTR_MEDIA_ID,
+    ATTR_MEDIA_TYPE,
+    ATTR_RADIO_MODE,
+    SERVICE_PLAY_MEDIA_ADVANCED,
+)
 
 if TYPE_CHECKING:
     from . import MusicAssistantConfigEntry
@@ -45,7 +58,26 @@ SLOT_VALUE = "value"
 
 async def async_setup_intents(hass: HomeAssistant) -> None:
     """Set up the Music Assistant intents."""
-    intent.async_register(hass, MassPlayMediaAssistHandler(hass))
+    intent.async_register(
+        hass,
+        intent.ServiceIntentHandler(
+            INTENT_PLAY_MEDIA_ASSIST,
+            DOMAIN,
+            SERVICE_PLAY_MEDIA_ADVANCED,
+            description="Handle Assist Play Media intents.",
+            optional_slots={
+                (ARTIST_SLOT, ATTR_MEDIA_ID): cv.string,
+                (TRACK_SLOT, ATTR_MEDIA_ID): cv.string,
+                (ALBUM_SLOT, ATTR_MEDIA_ID): cv.string,
+                (RADIO_SLOT, ATTR_MEDIA_ID): cv.string,
+                (PLAYLIST_SLOT, ATTR_MEDIA_ID): cv.string,
+                (RADIO_MODE_SLOT, ATTR_RADIO_MODE): vol.Coerce(bool),
+            },
+            required_domains={MEDIA_PLAYER_DOMAIN},
+            platforms={MEDIA_PLAYER_DOMAIN},
+            device_classes={MediaPlayerDeviceClass},
+        ),
+    )
     if any(
         config_entry.data.get(CONF_OPENAI_AGENT_ID)
         for config_entry in hass.config_entries.async_entries(DOMAIN)
@@ -53,8 +85,14 @@ async def async_setup_intents(hass: HomeAssistant) -> None:
         intent.async_register(hass, MassPlayMediaOnMediaPlayerHandler(hass))
 
 
-class MassIntentHandlerBase(intent.IntentHandler):
-    """Base class for Mass intent handlers."""
+class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
+    """Handle PlayMediaOnMediaPlayer intents."""
+
+    intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Initialize MassPlayMediaOnMediaPlayerHandler."""
+        self.hass = hass
 
     async def _get_loaded_config_entry(self, hass: HomeAssistant) -> ConfigEntry:
         """Get the correct config entry."""
@@ -72,7 +110,15 @@ class MassIntentHandlerBase(intent.IntentHandler):
             # Don't match on name if targeting all entities
             name = None
         area_name = slots.get(AREA_SLOT, {}).get(SLOT_VALUE)
-        state = await self._get_matched_state(intent_obj, name, area_name)
+        match_constraints = MatchTargetsConstraints(
+            name=name,
+            area_name=area_name,
+            domains={MEDIA_PLAYER_DOMAIN},
+        )
+        if not match_constraints.has_constraints:
+            # Fail if attempting to target all devices in the house
+            raise IntentHandleError("Service handler cannot target all devices")
+        state = await self._get_matched_state(intent_obj, match_constraints)
         entity_registry = er.async_get(self.hass)
         if entity := entity_registry.async_get(state.entity_id):
             return entity.unique_id.split("mass_", 1)[1]
@@ -97,120 +143,18 @@ class MassIntentHandlerBase(intent.IntentHandler):
         )
 
     async def _get_matched_state(
-        self, intent_obj: intent.Intent, name: str | None, area_name: str | None
+        self, intent_obj: intent.Intent, match_constraints: MatchTargetsConstraints
     ) -> State:
-        mass_states = {
-            state
-            for state in intent_obj.hass.states.async_all(MEDIA_PLAYER_DOMAIN)
-            if state.attributes.get(ATTR_MASS_PLAYER_TYPE) is not None
-        }
-        states = list(
-            intent.async_match_states(
-                intent_obj.hass,
-                name=name,
-                area_name=area_name,
-                states=mass_states,
-                domains=[MEDIA_PLAYER_DOMAIN],
-            )
+        match_result = intent.async_match_targets(
+            intent_obj.hass,
+            match_constraints,
         )
-        if not states:
-            raise intent.IntentHandleError(
-                f"No entities matched for: name={name}, area_name={area_name}"
+        if not match_result.is_match:
+            raise MatchFailedError(
+                result=match_result,
+                constraints=match_constraints,
             )
-        if len(states) > 1:
-            raise intent.IntentHandleError(
-                f"Multiple entities matched for: name={name}, area_name={area_name}"
-            )
-        return states[0]
-
-
-class MassPlayMediaAssistHandler(MassIntentHandlerBase):
-    """Handle Assist Play Media intents."""
-
-    intent_type = INTENT_PLAY_MEDIA_ASSIST
-
-    def __init__(self, hass: HomeAssistant) -> None:
-        """Initialize MassPlayMediaAssistHandler."""
-        self.hass = hass
-
-    slot_schema = {
-        vol.Optional(NAME_SLOT): cv.string,
-        vol.Optional(AREA_SLOT): cv.string,
-        vol.Optional(ARTIST_SLOT): cv.string,
-        vol.Optional(TRACK_SLOT): cv.string,
-        vol.Optional(ALBUM_SLOT): cv.string,
-        vol.Optional(RADIO_SLOT): cv.string,
-        vol.Optional(PLAYLIST_SLOT): cv.string,
-        vol.Optional(RADIO_MODE_SLOT): cv.string,
-    }
-
-    async def async_handle(self, intent_obj: intent.Intent) -> intent.IntentResponse:
-        """Handle the intent."""
-        # pylint: disable=too-many-locals
-        response = intent_obj.create_response()
-        slots = self.async_validate_slots(intent_obj.slots)
-        config_entry: MusicAssistantConfigEntry = await self._get_loaded_config_entry(
-            intent_obj.hass
-        )
-        mass = config_entry.runtime_data.mass
-        mass_player_id = await self._async_get_matched_mass_player(intent_obj, slots)
-        artist = slots.get(ARTIST_SLOT, {}).get(SLOT_VALUE, "")
-        track = slots.get(TRACK_SLOT, {}).get(SLOT_VALUE, "")
-        album = slots.get(ALBUM_SLOT, {}).get(SLOT_VALUE, "")
-        radio = slots.get(RADIO_SLOT, {}).get(SLOT_VALUE, "")
-        playlist = slots.get(PLAYLIST_SLOT, {}).get(SLOT_VALUE, "")
-        radio_mode_text = slots.get(RADIO_MODE_SLOT, {}).get(SLOT_VALUE, "")
-        radio_mode = False
-        if radio_mode_text:
-            radio_mode = True
-        if track:
-            media_item = await mass.music.get_item_by_name(
-                track, artist=artist, album=album, media_type=MediaType.TRACK
-            )
-        elif album:
-            media_item = await mass.music.get_item_by_name(
-                album, artist=artist, media_type=MediaType.ALBUM
-            )
-        elif artist:
-            media_item = await mass.music.get_item_by_name(
-                artist, artist=artist, album=album, media_type=MediaType.ARTIST
-            )
-        elif radio:
-            media_item = await mass.music.get_item_by_name(
-                radio, artist=artist, album=album, media_type=MediaType.RADIO
-            )
-        elif playlist:
-            media_item = await mass.music.get_item_by_name(
-                playlist, artist=artist, album=album, media_type=MediaType.PLAYLIST
-            )
-        else:
-            raise intent.IntentHandleError("No media item parsed from query")
-        if not media_item:
-            raise intent.IntentHandleError("No media item found")
-        try:
-            await mass.player_queues.play_media(
-                queue_id=mass_player_id,
-                media=(
-                    media_item if isinstance(media_item, list) else media_item.to_dict()
-                ),
-                radio_mode=radio_mode,
-            )
-        except MusicAssistantError as err:
-            raise intent.IntentHandleError(err.args[0] if err.args else "") from err
-
-        response.response_type = intent.IntentResponseType.ACTION_DONE
-        response.async_set_speech("Okay")
-        return response
-
-
-class MassPlayMediaOnMediaPlayerHandler(MassIntentHandlerBase):
-    """Handle PlayMediaOnMediaPlayer intents."""
-
-    intent_type = INTENT_PLAY_MEDIA_ON_MEDIA_PLAYER
-
-    def __init__(self, hass: HomeAssistant) -> None:
-        """Initialize MassPlayMediaOnMediaPlayerHandler."""
-        self.hass = hass
+        return match_result.states[0]
 
     slot_schema = {
         vol.Optional(NAME_SLOT): cv.string,
