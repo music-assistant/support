@@ -64,6 +64,8 @@ if TYPE_CHECKING:
     from music_assistant_models.player import Player
     from music_assistant_models.player_queue import PlayerQueue
 
+    from . import MusicAssistantConfigEntry
+
 SUPPORTED_FEATURES = (
     MediaPlayerEntityFeature.PAUSE
     | MediaPlayerEntityFeature.VOLUME_SET
@@ -126,7 +128,7 @@ def catch_musicassistant_error[_R, **P](
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: MusicAssistantBaseEntity,
+    entry: MusicAssistantConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Music Assistant MediaPlayer(s) from Config Entry."""

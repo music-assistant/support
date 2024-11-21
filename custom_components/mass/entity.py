@@ -26,7 +26,7 @@ class MusicAssistantBaseEntity(Entity):
         self.mass = mass
         self.player_id = player_id
         player = mass.players.get(player_id)
-        provider = self.mass.get_provider(player.provider)
+        provider = self.mass.get_provider(player.provider, True)
         if TYPE_CHECKING:
             assert provider is not None
 
