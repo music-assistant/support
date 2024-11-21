@@ -29,13 +29,20 @@ class MusicAssistantBaseEntity(Entity):
         provider = self.mass.get_provider(player.provider)
         if TYPE_CHECKING:
             assert provider is not None
+
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, player_id)},
             manufacturer=self.player.device_info.manufacturer or provider.name,
             model=self.player.device_info.model or self.player.name,
             name=self.player.display_name,
             configuration_url=f"{mass.server_url}/#/settings/editplayer/{player_id}",
+            sw_version=self.player.device_info.software_version,
+            model_id=self.player.device_info.model_id,
         )
+        if self.player.device_info.mac_address:
+            self._attr_device_info["connections"] = {
+                ("mac", self.player.device_info.mac_address),
+            }
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""

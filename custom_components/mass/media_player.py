@@ -23,10 +23,12 @@ from homeassistant.components.media_player import (
     MediaPlayerEntity,
     MediaPlayerEntityFeature,
     MediaPlayerState,
+)
+from homeassistant.components.media_player import MediaType as HAMediaType
+from homeassistant.components.media_player import (
     RepeatMode,
     async_process_play_media_url,
 )
-from homeassistant.components.media_player import MediaType as HAMediaType
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_OFF
 from homeassistant.core import HomeAssistant, ServiceResponse, SupportsResponse
@@ -37,13 +39,9 @@ from homeassistant.helpers.entity_platform import (
     async_get_current_platform,
 )
 from homeassistant.util.dt import utc_from_timestamp
-from music_assistant_models.enums import (
-    EventType,
-    MediaType,
-    PlayerFeature,
-    QueueOption,
-)
+from music_assistant_models.enums import EventType, MediaType, PlayerFeature
 from music_assistant_models.enums import PlayerState as MassPlayerState
+from music_assistant_models.enums import QueueOption
 from music_assistant_models.enums import RepeatMode as MassRepeatMode
 from music_assistant_models.errors import MediaNotFoundError, MusicAssistantError
 from music_assistant_models.event import MassEvent
@@ -52,10 +50,10 @@ from music_assistant_models.media_items import ItemMapping, MediaItemType, Track
 from .const import (
     ATTR_ACTIVE_QUEUE,
     ATTR_MASS_PLAYER_TYPE,
-    DOMAIN,
-    ATTR_RADIO_MODE,
     ATTR_MEDIA_ID,
     ATTR_MEDIA_TYPE,
+    ATTR_RADIO_MODE,
+    DOMAIN,
     SERVICE_PLAY_MEDIA_ADVANCED,
 )
 from .entity import MusicAssistantBaseEntity
@@ -210,7 +208,7 @@ class MusicAssistantPlayer(MusicAssistantBaseEntity, MediaPlayerEntity):
         super().__init__(mass, player_id)
         self._attr_icon = self.player.icon.replace("mdi-", "mdi:")
         self._attr_supported_features = SUPPORTED_FEATURES
-        if PlayerFeature.SYNC in self.player.supported_features:
+        if PlayerFeature.SET_MEMBERS in self.player.supported_features:
             self._attr_supported_features |= MediaPlayerEntityFeature.GROUPING
         self._attr_device_class = MediaPlayerDeviceClass.SPEAKER
         self._prev_time: float = 0
@@ -430,12 +428,12 @@ class MusicAssistantPlayer(MusicAssistantBaseEntity, MediaPlayerEntity):
                 continue
             # unique id is the player_id
             player_ids.append(entity_reg_entry.unique_id[5:])
-        await self.mass.players.player_command_sync_many(self.player_id, player_ids)
+        await self.mass.players.player_command_group_many(self.player_id, player_ids)
 
     @catch_musicassistant_error
     async def async_unjoin_player(self) -> None:
         """Remove this player from any group."""
-        await self.mass.players.player_command_unsync(self.player_id)
+        await self.mass.players.player_command_ungroup(self.player_id)
 
     async def async_browse_media(
         self,
