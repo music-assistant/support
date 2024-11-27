@@ -32,6 +32,7 @@ from music_assistant_models.media_items import MediaItemType
 
 from . import DOMAIN
 from .const import (
+    ATTR_MASS_PLAYER_TYPE,
     CONF_OPENAI_AGENT_ID,
     ATTR_MEDIA_ID,
     ATTR_MEDIA_TYPE,
@@ -145,16 +146,19 @@ class MassPlayMediaOnMediaPlayerHandler(intent.IntentHandler):
     async def _get_matched_state(
         self, intent_obj: intent.Intent, match_constraints: MatchTargetsConstraints
     ) -> State:
-        match_result = intent.async_match_targets(
-            intent_obj.hass,
-            match_constraints,
-        )
+        match_result = intent.async_match_targets(intent_obj.hass, match_constraints)
         if not match_result.is_match:
-            raise MatchFailedError(
-                result=match_result,
-                constraints=match_constraints,
-            )
-        return match_result.states[0]
+            raise MatchFailedError(result=match_result, constraints=match_constraints)
+
+        potential_states = [
+            state
+            for state in match_result.states
+            if state.attributes.get(ATTR_MASS_PLAYER_TYPE)
+        ]
+
+        if not potential_states:
+            raise MatchFailedError(result=match_result, constraints=match_constraints)
+        return potential_states[0]
 
     slot_schema = {
         vol.Optional(NAME_SLOT): cv.string,
