@@ -28,7 +28,7 @@ test = [
   "pylint==3.3.1",
   "ruff==0.8.0",
   "tomli==2.1.0",
-  "pytest-homeassistant-custom-component==0.13.184",
+  "pytest-homeassistant-custom-component==0.13.187",
   "zeroconf",
 ]
 
