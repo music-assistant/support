@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_URL, EVENT_HOMEASSISTANT_STOP, Platform
-from homeassistant.core import Event, HomeAssistant
+from homeassistant.core import Event, HomeAssistant, DOMAIN as HOMEASSISTANT_DOMAIN
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
@@ -62,7 +62,22 @@ async def async_setup_entry(
     http_session = async_get_clientsession(hass, verify_ssl=False)
     mass_url = entry.data[CONF_URL]
     mass = MusicAssistantClient(mass_url, http_session)
-
+    async_create_issue(
+        hass,
+        DOMAIN,
+        f"move_integration_to_ha_core{DOMAIN}",
+        breaks_in_ha_version="2024.12.0",
+        is_fixable=False,
+        is_persistent=True,
+        learn_more_url="https://music-assistant.io/integration/installation/#migrating-from-the-hacs-integration-to-the-ha-integration",
+        issue_domain=DOMAIN,
+        severity=IssueSeverity.WARNING,
+        translation_key="move_integration_to_ha_core",
+        translation_placeholders={
+            "domain": DOMAIN,
+            "integration_title": "mass",
+        },
+    )
     try:
         async with asyncio.timeout(CONNECT_TIMEOUT):
             await mass.connect()
