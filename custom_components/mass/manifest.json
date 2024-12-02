@@ -1,6 +1,6 @@
 {
   "domain": "mass",
-  "name": "Music Assistant - Custom",
+  "name": "Music Assistant (CUSTOM)",
   "after_dependencies": ["media_source", "media_player"],
   "codeowners": ["@music-assistant"],
   "config_flow": true,
