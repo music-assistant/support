@@ -3,6 +3,10 @@
     "invalid_server_version": {
       "title": "The Music Assistant server is not the correct version",
       "description": "Check if there are updates available for the Music Assistant Server and/or integration."
+    },
+    "move_integration_to_ha_core": {
+      "title": "Move to Core Integration",
+      "description": "The Music Assistant integration has been integrated to Home Assistant Core. You may keep using the custom integration, but it will receive no further support/updates, and will be removed entirely from HACS in the near future. Please click the learn more button to get information how to migrate from the custom to the native integration."
     }
   },
   "config": {
