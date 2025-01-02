@@ -1,8 +1,0 @@
-{
-    "name": "Music Assistant",
-    "render_readme": true,
-    "zip_release": true,
-    "filename": "mass.zip",
-    "hide_default_branch": true,
-    "homeassistant": "2024.6.0"
-  }

@@ -1,8 +1,0 @@
-categories:
-  - title: "⬆️ Dependencies"
-    collapse-after: 1
-    labels:
-      - "dependencies"
-template: |
-  ## What's Changed
-  $CHANGES
