@@ -13,7 +13,7 @@ https://music-assistant.io
 - [Documentation](https://music-assistant.io)
 - [Issue tracker](https://github.com/music-assistant/support/issues) to create bug reports, please include detailed info and logfiles. Please check if your issue has already been reported.
 - [Feature requests](https://github.com/music-assistant/support/discussions/categories/feature-requests-and-ideas): Give your vote to an existing request, join the discussion or add a new request.
-- [Q&A section](https://github.com/music-assistant/support/discussions/categories/q-a-faq) Frequently asked questions and tutorials
+- [Q&A section](https://github.com/music-assistant/support/discussions/categories/q-a) Frequently asked questions and tutorials
 - [Discord community](https://discord.gg/kaVm8hGpne) Join the community and get support!
 
 ## I want to help
