@@ -20,20 +20,10 @@ body:
       required: true
     attributes:
       label: What version of Music Assistant has the issue?
-      placeholder: 2.0.0
+      placeholder: 2.3.6
       description: >
         Can be found in: MA SETTINIGS>>CORE
-        For example: 2.0.0b100
-  - type: input
-    id: version_integration
-    validations:
-      required: false
-    attributes:
-      label: What version of the Home Assistant Integration have you got installed?
-      placeholder: 2024.x.y
-      description: >
-        Can be found in: HACS>>INTEGRATIONS>>MUSIC ASSISTANT
-        For example: 2024.5.1
+        For example: 2.4.0b18
   - type: checkboxes
     validations:
       required: true
@@ -51,7 +41,7 @@ body:
       label: The problem
       description: |
         Please give a clear and concise description of the issue you are experiencing here,
-        to communicate to the maintainers. Tell us what you were trying to do and what happened.
+        to communicate to the maintainers. Tell us what you were trying to do and what happened. Detail what you have tried from the troubleshooting page in the docs that hasn't helped.
   - type: textarea
     validations:
       required: true
