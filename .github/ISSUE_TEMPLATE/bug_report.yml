@@ -22,8 +22,8 @@ body:
       label: What version of Music Assistant has the issue?
       placeholder: 2.3.6
       description: >
-        Can be found in: MA SETTINIGS>>CORE
-        For example: 2.4.0b18
+        Can be found in: MA SETTINGS>>CORE
+        For example: 2.4.0b20
   - type: checkboxes
     validations:
       required: true
@@ -64,17 +64,21 @@ body:
       description: |
         List the player providers that you have tried which result in the problem. ALSO list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players.
   - type: textarea
+    validations:
+      required: true
     id: logs
     attributes:
       label: Full log output
       placeholder: DO NOT PASTE the log here. ATTACH IT.
       description: |
-        Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>>CORE into the field below. Please do NOT use debug logging unless asked to do so.
+        Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>>CORE into the field below. Do NOT use Verbose logging unless asked to do so.
   - type: textarea
+    validations:
+      required: true
     attributes:
       label: Additional information
       description: |
-        Supply additional information requested which is not captured above. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
+        Supply additional information requested which is not captured above, specifically the information requested in the troubleshooting page of the docs. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
   - type: markdown
     attributes:
       value: |
