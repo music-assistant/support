@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Music Assistant FAQ section.
-    url: https://github.com/music-assistant/hass-music-assistant/discussions/categories/q-a-faq
+  - name: Music Assistant Q&A section.
+    url: https://github.com/music-assistant/support/discussions/categories/q-a
     about: Please ask and answer questions here.
   - name: Music Assistant community on Discord.
     url: https://discord.com/channels/753947050995089438/753947050995089442
     about: For questions and sharing with other users.
   - name: Music Assistant new features section.
-    url: https://github.com/music-assistant/hass-music-assistant/discussions/categories/feature-requests-and-ideas
+    url: https://github.com/music-assistant/support/discussions/categories/feature-requests-and-ideas
     about: If you have a feature or enhancement request.
