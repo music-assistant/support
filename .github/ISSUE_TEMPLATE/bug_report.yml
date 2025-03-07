@@ -126,3 +126,13 @@ body:
         - macOS
         - Linux
         - Alternative
+  - type: checkboxes
+    validations:
+      required: true
+    attributes:
+      label: Have you included ALL of the information specified in the Troubleshooting FAQ or explained why you cannot
+      description: |
+        Failing to provide all the requested information slows down the resolution process and creates unnecessary work for those trying to help.
+      options:
+        - label: "Yes"
+          required: true
