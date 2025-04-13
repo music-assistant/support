@@ -19,3 +19,7 @@ https://music-assistant.io
 ## I want to help
 
 See here https://music-assistant.io/help/
+
+---
+
+[![A project from the Open Home Foundation](https://www.openhomefoundation.org/badges/ohf-project.png)](https://www.openhomefoundation.org/)
