@@ -4,7 +4,6 @@ Turn your Home Assistant instance into a jukebox, hassle free streaming of your 
 
 [![latest version](https://img.shields.io/github/release/music-assistant/server?display_name=tag&include_prereleases&label=latest%20version)](https://github.com/music-assistant/server/releases)
 [![discord](https://img.shields.io/discord/753947050995089438?label=Chat&logo=discord)](https://discord.gg/kaVm8hGpne)
-[![sponsor](https://img.shields.io/github/sponsors/music-assistant?label=sponsors)](https://github.com/sponsors/music-assistant)
 
 https://music-assistant.io
 
