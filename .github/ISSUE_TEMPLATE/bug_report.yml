@@ -20,10 +20,23 @@ body:
       required: true
     attributes:
       label: What version of Music Assistant has the issue?
-      placeholder: 2.3.6
+      placeholder: 2.5.5
       description: >
         Can be found in: MA SETTINGS>>CORE
         For example: 2.4.0b20
+  - type: dropdown
+    validations:
+      required: true
+    attributes:
+      label: How is the MA server installed?
+      description: |
+        Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
+
+        [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
+      options:
+        - Home Assistant OS Addon
+        - Docker Container
+        - Other - Please do not select this as support is only available for the above two options
   - type: checkboxes
     validations:
       required: true
@@ -89,10 +102,10 @@ body:
       required: true
     attributes:
       label: What version of Home Assistant Core are your running
-      placeholder: 2024.2.0
+      placeholder: 2025.7.0
       description: |
         Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
-        For example: 2024.2.0
+        For example: 2025.7.0
         [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
   - type: dropdown
     validations:
@@ -106,8 +119,7 @@ body:
       options:
         - Home Assistant OS
         - Home Assistant Container
-        - Home Assistant Supervised
-        - Home Assistant Core
+        - Other - Please do not select this as support is only available for the above two options
   - type: dropdown
     validations:
       required: true
