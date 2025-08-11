@@ -90,6 +90,7 @@ body:
       required: true
     attributes:
       label: Additional information
+      placeholder: For Audiobookshelf include broken book ASINs here
       description: |
         Supply additional information requested which is not captured above, specifically the information requested in the troubleshooting page of the docs. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
   - type: markdown
