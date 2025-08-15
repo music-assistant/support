@@ -69,7 +69,7 @@ body:
           required: true
         - label: "For voice problems, I have sought help elsewhere before returning here"
           required: true
-        - label: "For playbook problems, I have recycled power to the physical device"
+        - label: "For playback problems, I have recycled power to the physical device"
           required: true
         - label: "I have tried restarting MA and rebooting the host"
           required: true
