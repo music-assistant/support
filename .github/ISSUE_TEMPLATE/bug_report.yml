@@ -41,7 +41,7 @@ body:
     validations:
       required: true
     attributes:
-      label: Carefully read the Troubleshooting FAQ and confirm that:
+      label: Carefully read the Troubleshooting FAQ and confirm that
       description: |
         If you tick a box that you haven't done, and it is applicable, then clearly state that and explain why in the report
       options:
