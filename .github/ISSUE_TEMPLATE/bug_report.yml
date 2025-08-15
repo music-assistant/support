@@ -24,6 +24,7 @@ body:
       description: >
         Can be found in: MA SETTINGS>>CORE
         For example: 2.4.0b20
+
   - type: dropdown
     validations:
       required: true
@@ -37,6 +38,7 @@ body:
         - Home Assistant OS Addon
         - Docker Container
         - Other - Please do not select this as support is only available for the above two options
+
   - type: checkboxes
     validations:
       required: true
@@ -67,11 +69,12 @@ body:
           required: true
         - label: "For voice problems, I have sought help elsewhere before returning here"
           required: true
-        - label: "For playback problems, I have recycled power to the physical device"
+        - label: "For playbook problems, I have recycled power to the physical device"
           required: true
         - label: "I have tried restarting MA and rebooting the host"
           required: true
- - type: checkboxes
+
+  - type: checkboxes
     validations:
       required: true
     attributes:
@@ -79,6 +82,7 @@ body:
       options:
         - label: "Yes"
           required: true
+
   - type: textarea
     validations:
       required: true
@@ -87,6 +91,7 @@ body:
       description: |
         Please give a clear and concise description of the issue you are experiencing here,
         to communicate to the maintainers. Tell us what you were trying to do and what happened. Detail what you have tried from the troubleshooting page in the docs that hasn't helped.
+
   - type: textarea
     validations:
       required: true
@@ -94,6 +99,7 @@ body:
       label: How to reproduce
       description: |
         Describe the least amount of steps possible to reproduce your error
+
   - type: textarea
     validations:
       required: true
@@ -101,6 +107,7 @@ body:
       label: Music Providers
       description: |
         List the music providers that you have tried which result in the problem. ALSO list the music providers you have tried that don't show the problem
+
   - type: textarea
     validations:
       required: true
@@ -108,6 +115,7 @@ body:
       label: Player Providers
       description: |
         List the player providers that you have tried which result in the problem. ALSO list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players.
+
   - type: textarea
     validations:
       required: true
@@ -117,6 +125,7 @@ body:
       placeholder: DO NOT PASTE the log here. ATTACH IT.
       description: |
         Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>>CORE into the field below. Do NOT use Verbose logging unless asked to do so.
+
   - type: textarea
     validations:
       required: true
@@ -125,10 +134,12 @@ body:
       placeholder: For Audiobookshelf include broken book ASINs here
       description: |
         Supply additional information requested which is not captured above, specifically the information requested in the troubleshooting page of the docs. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
+
   - type: markdown
     attributes:
       value: |
         ## Environment
+
   - type: input
     id: version_HA
     validations:
@@ -140,6 +151,7 @@ body:
         Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
         For example: 2025.8.0
         [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
+
   - type: dropdown
     validations:
       required: true
@@ -153,6 +165,7 @@ body:
         - Home Assistant OS
         - Home Assistant Container
         - Other - Please do not select this as support is only available for the above two options
+
   - type: dropdown
     validations:
       required: true
@@ -171,6 +184,7 @@ body:
         - macOS
         - Linux
         - Alternative
+
   - type: checkboxes
     validations:
       required: true
