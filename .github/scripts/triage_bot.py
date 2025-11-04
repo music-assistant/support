@@ -16,7 +16,7 @@ import json
 import sys
 import asyncio
 from typing import List, Set, Dict, Optional
-from github import Github, GithubException
+from github import Github, GithubException, Auth
 import requests
 
 # Import log analyzer
@@ -370,8 +370,11 @@ def find_similar_issues(repo, issue_title: str, issue_body: str, detected_provid
         print(f"Searching for similar issues: {search_string}")
 
         # Use GitHub search API
-        from github import Github
-        g = Github(os.environ.get('GITHUB_TOKEN'))
+        token = os.environ.get('GITHUB_TOKEN')
+        if token:
+            g = Github(auth=Auth.Token(token))
+        else:
+            g = Github()
         results = g.search_issues(search_string, sort='updated', order='desc')
 
         # Collect top 5 most relevant issues (excluding current one)
@@ -432,7 +435,7 @@ def main():
         sys.exit(1)
 
     # Initialize GitHub client
-    g = Github(github_token)
+    g = Github(auth=Auth.Token(github_token))
     repo = g.get_repo(repository)
 
     # Get the issue or PR
@@ -515,8 +518,11 @@ def main():
 
     # Validate template (only for issues, not PRs)
     if not is_pr:
+        # Get all existing comments (needed for multiple checks below)
+        existing_comments = list(item.get_comments())
+
         # Check for attachments
-        has_attachments = len(list(item.get_comments())) > 0  # Simplified check
+        has_attachments = len(existing_comments) > 0  # Simplified check
         # Better attachment check: look for URLs in the body
         has_attachments = has_attachments or bool(re.search(r'https://github\.com/.*/files/', issue_body))
 
@@ -526,7 +532,6 @@ def main():
             print(f"Template validation issues: {validation_issues}")
 
             # Check if we already posted a validation comment
-            existing_comments = list(item.get_comments())
             bot_already_commented = any(
                 "template validation" in comment.body.lower()
                 for comment in existing_comments
@@ -586,7 +591,6 @@ def main():
         print("Checking for log files to analyze...")
 
         # Check if we already posted a log analysis comment
-        existing_comments = list(item.get_comments())
         log_analysis_already_posted = any(
             "automatic log analysis" in comment.body.lower() or
             "ai-powered log analysis" in comment.body.lower()
