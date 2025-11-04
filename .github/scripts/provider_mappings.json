@@ -21,7 +21,7 @@
     "slimproto": ["slimproto", "slim proto", "squeezebox"],
     "sonos": ["sonos"],
     "airplay": ["airplay", "air play", "apple airplay"],
-    "cast": ["cast", "chromecast", "google cast", "chrome cast"],
+    "chromecast": ["cast", "chromecast", "google cast", "chrome cast"],
     "dlna": ["dlna"],
     "snapcast": ["snapcast", "snap cast"],
     "home_assistant": ["home assistant", "hass", "homeassistant"],

@@ -353,7 +353,7 @@ class LogAnalyzer:
             "subsonic": ["subsonic"],
             "sonos": ["sonos"],
             "airplay": ["airplay"],
-            "cast": ["cast", "chromecast"],
+            "chromecast": ["cast", "chromecast", "google cast"],
             "dlna": ["dlna"],
             "snapcast": ["snapcast"],
             "slimproto": ["slimproto", "squeezebox"]
