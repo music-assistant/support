@@ -293,6 +293,44 @@ async def analyze_issue_logs(item, issue_title: str, issue_body: str) -> Optiona
     return final_comment if final_comment else None
 
 
+def has_maintainer_engagement(item, min_replies: int = 2) -> bool:
+    """
+    Check if maintainers from the organization have already engaged with the issue.
+
+    Args:
+        item: GitHub issue or PR object
+        min_replies: Minimum number of replies from org members to consider engaged
+
+    Returns:
+        True if maintainers are already engaged, False otherwise
+    """
+    try:
+        comments = list(item.get_comments())
+        org_member_replies = 0
+
+        # author_association values that indicate organization membership:
+        # OWNER, MEMBER, COLLABORATOR
+        maintainer_associations = {'OWNER', 'MEMBER', 'COLLABORATOR'}
+
+        for comment in comments:
+            # Check author_association to see if they're from the org
+            author_assoc = comment.author_association
+
+            if author_assoc in maintainer_associations:
+                org_member_replies += 1
+                print(f"  Found org member reply from @{comment.user.login} ({author_assoc})")
+
+                if org_member_replies >= min_replies:
+                    return True
+
+        print(f"  Total org member replies: {org_member_replies}")
+        return False
+
+    except Exception as e:
+        print(f"Error checking maintainer engagement: {e}")
+        return False
+
+
 def find_similar_issues(repo, issue_title: str, issue_body: str, detected_providers: Set[str], current_issue_number: int) -> List[Dict]:
     """
     Find similar issues to help prevent duplicates.
@@ -404,6 +442,13 @@ def main():
     else:
         item = repo.get_issue(int(issue_number))
         print(f"Processing issue #{issue_number}")
+
+    # Check if maintainers are already engaged
+    # Skip bot processing if there are 2+ replies from music-assistant org members
+    print("Checking for maintainer engagement...")
+    if has_maintainer_engagement(item):
+        print("⏭️  Maintainers are already engaged (2+ replies from org members). Skipping bot processing.")
+        return
 
     # Extract providers from issue/PR
     all_text = f"{issue_title}\n{issue_body}"
