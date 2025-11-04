@@ -120,6 +120,9 @@ def get_providers_from_issue(issue_body: str) -> Set[str]:
     if "The problem" in sections:
         providers.update(extract_providers_from_text(sections["The problem"]))
 
+    # Remove false positives - "url" is too generic
+    providers.discard("url")
+
     return providers
 
 
