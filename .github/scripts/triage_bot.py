@@ -293,6 +293,91 @@ async def analyze_issue_logs(item, issue_title: str, issue_body: str) -> Optiona
     return final_comment if final_comment else None
 
 
+def find_similar_issues(repo, issue_title: str, issue_body: str, detected_providers: Set[str], current_issue_number: int) -> List[Dict]:
+    """
+    Find similar issues to help prevent duplicates.
+
+    Args:
+        repo: GitHub repository object
+        issue_title: Current issue title
+        issue_body: Current issue body
+        detected_providers: Set of providers detected in current issue
+        current_issue_number: Current issue number to exclude from results
+
+    Returns:
+        List of similar issues with relevance scores
+    """
+    similar_issues = []
+
+    try:
+        # Build search query
+        search_terms = []
+
+        # Add provider-specific search
+        for provider in list(detected_providers)[:2]:  # Limit to top 2 providers
+            search_terms.append(provider)
+
+        # Extract key words from title (remove common words)
+        common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'issue', 'error', 'problem', 'not', 'working'}
+        title_words = [word.lower() for word in re.findall(r'\w+', issue_title) if word.lower() not in common_words and len(word) > 3]
+        search_terms.extend(title_words[:3])  # Top 3 keywords from title
+
+        if not search_terms:
+            return []
+
+        # Search for open issues with similar terms
+        query = ' '.join(search_terms[:5])  # Limit to 5 terms
+        search_string = f"repo:{repo.full_name} is:issue is:open {query}"
+
+        print(f"Searching for similar issues: {search_string}")
+
+        # Use GitHub search API
+        from github import Github
+        g = Github(os.environ.get('GITHUB_TOKEN'))
+        results = g.search_issues(search_string, sort='updated', order='desc')
+
+        # Collect top 5 most relevant issues (excluding current one)
+        count = 0
+        for issue in results:
+            if count >= 5:
+                break
+            if issue.number == current_issue_number:
+                continue
+
+            # Calculate simple relevance score
+            relevance = 0
+            issue_title_lower = issue.title.lower()
+            issue_body_lower = (issue.body or '').lower()
+
+            # Check for provider matches
+            for provider in detected_providers:
+                if provider in issue_title_lower or provider in issue_body_lower:
+                    relevance += 2
+
+            # Check for title keyword matches
+            for word in title_words[:5]:
+                if word in issue_title_lower:
+                    relevance += 1
+
+            if relevance > 0:
+                similar_issues.append({
+                    'number': issue.number,
+                    'title': issue.title,
+                    'url': issue.html_url,
+                    'state': issue.state,
+                    'relevance': relevance
+                })
+                count += 1
+
+        # Sort by relevance
+        similar_issues.sort(key=lambda x: x['relevance'], reverse=True)
+
+    except Exception as e:
+        print(f"Error searching for similar issues: {e}")
+
+    return similar_issues
+
+
 def main():
     """Main bot logic."""
     # Get environment variables
@@ -419,6 +504,38 @@ def main():
                     print("Posted validation comment")
                 except GithubException as e:
                     print(f"Error posting comment: {e}")
+
+        # Search for similar issues to prevent duplicates
+        print("Searching for similar issues...")
+        similar_issues = find_similar_issues(repo, issue_title, issue_body, detected_providers, int(issue_number))
+
+        if similar_issues:
+            print(f"Found {len(similar_issues)} similar issue(s)")
+
+            # Check if we already posted similar issues comment
+            similar_comment_already_posted = any(
+                "similar issues" in comment.body.lower()
+                for comment in existing_comments
+            )
+
+            if not similar_comment_already_posted:
+                # Generate similar issues comment
+                similar_comment = "## 🔍 Similar Issues Found\n\n"
+                similar_comment += "Before proceeding, please check if your issue might be related to or a duplicate of:\n\n"
+
+                for issue in similar_issues[:3]:  # Show top 3
+                    similar_comment += f"- #{issue['number']}: [{issue['title']}]({issue['url']})\n"
+
+                similar_comment += "\nIf your issue is the same as one of the above, please consider adding your information to the existing issue instead. "
+                similar_comment += "This helps us track and resolve issues more efficiently. Thank you! 🙏\n"
+
+                try:
+                    item.create_comment(similar_comment)
+                    print("Posted similar issues comment")
+                except GithubException as e:
+                    print(f"Error posting similar issues comment: {e}")
+        else:
+            print("No similar issues found")
 
         # Phase 2: Analyze log files (only for issues, not PRs)
         print("Checking for log files to analyze...")

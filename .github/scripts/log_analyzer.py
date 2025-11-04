@@ -464,7 +464,13 @@ class LogAnalyzer:
             comment += f"### {severity_emoji} {issue.title}\n\n"
 
             if issue.provider:
-                comment += f"**Provider:** {issue.provider.replace('_', ' ').title()}\n\n"
+                provider_display = issue.provider.replace('_', ' ').title()
+                comment += f"**Provider:** {provider_display}\n\n"
+
+                # Add provider-specific documentation link
+                provider_doc_url = self._get_provider_doc_url(issue.provider)
+                if provider_doc_url:
+                    comment += f"📖 **[{provider_display} Documentation]({provider_doc_url})**\n\n"
 
             comment += f"{issue.suggestion}\n\n"
 
@@ -483,6 +489,16 @@ class LogAnalyzer:
         comment += "  - [Feature Requests](https://github.com/orgs/music-assistant/discussions/categories/feature-requests-and-ideas) - Share ideas and vote on features\n"
         comment += "- **[Discord Community](https://discord.gg/kaVm8hGpne)** - Join for real-time community support\n\n"
 
+        # Add provider-specific docs if providers were detected
+        if self.providers_mentioned:
+            comment += "### Provider-Specific Documentation\n\n"
+            for provider in sorted(self.providers_mentioned):
+                doc_url = self._get_provider_doc_url(provider)
+                if doc_url:
+                    provider_display = provider.replace('_', ' ').title()
+                    comment += f"- [{provider_display}]({doc_url})\n"
+            comment += "\n"
+
         # Add disclaimer
         comment += "---\n\n"
         comment += "**⚠️ Note:** This is an automated analysis and may not be 100% accurate. "
@@ -491,6 +507,43 @@ class LogAnalyzer:
         comment += "If you believe this analysis is incorrect or incomplete, please provide more details in a comment.\n"
 
         return comment
+
+    def _get_provider_doc_url(self, provider: str) -> Optional[str]:
+        """Get the documentation URL for a specific provider."""
+        # Music providers
+        music_providers = {
+            'spotify', 'tidal', 'qobuz', 'youtube_music', 'apple_music',
+            'deezer', 'soundcloud', 'tunein', 'radiobrowser', 'plex',
+            'jellyfin', 'subsonic', 'filesystem_local', 'audiobookshelf', 'hass'
+        }
+
+        # Player providers
+        player_providers = {
+            'sonos', 'airplay', 'chromecast', 'dlna', 'snapcast',
+            'slimproto', 'hass_players', 'fully_kiosk'
+        }
+
+        # Convert provider name for URL (replace underscores with hyphens for some)
+        url_provider = provider.replace('_', '-')
+
+        # Special cases
+        provider_url_mapping = {
+            'youtube_music': 'youtube-music',
+            'apple_music': 'apple-music',
+            'filesystem_local': 'filesystem',
+            'hass': 'home-assistant',
+            'hass_players': 'home-assistant'
+        }
+
+        if provider in provider_url_mapping:
+            url_provider = provider_url_mapping[provider]
+
+        if provider in music_providers:
+            return f"https://music-assistant.io/music-providers/{url_provider}/"
+        elif provider in player_providers:
+            return f"https://music-assistant.io/player-support/{url_provider}/"
+
+        return None
 
 
 async def analyze_with_ai(log_content: str, issue_title: str, issue_body: str) -> Optional[str]:
