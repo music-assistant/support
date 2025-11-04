@@ -1,0 +1,30 @@
+{
+  "music_providers": {
+    "spotify": ["spotify"],
+    "tidal": ["tidal"],
+    "qobuz": ["qobuz"],
+    "youtube_music": ["youtube music", "ytmusic", "yt music", "youtube"],
+    "apple_music": ["apple music", "applemusic"],
+    "deezer": ["deezer"],
+    "soundcloud": ["soundcloud", "sound cloud"],
+    "tunein": ["tunein", "tune in"],
+    "radiobrowser": ["radiobrowser", "radio browser"],
+    "plex": ["plex"],
+    "jellyfin": ["jellyfin"],
+    "subsonic": ["subsonic"],
+    "filesystem_local": ["filesystem", "file system", "local files", "local file", "local media"],
+    "url": ["url", "stream url", "streaming url"],
+    "builtin": ["builtin", "built-in", "built in"],
+    "audiobookshelf": ["audiobookshelf", "audiobook shelf"]
+  },
+  "player_providers": {
+    "slimproto": ["slimproto", "slim proto", "squeezebox"],
+    "sonos": ["sonos"],
+    "airplay": ["airplay", "air play", "apple airplay"],
+    "cast": ["cast", "chromecast", "google cast", "chrome cast"],
+    "dlna": ["dlna"],
+    "snapcast": ["snapcast", "snap cast"],
+    "home_assistant": ["home assistant", "hass", "homeassistant"],
+    "fully_kiosk": ["fully kiosk", "fullykiosk", "fully"]
+  }
+}
