@@ -26,11 +26,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests PyGithub
+          pip install requests PyGithub anthropic
 
       - name: Run triage bot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
           ISSUE_BODY: ${{ github.event.issue.body || github.event.pull_request.body }}
           ISSUE_TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
@@ -38,4 +39,5 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           PR_USER: ${{ github.event.pull_request.user.login }}
         run: |
-          python .github/scripts/triage_bot.py
+          cd .github/scripts
+          python triage_bot.py

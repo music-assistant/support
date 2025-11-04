@@ -6,16 +6,21 @@ This bot automatically:
 1. Assigns provider labels based on issue content
 2. Assigns maintainers from provider manifests
 3. Validates issue template completion
-4. Posts helpful comments when validation fails
+4. Analyzes log files for common issues (Phase 2)
+5. Posts helpful comments when validation fails or issues detected
 """
 
 import os
 import re
 import json
 import sys
+import asyncio
 from typing import List, Set, Dict, Optional
 from github import Github, GithubException
 import requests
+
+# Import log analyzer
+from log_analyzer import LogAnalyzer, analyze_with_ai
 
 # Server repository containing provider manifests
 SERVER_REPO = "music-assistant/server"
@@ -191,6 +196,100 @@ def validate_issue_template(issue_body: str, has_attachments: bool) -> List[str]
     return issues
 
 
+def extract_log_file_urls(issue_body: str) -> List[str]:
+    """Extract GitHub file attachment URLs from issue body."""
+    # Pattern for GitHub file uploads
+    pattern = r'https://github\.com/[^/]+/[^/]+/files/\d+/[\w\.-]+'
+    urls = re.findall(pattern, issue_body)
+    return urls
+
+
+def download_log_content(url: str) -> Optional[str]:
+    """Download log file content from GitHub attachment URL."""
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+
+        # Try to decode as text
+        try:
+            content = response.content.decode('utf-8')
+        except UnicodeDecodeError:
+            # Try with different encoding
+            try:
+                content = response.content.decode('latin-1')
+            except UnicodeDecodeError:
+                print(f"Could not decode log file from {url}")
+                return None
+
+        return content
+    except requests.RequestException as e:
+        print(f"Failed to download log from {url}: {e}")
+        return None
+
+
+async def analyze_issue_logs(item, issue_title: str, issue_body: str) -> Optional[str]:
+    """
+    Analyze log files attached to an issue.
+
+    Args:
+        item: GitHub issue object
+        issue_title: Issue title
+        issue_body: Issue body
+
+    Returns:
+        Analysis comment or None
+    """
+    # Extract log file URLs from issue body
+    log_urls = extract_log_file_urls(issue_body)
+
+    if not log_urls:
+        print("No log file attachments found")
+        return None
+
+    print(f"Found {len(log_urls)} log file(s)")
+
+    # Download and combine all log files
+    all_logs = []
+    for url in log_urls:
+        log_content = download_log_content(url)
+        if log_content:
+            all_logs.append(log_content)
+            print(f"Downloaded log file: {url}")
+
+    if not all_logs:
+        print("Could not download any log files")
+        return None
+
+    combined_logs = "\n\n=== LOG FILE BOUNDARY ===\n\n".join(all_logs)
+
+    # Run pattern-based analysis
+    analyzer = LogAnalyzer(combined_logs)
+    analyzer.analyze()
+    pattern_comment = analyzer.generate_comment(max_issues=5)
+
+    # Try AI analysis if API key is available
+    ai_comment = None
+    if os.environ.get('ANTHROPIC_API_KEY'):
+        print("Running AI-powered log analysis...")
+        try:
+            ai_comment = await analyze_with_ai(combined_logs, issue_title, issue_body)
+        except Exception as e:
+            print(f"AI analysis failed: {e}")
+
+    # Combine analyses
+    final_comment = ""
+
+    if pattern_comment:
+        final_comment += pattern_comment
+
+    if ai_comment:
+        if final_comment:
+            final_comment += "\n\n---\n\n"
+        final_comment += ai_comment
+
+    return final_comment if final_comment else None
+
+
 def main():
     """Main bot logic."""
     # Get environment variables
@@ -317,6 +416,38 @@ def main():
                     print("Posted validation comment")
                 except GithubException as e:
                     print(f"Error posting comment: {e}")
+
+        # Phase 2: Analyze log files (only for issues, not PRs)
+        print("Checking for log files to analyze...")
+
+        # Check if we already posted a log analysis comment
+        existing_comments = list(item.get_comments())
+        log_analysis_already_posted = any(
+            "automatic log analysis" in comment.body.lower() or
+            "ai-powered log analysis" in comment.body.lower()
+            for comment in existing_comments
+        )
+
+        if not log_analysis_already_posted:
+            # Run log analysis (async)
+            try:
+                log_analysis_comment = asyncio.run(
+                    analyze_issue_logs(item, issue_title, issue_body)
+                )
+
+                if log_analysis_comment:
+                    print("Posting log analysis comment...")
+                    try:
+                        item.create_comment(log_analysis_comment)
+                        print("Successfully posted log analysis")
+                    except GithubException as e:
+                        print(f"Error posting log analysis comment: {e}")
+                else:
+                    print("No issues detected in logs or no logs found")
+            except Exception as e:
+                print(f"Log analysis failed: {e}")
+        else:
+            print("Log analysis comment already exists, skipping")
 
     print("Triage bot completed successfully")
 
