@@ -441,7 +441,16 @@ class LogAnalyzer:
         # Limit to max_issues
         issues_to_show = sorted_issues[:max_issues]
 
-        comment = "## 🔍 Automatic Log Analysis\n\n"
+        # Start with friendly thank you message
+        comment = "## 🤖 Automated Issue Triage\n\n"
+        comment += "**Thank you for taking the time to report this issue and filling in the template!**\n\n"
+        comment += "Your detailed information helps us investigate and resolve issues more efficiently. "
+        comment += "Every issue report, no matter how small, contributes to making Music Assistant better for everyone. "
+        comment += "Please note that we have limited capacity, so we appreciate your patience while we review your report. "
+        comment += "The more accurate and complete information you provide, the easier it is for us to understand and fix the issue.\n\n"
+
+        comment += "---\n\n"
+        comment += "## 🔍 Automatic Log Analysis\n\n"
         comment += "I've analyzed the log file and detected the following potential issues:\n\n"
 
         for issue in issues_to_show:
@@ -460,11 +469,26 @@ class LogAnalyzer:
             comment += f"{issue.suggestion}\n\n"
 
         if len(self.detected_issues) > max_issues:
-            comment += f"*... and {len(self.detected_issues) - max_issues} more issue(s) detected.*\n\n"
+            remaining = len(self.detected_issues) - max_issues
+            comment += f"*... and {remaining} more issue(s) detected.*\n\n"
 
-        comment += "---\n"
-        comment += "*This is an automated pattern-based analysis. "
-        comment += "Please review the suggestions and provide additional context if needed.*\n"
+        comment += "---\n\n"
+
+        # Add helpful resources section
+        comment += "## 📚 Helpful Resources\n\n"
+        comment += "- **[Documentation](https://music-assistant.io)** - Official Music Assistant documentation\n"
+        comment += "- **[Beta Documentation](https://beta.music-assistant.io)** - For beta/development versions\n"
+        comment += "- **[GitHub Discussions](https://github.com/orgs/music-assistant/discussions)** - For general questions and feature requests\n"
+        comment += "  - [Q&A Section](https://github.com/orgs/music-assistant/discussions/categories/q-a) - Ask questions and get community help\n"
+        comment += "  - [Feature Requests](https://github.com/orgs/music-assistant/discussions/categories/feature-requests-and-ideas) - Share ideas and vote on features\n"
+        comment += "- **[Discord Community](https://discord.gg/kaVm8hGpne)** - Join for real-time community support\n\n"
+
+        # Add disclaimer
+        comment += "---\n\n"
+        comment += "**⚠️ Note:** This is an automated analysis and may not be 100% accurate. "
+        comment += "The suggestions above are based on common patterns found in the logs. "
+        comment += "A maintainer will review your issue and provide additional guidance if needed. "
+        comment += "If you believe this analysis is incorrect or incomplete, please provide more details in a comment.\n"
 
         return comment
 
@@ -530,10 +554,34 @@ If you detect network issues, authentication problems, or provider-specific erro
 
         ai_analysis = message.content[0].text
 
-        comment = "## 🤖 AI-Powered Log Analysis\n\n"
+        # Build AI comment with same structure
+        comment = "## 🤖 Automated Issue Triage\n\n"
+        comment += "**Thank you for taking the time to report this issue and filling in the template!**\n\n"
+        comment += "Your detailed information helps us investigate and resolve issues more efficiently. "
+        comment += "Every issue report, no matter how small, contributes to making Music Assistant better for everyone. "
+        comment += "Please note that we have limited capacity, so we appreciate your patience while we review your report. "
+        comment += "The more accurate and complete information you provide, the easier it is for us to understand and fix the issue.\n\n"
+
+        comment += "---\n\n"
+        comment += "## 🧠 AI-Powered Log Analysis\n\n"
         comment += ai_analysis + "\n\n"
-        comment += "---\n"
-        comment += "*This analysis was generated using AI and should be reviewed for accuracy.*\n"
+        comment += "---\n\n"
+
+        # Add helpful resources section
+        comment += "## 📚 Helpful Resources\n\n"
+        comment += "- **[Documentation](https://music-assistant.io)** - Official Music Assistant documentation\n"
+        comment += "- **[Beta Documentation](https://beta.music-assistant.io)** - For beta/development versions\n"
+        comment += "- **[GitHub Discussions](https://github.com/orgs/music-assistant/discussions)** - For general questions and feature requests\n"
+        comment += "  - [Q&A Section](https://github.com/orgs/music-assistant/discussions/categories/q-a) - Ask questions and get community help\n"
+        comment += "  - [Feature Requests](https://github.com/orgs/music-assistant/discussions/categories/feature-requests-and-ideas) - Share ideas and vote on features\n"
+        comment += "- **[Discord Community](https://discord.gg/kaVm8hGpne)** - Join for real-time community support\n\n"
+
+        # Add disclaimer - stronger for AI
+        comment += "---\n\n"
+        comment += "**⚠️ Important:** This analysis was generated using AI and may contain inaccuracies. "
+        comment += "Please use this as a starting point for troubleshooting, but verify all suggestions. "
+        comment += "A maintainer will review your issue and provide definitive guidance. "
+        comment += "If you have questions or need clarification, feel free to ask in the comments!\n"
 
         return comment
 
