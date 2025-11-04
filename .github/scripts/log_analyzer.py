@@ -338,17 +338,33 @@ class LogAnalyzer:
 
     def detect_providers(self) -> Set[str]:
         """Detect which providers are mentioned in the log."""
-        providers = {
-            "spotify", "tidal", "qobuz", "apple_music", "deezer",
-            "youtube_music", "soundcloud", "tunein", "plex",
-            "jellyfin", "subsonic", "sonos", "airplay", "cast",
-            "chromecast", "dlna", "snapcast", "slimproto"
+        # Map of provider identifiers to canonical names
+        provider_aliases = {
+            "spotify": ["spotify"],
+            "tidal": ["tidal"],
+            "qobuz": ["qobuz"],
+            "apple_music": ["apple", "applemusic", "apple music"],
+            "deezer": ["deezer"],
+            "youtube_music": ["ytmusic", "youtubemusic", "youtube music", "youtube_music"],
+            "soundcloud": ["soundcloud"],
+            "tunein": ["tunein"],
+            "plex": ["plex"],
+            "jellyfin": ["jellyfin"],
+            "subsonic": ["subsonic"],
+            "sonos": ["sonos"],
+            "airplay": ["airplay"],
+            "cast": ["cast", "chromecast"],
+            "dlna": ["dlna"],
+            "snapcast": ["snapcast"],
+            "slimproto": ["slimproto", "squeezebox"]
         }
 
         log_lower = self.log_content.lower()
-        for provider in providers:
-            if provider.replace("_", "") in log_lower or provider.replace("_", " ") in log_lower:
-                self.providers_mentioned.add(provider)
+        for provider, aliases in provider_aliases.items():
+            for alias in aliases:
+                if alias in log_lower:
+                    self.providers_mentioned.add(provider)
+                    break
 
         return self.providers_mentioned
 
