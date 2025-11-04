@@ -351,11 +351,13 @@ class LogAnalyzer:
             "plex": ["plex"],
             "jellyfin": ["jellyfin"],
             "subsonic": ["subsonic"],
+            "hass": ["hass", "homeassistant", "home assistant"],
             "sonos": ["sonos"],
             "airplay": ["airplay"],
             "chromecast": ["cast", "chromecast", "google cast"],
             "dlna": ["dlna"],
             "snapcast": ["snapcast"],
+            "hass_players": ["hass players", "ha players", "home assistant players"],
             "slimproto": ["slimproto", "squeezebox"]
         }
 

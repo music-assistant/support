@@ -15,7 +15,8 @@
     "filesystem_local": ["filesystem", "file system", "local files", "local file", "local media"],
     "url": ["url", "stream url", "streaming url"],
     "builtin": ["builtin", "built-in", "built in"],
-    "audiobookshelf": ["audiobookshelf", "audiobook shelf"]
+    "audiobookshelf": ["audiobookshelf", "audiobook shelf"],
+    "hass": ["home assistant", "hass", "homeassistant"]
   },
   "player_providers": {
     "slimproto": ["slimproto", "slim proto", "squeezebox"],
@@ -24,7 +25,7 @@
     "chromecast": ["cast", "chromecast", "google cast", "chrome cast"],
     "dlna": ["dlna"],
     "snapcast": ["snapcast", "snap cast"],
-    "home_assistant": ["home assistant", "hass", "homeassistant"],
+    "hass_players": ["ha players", "home assistant players", "hass players"],
     "fully_kiosk": ["fully kiosk", "fullykiosk", "fully"]
   }
 }
