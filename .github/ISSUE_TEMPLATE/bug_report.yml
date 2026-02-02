@@ -43,9 +43,9 @@ body:
     validations:
       required: true
     attributes:
-      label: Carefully read the Troubleshooting FAQ and confirm that
+      label: Mandatory: Carefully read the Troubleshooting FAQ and confirm that
       description: |
-        If you tick a box that you haven't done, and it is applicable, then clearly state that and explain why in the report
+        If you tick a box that you haven't done then clearly state that and explain why in the report
       options:
         - label: "I have examined the logs and tried to resolve this issue"
           required: true
@@ -53,35 +53,36 @@ body:
           required: true
         - label: "I am not running MA across a VPN, VLAN, subnet, behind a firewall, or using local SSL or have any other complex network setup"
           required: true
-        - label: "I have disabled tool such as AdGuard, Pi-hole or pfSense and retested"
+        - label: "I am not using or have disabled tools such as AdGuard, Pi-hole or pfSense and retested"
           required: true
         - label: "I have checked my network setup to ensure mDNS/multicast is not being blocked"
           required: true
-        - label: "If using HA, I have confirmed the internal URL is set correctly"
-          required: true
-        - label: "I have tried a wired connection for issues related to interrupted or poor playback quality"
-          required: true
-        - label: "If the problem relates to a device then I have checked the device settings"
-          required: true
-        - label: "If it is a frontend issue, I have tried a different widely used browser"
+        - label: I have reviewed the [Open](https://github.com/music-assistant/support/issues) and [Closed](https://github.com/music-assistant/support/issues?q=is%3Aissue%20state%3Aclosed) Issues and [Discussions](https://github.com/orgs/music-assistant/discussions) to resolve this yourself?
           required: true
         - label: "I have reviewed the applicable [player](https://www.music-assistant.io/player-support/) or [music provider](https://www.music-assistant.io/music-providers/) documentation"
           required: true
-        - label: "For voice problems, I have sought help elsewhere before returning here"
-          required: true
-        - label: "For playback problems, I have recycled power to the physical device"
+        - label: "I have reviewed the [MA Status Page](https://github.com/orgs/music-assistant/discussions/709)"
           required: true
         - label: "I have tried restarting MA and rebooting the host"
           required: true
-
   - type: checkboxes
-    validations:
-      required: true
     attributes:
-      label: Have you reviewed the [Open](https://github.com/music-assistant/support/issues) and [Closed](https://github.com/music-assistant/support/issues?q=is%3Aissue%20state%3Aclosed) Issues and [Discussions](https://github.com/orgs/music-assistant/discussions) to resolve this yourself?
-      options:
-        - label: "Yes"
-          required: true
+      label: As Applicable: Carefully read the Troubleshooting FAQ and confirm that
+      description: |
+        If you don't tick a box and it is applicable, then clearly state that and explain why in the report
+      options:        
+        - label: "If using HA, I have confirmed the internal URL is set correctly"
+          required: false
+        - label: "I have tried a wired connection for issues related to interrupted or poor playback quality"
+          required: false
+        - label: "If the problem relates to a device then I have checked the device settings"
+          required: false
+        - label: "If it is a frontend issue, I have tried a different widely used browser"
+          required: false
+        - label: "For voice problems, I have sought help elsewhere before returning here"
+          required: false
+        - label: "For playback problems, I have recycled power to the physical device"
+          required: false
 
   - type: textarea
     validations:
@@ -106,7 +107,7 @@ body:
     attributes:
       label: Music Providers
       description: |
-        List the music providers that you have tried which result in the problem. ALSO list the music providers you have tried that don't show the problem
+        List the music providers that you have tried which result in the problem. ALSO list the music providers you have tried that don't show the problem. Do not just list the providers you have installed.
 
   - type: textarea
     validations:
@@ -114,7 +115,7 @@ body:
     attributes:
       label: Player Providers
       description: |
-        List the player providers that you have tried which result in the problem. ALSO list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players.
+        List the player providers that you have tried which result in the problem. ALSO list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players. Do not just list the providers you have installed.
 
   - type: textarea
     validations:
@@ -122,7 +123,7 @@ body:
     id: logs
     attributes:
       label: Full log output
-      placeholder: DO NOT PASTE the log here. ATTACH IT.
+      placeholder: DO NOT PASTE the log here. ATTACH IT. Your issue will not be reviewed if this is not done as requested.
       description: |
         Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>>CORE into the field below. Do NOT use Verbose logging unless asked to do so.
 
@@ -143,13 +144,13 @@ body:
   - type: input
     id: version_HA
     validations:
-      required: true
+      required: false
     attributes:
       label: What version of Home Assistant Core (if used) are your running
-      placeholder: 2025.8.0
+      placeholder: HA version
       description: |
         Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
-        For example: 2025.8.0
+        For example: 2026.2.0
         [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
 
   - type: dropdown
@@ -183,6 +184,7 @@ body:
         - Windows
         - macOS
         - Linux
+        - Proxmox
         - Alternative
 
   - type: checkboxes
