@@ -43,7 +43,7 @@ body:
     validations:
       required: true
     attributes:
-      label: Mandatory: Carefully read the Troubleshooting FAQ and confirm that
+      label: "Mandatory: Carefully read the Troubleshooting FAQ and confirm that"
       description: |
         If you tick a box that you haven't done then clearly state that and explain why in the report
       options:
@@ -67,7 +67,7 @@ body:
           required: true
   - type: checkboxes
     attributes:
-      label: As Applicable: Carefully read the Troubleshooting FAQ and confirm that
+      label: "As Applicable: Carefully read the Troubleshooting FAQ and confirm that"
       description: |
         If you don't tick a box and it is applicable, then clearly state that and explain why in the report
       options:        
