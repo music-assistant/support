@@ -29,8 +29,8 @@ This repository uses automated workflows to manage issues efficiently.
                     ┌────────────▼────────────┐
                     │   Triage Bot runs:      │
                     │   - Provider labels     │
-                    │   - Maintainer assigned  │
-                    │   - Template validation  │
+                    │   - Maintainer assigned │
+                    │   - Template validation │
                     │   - Log analysis        │
                     └────────────┬────────────┘
                                  │
@@ -39,13 +39,13 @@ This repository uses automated workflows to manage issues efficiently.
      Template valid                        Template invalid
               │                                     │
               ▼                                     ▼
-   ┌──────────────────┐                  ┌──────────────────┐
+   ┌───────────────────┐                  ┌───────────────────┐
    │ + needs-attention │                  │ + waiting-for-user│
-   └────────┬─────────┘                  │ (bot asks user to │
-            │                            │  fix their issue)  │
-            │                            └────────┬──────────┘
-            │                                     │
-            └──────────────┬──────────────────────┘
+   └────────┬──────────┘                  │ (bot asks user to │
+            │                             │  fix their issue) │
+            │                             └────────┬──────────┘
+            │                                      │
+            └──────────────┬───────────────────────┘
                            │
                            ▼
          ┌─────────────────────────────────┐
@@ -64,8 +64,8 @@ This repository uses automated workflows to manage issues efficiently.
             │                             │
             ▼                             ▼
  ┌────────────────────┐        ┌────────────────────┐
- │ - needs-attention   │        │ - waiting-for-user  │
- │ + waiting-for-user  │        │ + needs-attention   │
+ │ - needs-attention  │        │ - waiting-for-user │
+ │ + waiting-for-user │        │ + needs-attention  │
  └─────────┬──────────┘        └─────────┬──────────┘
            │                             │
            └─────────────┬───────────────┘
