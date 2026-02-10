@@ -1,6 +1,6 @@
-# Issue Triage Bot
+# Issue Automation
 
-An intelligent automated bot for triaging issues and pull requests in the Music Assistant support repository.
+Automated issue management for the Music Assistant support repository.
 
 ## Features
 
@@ -185,11 +185,15 @@ Suggestion:
 ```
 .github/
 ├── workflows/
-│   └── issue_triage_bot.yml          # GitHub Actions workflow
+│   ├── issue_triage_bot.yml          # Triage bot workflow (provider labels, log analysis)
+│   ├── response_tracker.yml          # Response state tracking (needs-attention / waiting-for-user)
+│   ├── stale_issues.yml              # Stale issue auto-close
+│   └── lock_threads.yml              # Lock closed threads after 30 days
 └── scripts/
     ├── triage_bot.py                 # Main bot logic
     ├── log_analyzer.py               # Phase 2: Intelligent log analysis
     ├── provider_mappings.json        # Provider aliases configuration
+    ├── backfill_labels.py            # One-time backfill for response-state labels
     └── README.md                     # This documentation
 ```
 
@@ -338,14 +342,66 @@ The workflow requires:
 - **AI analysis:** ~2-5 seconds (when enabled)
 - **Total workflow:** ~10-30 seconds including downloads
 
+## Response State Tracking
+
+Automated tracking of which issues need maintainer attention vs. waiting for user response.
+
+### Labels
+
+| Label | Purpose |
+|-------|---------|
+| `needs-attention` | Issue needs maintainer/collaborator response |
+| `waiting-for-user` | Waiting for the issue author to respond |
+| `stale` | No activity for an extended period |
+| `auto-closed` | Closed automatically due to inactivity |
+
+### How It Works
+
+The `response_tracker.yml` workflow automatically manages labels based on who comments:
+
+- **New/reopened issue** → `needs-attention` added
+- **Maintainer comments** (not the issue author) → `needs-attention` removed, `waiting-for-user` added
+- **Issue author comments** → `waiting-for-user` removed, `needs-attention` added
+- **Bot/community comments** → no label changes
+
+The triage bot also sets `waiting-for-user` when it posts template validation comments.
+
+### Filtering Issues
+
+View all issues needing your attention:
+```
+is:issue is:open label:needs-attention
+```
+
+### Stale Issue Management
+
+The `stale_issues.yml` workflow runs daily and handles two cases:
+
+1. **Unresponsive users** (issues with `waiting-for-user`): 14 days → stale warning, 3 more days → auto-close
+2. **Dormant issues** (general inactivity): 60 days → stale warning, 14 more days → auto-close
+
+Exempt labels: `bug-confirmed`, `enhancement`, `pinned`
+
+### Thread Locking
+
+The `lock_threads.yml` workflow locks closed issues after 30 days of inactivity, directing users to open new issues.
+
+### Backfilling Existing Issues
+
+Run the one-time backfill script to label all existing open issues:
+
+```bash
+cd .github/scripts
+GITHUB_TOKEN=ghp_xxx python backfill_labels.py
+```
+
 ## Future Enhancements
 
-Potential additions for Phase 3:
+Potential additions:
 - Cross-reference with known GitHub issues
 - Link to similar resolved issues
 - Track error frequency across issues
 - Provider status checking (API outages)
-- Automated issue categorization/tagging
 - Integration with Discord notifications
 - Weekly summary reports of common issues
 

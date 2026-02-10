@@ -502,6 +502,16 @@ def main():
                 try:
                     item.create_comment(comment_body)
                     print("Posted validation comment")
+                    # Template is incomplete — this is a request for user action,
+                    # so swap needs-attention -> waiting-for-user
+                    try:
+                        item.remove_from_labels("needs-attention")
+                    except GithubException:
+                        pass  # Label may not exist yet
+                    try:
+                        item.add_to_labels("waiting-for-user")
+                    except GithubException as label_err:
+                        print(f"Could not add waiting-for-user label: {label_err}")
                 except GithubException as e:
                     print(f"Error posting comment: {e}")
 
