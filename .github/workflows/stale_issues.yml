@@ -41,7 +41,7 @@ jobs:
             with updated information and logs.
 
           # Don't touch issues with these labels
-          exempt-issue-labels: 'bug-confirmed,enhancement,pinned'
+          exempt-issue-labels: 'bug,enhancement,pinned,Fix to be Confirmed'
 
           # Remove stale label if there is new activity
           remove-stale-when-updated: true
@@ -73,6 +73,6 @@ jobs:
             with updated information and logs.
 
           # Issues already being tracked should not be double-processed
-          exempt-issue-labels: 'waiting-for-user,bug-confirmed,enhancement,pinned,needs-attention'
+          exempt-issue-labels: 'waiting-for-user,bug,enhancement,pinned,needs-attention,Fix to be Confirmed'
 
           remove-stale-when-updated: true
