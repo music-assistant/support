@@ -63,9 +63,23 @@ jobs:
               return;
             }
 
-            // Determine if commenter is a maintainer/collaborator
+            // Check if commenter is a member of the music-assistant org
+            let isOrgMember = false;
+            try {
+              const res = await github.rest.orgs.checkMembershipForUser({
+                org: 'music-assistant',
+                username: commenterLogin
+              });
+              // 204 = member, 302 = not a member (redirects to public check)
+              isOrgMember = (res.status === 204);
+            } catch (e) {
+              // 404 = not a member, or insufficient permissions
+              isOrgMember = false;
+            }
+
+            // Fall back to author_association if org check fails
             const maintainerAssociations = ['OWNER', 'MEMBER', 'COLLABORATOR'];
-            const isMaintainer = maintainerAssociations.includes(commenterAssociation);
+            const isMaintainer = isOrgMember || maintainerAssociations.includes(commenterAssociation);
 
             // Determine if commenter is the issue author
             const isIssueAuthor = (commenterLogin === issueAuthorLogin);
