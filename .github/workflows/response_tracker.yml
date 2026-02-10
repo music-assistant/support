@@ -86,6 +86,15 @@ jobs:
 
             const currentLabels = issue.labels.map(l => l.name);
 
+            // Labels that indicate the issue is confirmed/tracked — skip response-state changes
+            const skipLabels = ['bug', 'Fix to be Confirmed'];
+            const hasSkipLabel = skipLabels.some(l => currentLabels.includes(l));
+
+            if (hasSkipLabel) {
+              console.log(`Skipping response-state change: issue has ${skipLabels.filter(l => currentLabels.includes(l))}`);
+              return;
+            }
+
             if (isMaintainer && !isIssueAuthor) {
               // A maintainer (who is not the issue author) responded
               // Remove needs-attention, add waiting-for-user
