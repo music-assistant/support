@@ -49,7 +49,7 @@ body:
       options:
         - label: "I have examined the logs and tried to resolve this issue"
           required: true
-        - label: "I have fixed any errors in the logs that relate to tags"
+        - label: "I have fixed any errors or warnings in the logs that relate to tags"
           required: true
         - label: "I am not running MA across a VPN, VLAN, subnet, behind a firewall, or using local SSL or have any other complex network setup"
           required: true
@@ -57,7 +57,7 @@ body:
           required: true
         - label: "I have checked my network setup to ensure mDNS/multicast is not being blocked"
           required: true
-        - label: I have reviewed the [Open](https://github.com/music-assistant/support/issues) and [Closed](https://github.com/music-assistant/support/issues?q=is%3Aissue%20state%3Aclosed) Issues and [Discussions](https://github.com/orgs/music-assistant/discussions) to resolve this yourself?
+        - label: I have reviewed the [Open](https://github.com/music-assistant/support/issues) and [Closed](https://github.com/music-assistant/support/issues?q=is%3Aissue%20state%3Aclosed) Issues and [Discussions](https://github.com/orgs/music-assistant/discussions)
           required: true
         - label: "I have reviewed the applicable [player](https://www.music-assistant.io/player-support/) or [music provider](https://www.music-assistant.io/music-providers/) documentation"
           required: true
