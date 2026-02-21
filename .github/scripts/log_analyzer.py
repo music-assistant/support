@@ -282,6 +282,39 @@ class LogAnalyzer:
             )
         },
 
+        # Sonos S2 Cloud Queue / Announcement Issues
+        "sonos_cloud_queue_404": {
+            "pattern": (
+                r"(ERROR_CLOUD_QUEUE_SERVICE_ERROR"
+                r"|sonos_queue.*v2\.3.*context"
+                r"|httpStatus.*404.*sonos_queue"
+                r"|serviceName.*sonos_queue)"
+            ),
+            "severity": Severity.ERROR,
+            "title": "Sonos S2 Cloud Queue 404 Error (Announcements Broken)",
+            "description": (
+                "Sonos S2 provider returns a 404 on the /sonos_queue/v2.3/context "
+                "endpoint during announcements"
+            ),
+            "suggestion": (
+                "This is a known bug in Music Assistant where Sonos announcements fail "
+                "with ERROR_CLOUD_QUEUE_SERVICE_ERROR and a 404 on "
+                "/sonos_queue/v2.3/context.\n\n"
+                "**Root cause:** The announcement playback path builds a cloud queue URL "
+                "without including the player ID, so the Sonos speaker requests a path "
+                "that the server no longer handles.\n\n"
+                "**Workarounds until the fix is released:**\n"
+                "- Upgrade to a Music Assistant version that includes the fix for this issue\n"
+                "- As a temporary measure, use the Sonos S1 (Legacy) Player Provider "
+                "instead of Sonos S2 (note: the S1 provider may have its own limitations)\n\n"
+                "**For developers:** The fix is to change the announcement cloud_queue_url "
+                "in `music_assistant/providers/sonos/player.py` from "
+                "`/sonos_queue/v2.3/` to `/sonos_queue/{player_id}/v2.3/` "
+                "so it matches the format expected by the route handler."
+            ),
+            "provider": "sonos"
+        },
+
         # SSL/Certificate Issues
         "ssl_error": {
             "pattern": r"(ssl.*error|certificate.*verif.*fail|certifi?cate.*invalid|https.*error)",
