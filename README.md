@@ -122,6 +122,39 @@ This repository uses automated workflows to manage issues efficiently.
 - Any new activity removes the `stale` label automatically
 - See [.github/scripts/README.md](.github/scripts/README.md) for detailed automation docs
 
+## Fixing Bugs in the Server Repository
+
+When a support issue is confirmed as a bug that requires a code change in
+[`music-assistant/server`](https://github.com/music-assistant/server), a
+maintainer can apply the **`server-fix-needed`** label to the support issue.
+This automatically:
+
+1. Creates a linked issue in `music-assistant/server`.
+2. Posts a comment on the original support issue with a direct link to the
+   server-side issue.
+3. Gives the GitHub Copilot Coding Agent full write access to the server
+   repository — just **assign `@copilot`** to the newly created server issue.
+
+### One-time setup: `SERVER_REPO_TOKEN` secret
+
+The workflow needs a Personal Access Token that can create issues in the server
+repo. Create it once and store it as a repository secret:
+
+1. Go to **GitHub → Settings → Developer settings → Personal access tokens →
+   Fine-grained tokens → Generate new token**.
+2. Set **Resource owner** to `music-assistant` and restrict access to
+   **`music-assistant/server`** only.
+3. Under *Repository permissions*, grant **Issues: Read & write** (and
+   optionally **Pull requests: Read & write**).
+4. Copy the generated token.
+5. In **this** (`support`) repository go to:
+   **Settings → Secrets and variables → Actions → New repository secret**
+   - **Name:** `SERVER_REPO_TOKEN`
+   - **Value:** the token you just copied
+
+Once the secret is in place, adding the `server-fix-needed` label to any
+support issue triggers the workflow automatically.
+
 ## I want to help
 
 See here https://music-assistant.io/help/

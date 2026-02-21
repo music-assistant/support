@@ -188,7 +188,8 @@ Suggestion:
 │   ├── issue_triage_bot.yml          # Triage bot workflow (provider labels, log analysis)
 │   ├── response_tracker.yml          # Response state tracking (needs-attention / waiting-for-user)
 │   ├── stale_issues.yml              # Stale issue auto-close
-│   └── lock_threads.yml              # Lock closed threads after 30 days
+│   ├── lock_threads.yml              # Lock closed threads after 30 days
+│   └── create_server_issue.yml       # Auto-create server repo issue on "server-fix-needed" label
 └── scripts/
     ├── triage_bot.py                 # Main bot logic
     ├── log_analyzer.py               # Phase 2: Intelligent log analysis
@@ -335,6 +336,15 @@ The workflow requires:
 - ✅ `issues: write` - Add labels, assign users, post comments
 - ✅ `pull-requests: write` - Triage PRs
 - ✅ `contents: read` - Checkout repository
+
+### `create_server_issue.yml` additional requirements
+
+| Requirement | Details |
+|---|---|
+| `SERVER_REPO_TOKEN` secret | Fine-grained PAT with **Issues: Read & write** on `music-assistant/server` |
+| Optional | **Pull requests: Read & write** if the Copilot agent should open PRs |
+
+See the [main README](../../README.md#fixing-bugs-in-the-server-repository) for step-by-step setup instructions.
 
 ## Performance
 

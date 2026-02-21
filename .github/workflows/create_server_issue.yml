@@ -1,0 +1,103 @@
+name: Create Server Repo Issue
+
+# When a maintainer adds the "server-fix-needed" label to a support issue,
+# this workflow automatically opens a corresponding bug/task issue in the
+# music-assistant/server repository and links it back to the original support
+# issue. That server-side issue can then be assigned to @copilot so the coding
+# agent has full write access to the server repository.
+#
+# Required secret: SERVER_REPO_TOKEN
+#   A fine-grained Personal Access Token (or classic PAT) that has
+#   - "Issues: Read & write" permission on music-assistant/server
+#   - (optionally) "Pull requests: Read & write" if you want the agent to
+#     open PRs from that same token
+#
+# How to create the secret:
+#   1. Go to https://github.com/settings/tokens and create a fine-grained PAT
+#      scoped to the music-assistant/server repository with Issues: Write.
+#   2. In this (support) repository go to:
+#      Settings → Secrets and variables → Actions → New repository secret
+#      Name: SERVER_REPO_TOKEN   Value: <your PAT>
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  issues: write   # needed to add a comment linking back to the server issue
+
+jobs:
+  create-server-issue:
+    if: github.event.label.name == 'server-fix-needed'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create issue in server repository
+        id: create_issue
+        uses: actions/github-script@v7
+        env:
+          SERVER_REPO_TOKEN: ${{ secrets.SERVER_REPO_TOKEN }}
+        with:
+          # Use the PAT so we can write to the server repo
+          github-token: ${{ env.SERVER_REPO_TOKEN }}
+          script: |
+            const supportIssue = context.payload.issue;
+            const serverRepo   = 'music-assistant/server';
+            const [owner, repo] = serverRepo.split('/');
+
+            // Build a concise body that links straight back to the support issue
+            const body = [
+              `## Bug report forwarded from support`,
+              ``,
+              `**Original support issue:** ${supportIssue.html_url}`,
+              `**Support issue title:** ${supportIssue.title}`,
+              ``,
+              `### Summary`,
+              // Truncate to avoid hitting GitHub's 65536-character issue body limit
+              // and to keep the forwarded issue concise for the agent.
+              `${(supportIssue.body || '').slice(0, 3000)}`,
+              ``,
+              `---`,
+              `*This issue was automatically created by the \`create_server_issue\` workflow`,
+              `in [\`music-assistant/support\`](https://github.com/music-assistant/support).*`,
+              ``,
+              `**To let GitHub Copilot fix this:** assign \`@copilot\` to this issue and`,
+              `the Coding Agent will have full write access to this repository.`,
+            ].join('\n');
+
+            const created = await github.rest.issues.create({
+              owner,
+              repo,
+              title: `[Support #${supportIssue.number}] ${supportIssue.title}`,
+              body,
+              labels: ['bug'],
+            });
+
+            core.setOutput('server_issue_url',    created.data.html_url);
+            core.setOutput('server_issue_number', String(created.data.number));
+
+      - name: Comment on support issue with server issue link
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const serverIssueUrl    = '${{ steps.create_issue.outputs.server_issue_url }}';
+            const serverIssueNumber = '${{ steps.create_issue.outputs.server_issue_number }}';
+
+            await github.rest.issues.createComment({
+              owner:      context.repo.owner,
+              repo:       context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: [
+                `## 🔧 Server-side issue created`,
+                ``,
+                `A corresponding issue has been opened in the server repository:`,
+                `**${serverIssueUrl}**`,
+                ``,
+                `To let the GitHub Copilot Coding Agent fix this automatically:`,
+                `1. Open the server issue linked above.`,
+                `2. Assign **\`@copilot\`** to it.`,
+                `3. The agent will have full write access to \`music-assistant/server\``,
+                `   and will open a PR with the fix there.`,
+              ].join('\n'),
+            });
