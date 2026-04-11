@@ -19,11 +19,11 @@ body:
     validations:
       required: true
     attributes:
-      label: What version of Music Assistant has the issue?
-      placeholder: 2.5.5
+      label: What server version of Music Assistant has the issue?
+      placeholder: 2.8.0
       description: >
-        Can be found in: MA SETTINGS>>CORE
-        For example: 2.4.0b20
+        Can be found in: MA SETTINGS>> ABOUT
+        For example: 2.9.0b10
 
   - type: dropdown
     validations:
@@ -31,13 +31,13 @@ body:
     attributes:
       label: How is the MA server installed?
       description: |
-        Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
+        Can be found in: [Settings >> About](https://my.home-assistant.io/redirect/info/).
 
         [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
       options:
         - Home Assistant OS Addon
         - Docker Container
-        - Other - Please do not select this as support is only available for the above two options
+        - Other - Please do not select this or file a report as support is only available for the above two options
 
   - type: checkboxes
     validations:
@@ -125,7 +125,7 @@ body:
       label: Full log output
       placeholder: DO NOT PASTE the log here. ATTACH IT. Your issue will not be reviewed if this is not done as requested.
       description: |
-        Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>>CORE into the field below. Do NOT use Verbose logging unless asked to do so.
+        Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>> SYSTEM>> SERVER LOGGING into the field below. Do NOT use Verbose logging unless asked to do so.
 
   - type: textarea
     validations:
@@ -149,7 +149,7 @@ body:
       label: What version of Home Assistant Core (if used) are your running
       placeholder: HA version
       description: |
-        Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
+        Can be found in: [HA Settings -> About](https://my.home-assistant.io/redirect/info/).
         For example: 2026.2.0
         [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
 
@@ -159,7 +159,7 @@ body:
     attributes:
       label: What type of installation are you running?
       description: |
-        Can be found in: [Settings -> About](https://my.home-assistant.io/redirect/info/).
+        Can be found in: [HA Settings -> About](https://my.home-assistant.io/redirect/info/).
 
         [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
       options:
@@ -173,7 +173,7 @@ body:
     attributes:
       label: On what type of hardware are you running?
       description: |
-        Can be found in: [Settings -> System -> Hardware](https://my.home-assistant.io/redirect/hardware/).
+        Can be found in: [HA Settings -> System -> Hardware](https://my.home-assistant.io/redirect/hardware/).
 
         [![Open your Home Assistant instance and show your hardware information.](https://my.home-assistant.io/badges/hardware.svg)](https://my.home-assistant.io/redirect/hardware/)
       options:
@@ -193,7 +193,7 @@ body:
     attributes:
       label: Have you included ALL of the information specified in the Troubleshooting FAQ or explained why you cannot
       description: |
-        Failing to provide all the requested information slows down the resolution process and creates unnecessary work for those trying to help.
+        Failing to provide all the requested information slows down the resolution process and creates unnecessary work for those trying to help. We are a small team, we need you to help us to help you by submitting succinct but comprehensive reports
       options:
         - label: "Yes"
           required: true
