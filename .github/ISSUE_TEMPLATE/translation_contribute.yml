@@ -11,7 +11,14 @@ body:
         More information on the process can be found in the discussions [see here][lc]
 
         [lc]: https://github.com/orgs/music-assistant/discussions/1216
-
+  - type: dropdown
+    validations:
+      required: true
+    attributes:
+      label: Which project is the translation for?
+      options:
+        - MA Frontend
+        - MA Mobile App
   - type: input
     id: new_language
     validations:
