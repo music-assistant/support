@@ -1,5 +1,5 @@
-name: "Translation Request Music Assistant."
-description: "Contribute to Music Assistant with a translation."
+name: 🌍 Translation contribution
+description: Offer to help translate Music Assistant into a new language.
 labels: ["triage", "translation"]
 assignees:
   - jozefKruszynski
@@ -7,8 +7,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        This issue form is for contributions to translations only!
-        More information on the process can be found in the discussions [see here][lc]
+        This form is for offering to contribute a translation.
+        Please read how the process works in [this discussion][lc] first.
 
         [lc]: https://github.com/orgs/music-assistant/discussions/1216
   - type: dropdown
@@ -17,17 +17,17 @@ body:
     attributes:
       label: Which project is the translation for?
       options:
-        - MA Frontend
-        - MA Mobile App
+        - Frontend (web app)
+        - Mobile app
   - type: input
     id: new_language
     validations:
       required: true
     attributes:
       label: New language
-      placeholder: klingon
+      placeholder: Klingon
       description: >
-        New language to contribute with
+        The language you'd like to contribute.
   - type: textarea
     id: additional_remarks
     validations:
@@ -35,4 +35,4 @@ body:
     attributes:
       label: Additional remarks
       description: |
-        Optional
+        Anything else you'd like to add (optional).

@@ -1,202 +1,101 @@
-name: Report a Bug in Music Assistant
-description: Report an issue with Music Assistant.
+name: 🐛 Bug report
+description: Report a bug or problem with the Music Assistant server.
 labels: ["triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        This issue form is for reporting bugs only!
-        If you are using AI to assist you with this report then please read the [AI Policy][ai]
-        Read this for what you MUST include [Troubleshooting][ft]
-        For questions read our [FAQ section][fq] or visit our community on [Discord][cf].
-        If you have a feature or enhancement request, please enter them in our discussions section [feature request][fr]
+        Thanks for taking the time to report a bug!
 
-        [fq]: https://github.com/orgs/music-assistant/discussions/categories/q-a
-        [cf]: https://discord.com/channels/753947050995089438/753947050995089442
-        [fr]: https://github.com/orgs/music-assistant/discussions/categories/feature-requests-and-ideas
-        [ft]: https://music-assistant.io/faq/troubleshooting/
-        [ai]: https://github.com/music-assistant/.github/blob/main/AI_POLICY.md
+        This form is for **bugs in the Music Assistant server** (playback, providers, players, the core).
+        - Questions & how-to → [Q&A discussions](https://github.com/music-assistant/support/discussions/categories/q-a) or [Discord](https://discord.gg/kaVm8hGpne)
+        - Feature requests → [Feature requests & ideas](https://github.com/music-assistant/support/discussions/categories/feature-requests-and-ideas)
+        - A frontend/UI-only glitch → use the **Frontend/UI bug report** form instead
 
-  - type: input
-    id: version_MA
-    validations:
-      required: true
-    attributes:
-      label: What server version of Music Assistant has the issue?
-      placeholder: 2.8.0
-      description: >
-        Can be found in: MA SETTINGS>> ABOUT
-        For example: 2.9.0b10
-
-  - type: dropdown
-    validations:
-      required: true
-    attributes:
-      label: How is the MA server installed?
-      description: |
-        Can be found in: [Settings >> About](https://my.home-assistant.io/redirect/info/).
-
-        [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
-      options:
-        - Home Assistant OS Addon
-        - Docker Container
-        - Other - Please do not select this or file a report as support is only available for the above two options
+        Please fill this out in English and keep it short — the diagnostics report below covers most of what we need.
 
   - type: checkboxes
-    validations:
-      required: true
     attributes:
-      label: "Mandatory: Carefully read the Troubleshooting FAQ and confirm that"
-      description: |
-        If you tick a box that you haven't done then clearly state that and explain why in the report
+      label: Before you begin
+      description: Please confirm the following. If a box doesn't apply, explain why further down.
       options:
-        - label: "I have examined the logs and tried to resolve this issue"
+        - label: I have searched the [open and closed issues](https://github.com/music-assistant/support/issues?q=is%3Aissue) and this hasn't been reported yet.
           required: true
-        - label: "I have fixed any errors or warnings in the logs that relate to tags"
+        - label: I have read the [troubleshooting guide](https://www.music-assistant.io/faq/troubleshooting/) and it did not solve my problem.
           required: true
-        - label: "I am not running MA across a VPN, VLAN, subnet, behind a firewall, or using local SSL or have any other complex network setup"
+        - label: I am running a [supported installation](https://www.music-assistant.io/installation/) (Home Assistant add-on or Docker container).
           required: true
-        - label: "I am not using or have disabled tools such as AdGuard, Pi-hole or pfSense and retested"
-          required: true
-        - label: "I have checked my network setup to ensure mDNS/multicast is not being blocked"
-          required: true
-        - label: I have reviewed the [Open](https://github.com/music-assistant/support/issues) and [Closed](https://github.com/music-assistant/support/issues?q=is%3Aissue%20state%3Aclosed) Issues and [Discussions](https://github.com/orgs/music-assistant/discussions)
-          required: true
-        - label: "I have reviewed the applicable [player](https://www.music-assistant.io/player-support/) or [music provider](https://www.music-assistant.io/music-providers/) documentation"
-          required: true
-        - label: "I have reviewed the [MA Status Page](https://github.com/orgs/music-assistant/discussions/709)"
-          required: true
-        - label: "I have tried restarting MA and rebooting the host"
-          required: true
-  - type: checkboxes
-    attributes:
-      label: "As Applicable: Carefully read the Troubleshooting FAQ and confirm that"
-      description: |
-        If you don't tick a box and it is applicable, then clearly state that and explain why in the report
-      options:        
-        - label: "If using HA, I have confirmed the internal URL is set correctly"
-          required: false
-        - label: "I have tried a wired connection for issues related to interrupted or poor playback quality"
-          required: false
-        - label: "If the problem relates to a device then I have checked the device settings"
-          required: false
-        - label: "If it is a frontend issue, I have tried a different widely used browser"
-          required: false
-        - label: "For voice problems, I have sought help elsewhere before returning here"
-          required: false
-        - label: "For playback problems, I have recycled power to the physical device"
-          required: false
 
   - type: textarea
+    id: what_happened
     validations:
       required: true
     attributes:
-      label: The problem
-      description: |
-        Please give a clear and concise description of the issue you are experiencing here,
-        to communicate to the maintainers. Tell us what you were trying to do and what happened. Detail what you have tried from the troubleshooting page in the docs that hasn't helped.
+      label: What happened?
+      description: A clear and concise description of the problem. Tell us what you did, what happened, and what you expected to happen instead.
 
   - type: textarea
+    id: reproduce
     validations:
       required: true
     attributes:
       label: How to reproduce
-      description: |
-        Describe the least amount of steps possible to reproduce your error
-
-  - type: textarea
-    validations:
-      required: true
-    attributes:
-      label: Music Providers
-      description: |
-        List the music providers that you have tried which result in the problem. ALSO list the music providers you have tried that don't show the problem. Do not just list the providers you have installed.
-
-  - type: textarea
-    validations:
-      required: true
-    attributes:
-      label: Player Providers
-      description: |
-        List the player providers that you have tried which result in the problem. ALSO list the player providers you have tried that don't show the problem. Also indicate if you are trying to play to grouped players. Do not just list the providers you have installed.
-
-  - type: textarea
-    validations:
-      required: true
-    id: logs
-    attributes:
-      label: Full log output
-      placeholder: DO NOT PASTE the log here. ATTACH IT. Your issue will not be reviewed if this is not done as requested.
-      description: |
-        Please DOWNLOAD then DRAG and DROP the full log output from MA SETTINGS>> SYSTEM>> SERVER LOGGING into the field below. Do NOT use Verbose logging unless asked to do so.
-
-  - type: textarea
-    validations:
-      required: true
-    attributes:
-      label: Additional information
-      placeholder: For Audiobookshelf include broken book ASINs here
-      description: |
-        Supply additional information requested which is not captured above, specifically the information requested in the troubleshooting page of the docs. Include how the playback is being instigated if that makes a difference (ie. via the UI or via HA service call), what you have tried from the troubleshooting FAQ and detail what is working so it is clear you have narrowed down the problem. Additionally, if you aren't running HAOS or have an unusual network setup provide details about that.
-
-  - type: markdown
-    attributes:
-      value: |
-        ## Environment
+      description: The minimal steps needed to trigger the problem.
+      placeholder: |
+        1. Go to '...'
+        2. Play '...'
+        3. See error
 
   - type: input
-    id: version_HA
+    id: version
+    validations:
+      required: true
+    attributes:
+      label: Music Assistant version
+      description: Found in **Settings → About**.
+      placeholder: e.g. 2.9.6 or 2.10.0b5
+
+  - type: dropdown
+    id: install_type
+    validations:
+      required: true
+    attributes:
+      label: How do you run Music Assistant?
+      description: Only the Home Assistant add-on and Docker container installs are supported.
+      options:
+        - Home Assistant add-on
+        - Docker container
+        - Other (unsupported)
+
+  - type: textarea
+    id: diagnostics
+    validations:
+      required: true
+    attributes:
+      label: Diagnostics report or log file
+      description: |
+        Please attach a **diagnostics report** — it contains everything we need (versions, platform, providers and their error states, and an optional log excerpt) and is privacy-sanitized, so it is safe to share publicly.
+
+        - **Music Assistant 2.10 or newer:** go to **Settings → Download diagnostics** and drag the `music-assistant-diagnostics-<date>.json` file into the box below.
+        - **Music Assistant 2.9.6 or newer** (no button yet): while logged in as admin, browse to `http://<your-ma-host>:8095/diagnostics?include_log_tail=true` (when you open MA through Home Assistant, just add `/diagnostics?include_log_tail=true` to the address instead), save the file and drag it in below.
+        - **Older than 2.9.6:** attach your full server log instead, from **Settings → System → Server Logging**.
+
+        Please **attach the file** — do not paste its contents. If you really can't provide either, explain why.
+      placeholder: Drag & drop your diagnostics report (or log file) here.
+
+  - type: input
+    id: providers
     validations:
       required: false
     attributes:
-      label: What version of Home Assistant Core (if used) are your running
-      placeholder: HA version
-      description: |
-        Can be found in: [HA Settings -> About](https://my.home-assistant.io/redirect/info/).
-        For example: 2026.2.0
-        [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
+      label: Affected provider(s)
+      description: Which music or player providers are involved? This helps us route your issue to the right maintainer.
+      placeholder: e.g. Spotify, Sonos, AirPlay
 
-  - type: dropdown
+  - type: textarea
+    id: additional
     validations:
-      required: true
+      required: false
     attributes:
-      label: What type of installation are you running?
-      description: |
-        Can be found in: [HA Settings -> About](https://my.home-assistant.io/redirect/info/).
-
-        [![Open your Home Assistant instance and show your Home Assistant version information.](https://my.home-assistant.io/badges/info.svg)](https://my.home-assistant.io/redirect/info/)
-      options:
-        - Home Assistant OS
-        - Home Assistant Container
-        - Other - Please do not select this as support is only available for the above two options
-
-  - type: dropdown
-    validations:
-      required: true
-    attributes:
-      label: On what type of hardware are you running?
-      description: |
-        Can be found in: [HA Settings -> System -> Hardware](https://my.home-assistant.io/redirect/hardware/).
-
-        [![Open your Home Assistant instance and show your hardware information.](https://my.home-assistant.io/badges/hardware.svg)](https://my.home-assistant.io/redirect/hardware/)
-      options:
-        - Raspberry Pi
-        - ODROID
-        - ASUS Tinkerboard
-        - Generic x86-64 (e.g. Intel NUC)
-        - Windows
-        - macOS
-        - Linux
-        - Proxmox
-        - Alternative
-
-  - type: checkboxes
-    validations:
-      required: true
-    attributes:
-      label: Have you included ALL of the information specified in the Troubleshooting FAQ or explained why you cannot
-      description: |
-        Failing to provide all the requested information slows down the resolution process and creates unnecessary work for those trying to help. We are a small team, we need you to help us to help you by submitting succinct but comprehensive reports
-      options:
-        - label: "Yes"
-          required: true
+      label: Anything else?
+      description: Screenshots, an unusual network setup, whether playback is triggered from the UI or a Home Assistant action, or anything else that might help.
