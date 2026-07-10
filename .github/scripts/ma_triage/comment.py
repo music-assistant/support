@@ -18,7 +18,7 @@ from typing import Any
 from . import config
 from .gh import GitHubClient
 from .models import RagResult, Severity, TriageResult
-from .sanitize import fenced, inline
+from .sanitize import inline, link_label, markdown_safe
 
 _SEVERITY_ICON = {
     Severity.CRITICAL: "🔴",
@@ -171,7 +171,7 @@ def _doc_link(label: str, url: str) -> str:
     Doc content is from the public docs repo (comparatively trusted) but is still
     sanitized before echoing; the URL is derived from our own config + slug.
     """
-    return f"- [{inline(label, max_len=160) or url}]({url})"
+    return f"- [{link_label(label, max_len=160) or url}]({url})"
 
 
 def _rag_section(result: TriageResult) -> str:
@@ -189,7 +189,11 @@ def _rag_section(result: TriageResult) -> str:
         parts.append(config.DOCS_ANSWER_HEADING)
         # The answer is model-generated and grounded in the cited docs; sanitize
         # it anyway so it can never ping users or break out of the comment.
-        parts.append(fenced(rag.doc_answer.answer, max_len=config.MAX_DOC_ANSWER_CHARS))
+        parts.append(
+            markdown_safe(
+                rag.doc_answer.answer, max_len=config.MAX_DOC_ANSWER_CHARS
+            )
+        )
         if rag.cited_chunks:
             parts.append("\n**Sources:**")
             for chunk in rag.cited_chunks:
@@ -207,7 +211,7 @@ def _rag_section(result: TriageResult) -> str:
         parts.append(config.RELATED_POSTS_INTRO)
         for post in rag.related_posts:
             closed = " _(closed)_" if post.state == "closed" else ""
-            title = inline(post.title, max_len=140)
+            title = link_label(post.title, max_len=140)
             parts.append(f"- [#{post.number}: {title}]({post.url}){closed}")
 
     return "\n".join(parts)
