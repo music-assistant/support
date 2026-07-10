@@ -1,0 +1,84 @@
+# Music Assistant issue triage (experimental).
+#
+# Analyses newly opened/edited issues: validates an attached diagnostics file,
+# posts a single sticky summary comment, applies setup/provider labels and
+# manages the needs-attention / waiting-for-user response state.
+#
+# SAFETY:
+# * All issue content is treated as untrusted and is passed to the script via
+#   `env:` only — never interpolated into a shell command.
+# * Least-privilege token; downloads are host-allowlisted and byte-capped.
+# * Defaults to DRY-RUN (set the repo variable TRIAGE_DRY_RUN=false to go live).
+name: Issue triage
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  issue_comment:
+    types: [created]
+
+# One run at a time per issue; queue rather than cancel so state stays coherent.
+concurrency:
+  group: triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  models: read # Tier-1 GitHub Models inference (only used when TRIAGE_AI_ENABLED)
+
+jobs:
+  analyze:
+    # Opened/edited/reopened issues (never PRs).
+    if: ${{ github.event_name == 'issues' && !github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Triage issue
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          # Untrusted content — safe because it is an env var, not shell input.
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+          TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
+          TRIAGE_AI_MODEL: ${{ vars.TRIAGE_AI_MODEL }}
+          TRIAGE_SCAN_LOGS: ${{ vars.TRIAGE_SCAN_LOGS }}
+          TRIAGE_COPILOT_AUTO: ${{ vars.TRIAGE_COPILOT_AUTO }}
+        run: python -m ma_triage triage
+
+  respond:
+    # New comments on issues (skip the bot's own comments and PR comments).
+    if: >-
+      ${{ github.event_name == 'issue_comment'
+      && !github.event.issue.pull_request
+      && github.event.comment.user.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Update response state
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_AUTHOR_LOGIN: ${{ github.event.comment.user.login }}
+          COMMENT_AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+          COMMENT_USER_TYPE: ${{ github.event.comment.user.type }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+        run: python -m ma_triage respond

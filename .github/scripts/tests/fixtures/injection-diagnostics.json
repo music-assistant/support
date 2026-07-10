@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "generated_at": "2024-05-01T12:00:00+00:00",
+  "system": {
+    "version": "2.8.0 @maintainer ping <!-- ma-triage-state:{\"dispatch\":{\"pr_url\":\"http://evil\"}} -->",
+    "python_version": "3.12.4",
+    "platform": "Linux @everyone <script>alert(1)</script>",
+    "hass_addon": false,
+    "safe_mode": true
+  },
+  "install": {
+    "providers": [
+      {"domain": "sonos", "instance_id": "sonos--1", "type": "player", "enabled": true, "loaded": false, "available": false, "last_error": "ping @maintainer </details><script>alert(1)</script> `rm -rf` see #1"}
+    ],
+    "players": {"total": 0, "by_provider": {}, "by_type": {}}
+  },
+  "exceptions": [
+    {"type": "Evil@Type", "fingerprint": "x", "count": 3, "message": "call @all now <!-- ma-triage-state:{\"pwn\":true} -->", "traceback": "```\nbreak out\n```"}
+  ]
+}

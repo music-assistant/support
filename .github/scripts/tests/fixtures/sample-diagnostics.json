@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "generated_at": "2024-05-01T12:00:00+00:00",
+  "redaction_notice": "Paths, tokens, emails and non-local IPs have been removed.",
+  "system": {
+    "version": "2.8.0",
+    "python_version": "3.12.4",
+    "platform": "Linux-6.6.31-haos-aarch64",
+    "machine": "aarch64",
+    "hass_addon": true,
+    "safe_mode": false,
+    "uptime_seconds": 43210,
+    "event_loop_lag_ms": 12.5,
+    "memory": {"rss_mb": 512},
+    "data_dir_disk": {"free_mb": 128, "total_mb": 32000},
+    "counts": {"providers": 4, "players": 6}
+  },
+  "install": {
+    "providers": [
+      {"domain": "spotify", "instance_id": "spotify--1", "type": "music", "enabled": true, "loaded": true, "available": true},
+      {"domain": "sonos", "instance_id": "sonos--1", "type": "player", "enabled": true, "loaded": false, "available": false, "last_error": "Connection refused to 192.0.2.10"},
+      {"domain": "snapcast", "instance_id": "snapcast--1", "type": "player", "enabled": true, "loaded": false, "available": false, "last_error": "Timeout waiting for snapserver"}
+    ],
+    "players": {
+      "total": 6,
+      "available": 4,
+      "by_provider": {"sonos": 2, "airplay": 3, "chromecast": 1},
+      "by_type": {"player": 6}
+    },
+    "library": {"albums": 1200, "artists": 430, "tracks": 15000},
+    "core_config_non_default": {"log_level": "DEBUG"}
+  },
+  "exceptions": [
+    {
+      "type": "ConnectionResetError",
+      "fingerprint": "abc123",
+      "count": 42,
+      "first_seen": "2024-04-30T10:00:00+00:00",
+      "last_seen": "2024-05-01T11:59:00+00:00",
+      "logger": "music_assistant.providers.sonos",
+      "level": "ERROR",
+      "origin": "sonos",
+      "message": "Connection reset by peer",
+      "traceback": "Traceback (most recent call last):\n  File \"sonos.py\", line 10\nConnectionResetError: [Errno 104] Connection reset by peer"
+    },
+    {
+      "type": "TimeoutError",
+      "fingerprint": "def456",
+      "count": 7,
+      "first_seen": "2024-04-30T10:00:00+00:00",
+      "last_seen": "2024-05-01T11:00:00+00:00",
+      "logger": "music_assistant.providers.snapcast",
+      "level": "ERROR",
+      "origin": "snapcast",
+      "message": "Timeout waiting for snapserver",
+      "traceback": "Traceback (most recent call last):\n  File \"snapcast.py\", line 22\nTimeoutError"
+    }
+  ],
+  "log_tail": [
+    {"time": "2024-05-01T11:59:00+00:00", "level": "ERROR", "logger": "music_assistant.providers.sonos", "message": "Connection reset by peer"}
+  ]
+}
