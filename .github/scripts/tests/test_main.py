@@ -168,3 +168,15 @@ def test_build_result_unsupported_install_flagged(fake_gh, monkeypatch):
     )
     result = main.build_result(fake_gh, "x", body, token="t", labels=["triage"])
     assert any("unsupported" in f.title.lower() for f in result.findings)
+
+
+def test_models_token_prefers_secret(monkeypatch):
+    monkeypatch.setenv("GH_MODELS_TOKEN", "pat-xyz")
+    assert main._models_token("ghtok") == "pat-xyz"
+
+
+def test_models_token_falls_back_when_unset_or_blank(monkeypatch):
+    monkeypatch.delenv("GH_MODELS_TOKEN", raising=False)
+    assert main._models_token("ghtok") == "ghtok"
+    monkeypatch.setenv("GH_MODELS_TOKEN", "")
+    assert main._models_token("ghtok") == "ghtok"

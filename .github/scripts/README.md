@@ -168,6 +168,7 @@ and vice-versa. Both honour `TRIAGE_DRY_RUN` (dry-run previews the commit).
 ### Repo secret
 | Secret | Needed for | Notes |
 |---|---|---|
+| `GH_MODELS_TOKEN` | Tier 1 / RAG (optional) | PAT with the **Models** permission. Used for GitHub Models calls (embeddings + judge/assessment) when the org hasn't enabled Models for the default Actions token. Falls back to `GITHUB_TOKEN` when unset. |
 | `COPILOT_DISPATCH_TOKEN` | Tier 2 only | Must be a **user-to-server** token. |
 
 ### Copilot dispatch token

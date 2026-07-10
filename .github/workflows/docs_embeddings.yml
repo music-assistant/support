@@ -69,4 +69,5 @@ jobs:
           TRIAGE_DOCS_SITE: ${{ vars.TRIAGE_DOCS_SITE }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: python -m ma_triage index "$INDEX_TARGET"

@@ -47,6 +47,18 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _models_token(default_token: str) -> str:
+    """Token for GitHub Models (embeddings + chat) calls.
+
+    Uses the optional ``GH_MODELS_TOKEN`` secret when present, so Models
+    inference can authenticate via a PAT even when the org has not enabled
+    Models for the default Actions token. Falls back to the default token
+    (and treats an unset/empty secret as absent). Only Models calls use this;
+    all GitHub API calls keep using the default token via the gh client.
+    """
+    return os.environ.get("GH_MODELS_TOKEN") or default_token
+
+
 # --------------------------------------------------------------------------- #
 # Shared analysis pipeline (no mutations)
 # --------------------------------------------------------------------------- #
@@ -492,23 +504,25 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     repo = os.environ.get("REPOSITORY", config.SUPPORT_REPO)
     gh = GitHubClient(token, repo=repo)
+    # Models (embeddings/judge/assessment) may use a dedicated PAT secret.
+    models_token = _models_token(token)
 
     if config.DRY_RUN:
         summary("> 🟡 **Dry-run mode** — no changes will be made.\n")
 
     if command == "triage":
-        return cmd_triage(gh, token)
+        return cmd_triage(gh, models_token)
     if command == "respond":
         return cmd_respond(gh)
     if command == "sweep":
         return cmd_sweep(gh)
     if command == "dispatch":
-        return cmd_dispatch(gh, token)
+        return cmd_dispatch(gh, models_token)
     if command == "index":
         target = argv[1] if len(argv) > 1 else "all"
-        return cmd_index(gh, token, target)
+        return cmd_index(gh, models_token, target)
     if command == "index-append":
-        return cmd_index_append(gh, token)
+        return cmd_index_append(gh, models_token)
     log(f"unknown command: {command}")
     return 2
 
