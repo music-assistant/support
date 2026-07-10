@@ -32,7 +32,7 @@ body:
       required: true
     attributes:
       label: What happened?
-      description: A clear and concise description of the problem. Tell us what you did, what happened, and what you expected to happen instead.
+      description: A clear and concise description of the problem. Tell us what you did, what happened, and what you expected to happen instead. If it relates to a specific music provider or player, please name it here.
 
   - type: textarea
     id: reproduce
@@ -82,15 +82,6 @@ body:
 
         Please **attach the file** — do not paste its contents. If you really can't provide either, explain why.
       placeholder: Drag & drop your diagnostics report (or log file) here.
-
-  - type: input
-    id: providers
-    validations:
-      required: false
-    attributes:
-      label: Affected provider(s)
-      description: Which music or player providers are involved? This helps us route your issue to the right maintainer.
-      placeholder: e.g. Spotify, Sonos, AirPlay
 
   - type: textarea
     id: additional
