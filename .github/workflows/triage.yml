@@ -64,6 +64,9 @@ jobs:
           TRIAGE_DOCS_REPO: ${{ vars.TRIAGE_DOCS_REPO }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_RELATED_POSTS: ${{ vars.TRIAGE_RELATED_POSTS }}
+          # Optional PAT for GitHub Models (used only when set); falls back to
+          # the default token. Lets Models work when the org token can't.
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: python -m ma_triage triage
 
   respond:
@@ -135,4 +138,5 @@ jobs:
           TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: python -m ma_triage index-append
