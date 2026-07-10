@@ -284,3 +284,13 @@ FRONTEND_MISSING_MESSAGE = (
     "a **screenshot or short screen recording** that shows the problem, plus the "
     "steps to reproduce it? That's by far the most useful thing for frontend bugs."
 )
+
+# Main form: reporter pasted a screenshot/image into the diagnostics field
+# instead of attaching the actual diagnostics report or log file.
+SCREENSHOT_ATTACHMENT_NOTE = (
+    "👀 It looks like you pasted a **screenshot** in the *Diagnostics report or "
+    "log file* section. I can't read logs from an image — and a partial "
+    "screenshot usually doesn't include enough to go on. Could you attach the "
+    "actual **diagnostics report** (a `.json` file) or your **full log file** "
+    "instead?"
+)

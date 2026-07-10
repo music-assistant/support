@@ -135,6 +135,9 @@ class TriageResult:
     # The attachment the form asked for is missing (diagnostics/log for the main
     # form, a screenshot/recording for the frontend form).
     missing_attachment: bool = False
+    # A screenshot/image was attached (used to spot reporters who paste a
+    # screenshot of a log into the main form's diagnostics field).
+    has_media_attachment: bool = False
     missing_sections: list[str] = field(default_factory=list)
     log_wall_detected: bool = False
 
