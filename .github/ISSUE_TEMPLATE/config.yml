@@ -1,5 +1,11 @@
 blank_issues_enabled: false
 contact_links:
+  - name: 📱 Music Assistant mobile app (Android / iOS)
+    url: https://github.com/music-assistant/mobile-app/issues/new/choose
+    about: For MA's own (beta) mobile app only — NOT the Home Assistant Companion app and NOT the web interface.
+  - name: 🖥️ Music Assistant desktop app
+    url: https://github.com/music-assistant/desktop-app/issues/new/choose
+    about: For the Music Assistant companion desktop app.
   - name: 📖 Documentation & troubleshooting
     url: https://www.music-assistant.io/faq/troubleshooting/
     about: Start here! Most problems are solved by the troubleshooting guide.
@@ -12,12 +18,9 @@ contact_links:
   - name: 💡 Feature requests & ideas
     url: https://github.com/music-assistant/support/discussions/categories/feature-requests-and-ideas
     about: Suggest and vote on new features and enhancements.
-  - name: 📱 Music Assistant mobile app (Android / iOS)
-    url: https://github.com/music-assistant/mobile-app/issues/new/choose
-    about: For MA's own (beta) mobile app only — NOT the Home Assistant Companion app and NOT the web interface.
-  - name: 🖥️ Music Assistant desktop app
-    url: https://github.com/music-assistant/desktop-app/issues/new/choose
-    about: For the Music Assistant companion desktop app.
   - name: 🏠 Home Assistant integration
     url: https://github.com/home-assistant/core/issues/new?template=bug_report.yml
     about: For controlling MA from Home Assistant (entities/services). Pick "Music Assistant" as the integration. NOT for MA server bugs.
+  - name: 🌍 Contribute a translation
+    url: https://github.com/orgs/music-assistant/discussions/1216
+    about: Help translate Music Assistant into your language — read how to get started here.
