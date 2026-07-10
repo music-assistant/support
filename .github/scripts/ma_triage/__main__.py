@@ -71,10 +71,11 @@ def build_result(
     result.missing_sections = template.missing_sections(body, kind)
     result.log_wall_detected = template.detect_log_wall(body)
     result.reported_version = template.extract_version(body)
+    result.has_media_attachment = has_media_attachment(body)
 
     if kind == "frontend":
         # UI bug: the required "attachment" is a screenshot/recording.
-        result.missing_attachment = not has_media_attachment(body)
+        result.missing_attachment = not result.has_media_attachment
         return result
 
     # --- main server bug form ------------------------------------------------

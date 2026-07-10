@@ -201,10 +201,18 @@ def build_body(result: TriageResult) -> str:
                 f"To help us look into this, could you fill in the following "
                 f"section(s) of the report: {pretty}?\n"
             )
-        parts.append(
-            "It would also really help if you could attach a **diagnostics "
-            "report or log file**. " + _DIAGNOSTICS_HOWTO
-        )
+        if result.has_media_attachment:
+            # Reporter pasted a screenshot/image instead of the actual file.
+            parts.append(config.SCREENSHOT_ATTACHMENT_NOTE + " " + _DIAGNOSTICS_HOWTO)
+        else:
+            lead = (
+                "It would also really help if you could attach"
+                if result.missing_sections
+                else "Could you attach"
+            )
+            parts.append(
+                f"{lead} a **diagnostics report or log file**? " + _DIAGNOSTICS_HOWTO
+            )
         # Even without a file we can still nudge on an outdated version, etc.
         if result.findings:
             parts.append("")

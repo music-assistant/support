@@ -35,6 +35,28 @@ def test_build_body_invalid():
     assert "couldn't read it" in body or "regenerate" in body
 
 
+def test_build_body_screenshot_instead_of_diagnostics():
+    # Main form, all sections filled, but a screenshot was pasted in the
+    # diagnostics field instead of the actual file (issue #5815 pattern).
+    result = TriageResult(
+        form_kind="main",
+        missing_attachment=True,
+        has_media_attachment=True,
+        missing_sections=[],
+    )
+    body = comment.build_body(result)
+    assert "screenshot" in body.lower()
+    assert "Download diagnostics" in body  # still points to the how-to
+
+
+def test_build_body_no_attachment_no_screenshot():
+    # No attachment at all → generic ask, and no misleading screenshot note.
+    result = TriageResult(form_kind="main", missing_attachment=True)
+    body = comment.build_body(result)
+    assert "diagnostics report or log file" in body
+    assert "screenshot" not in body.lower()
+
+
 def test_build_body_frontend_missing():
     result = TriageResult(
         form_kind="frontend", missing_attachment=True, missing_sections=[]
