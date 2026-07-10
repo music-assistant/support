@@ -1,0 +1,70 @@
+name: 🖥️ Frontend/UI bug report
+description: Report a visual or user-interface bug in the Music Assistant web app.
+labels: ["triage", "frontend"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a frontend issue!
+
+        This form is **only** for visual/UI bugs in the Music Assistant web interface — layout glitches, broken buttons, styling, display errors, etc.
+        - Playback, provider, player or server problems → use the **Bug report** form instead (it asks for a diagnostics report).
+        - Mobile app or desktop app issues → use their own repositories.
+        - Questions → [Q&A](https://github.com/music-assistant/support/discussions/categories/q-a) or [Discord](https://discord.gg/kaVm8hGpne).
+
+        A screenshot or screen recording is the most useful thing you can give us here.
+
+  - type: input
+    id: version
+    validations:
+      required: true
+    attributes:
+      label: Music Assistant version
+      description: Found in **Settings → About**.
+      placeholder: e.g. 2.9.6 or 2.10.0b5
+
+  - type: input
+    id: browser_os
+    validations:
+      required: true
+    attributes:
+      label: Browser and operating system
+      description: Which browser (and version) and OS/device are you using?
+      placeholder: e.g. Chrome 125 on Windows 11, or Safari on iPad
+
+  - type: textarea
+    id: what_happened
+    validations:
+      required: true
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the visual/UI problem and what you expected to see instead.
+
+  - type: textarea
+    id: reproduce
+    validations:
+      required: true
+    attributes:
+      label: How to reproduce
+      description: The minimal steps needed to see the problem.
+      placeholder: |
+        1. Open '...'
+        2. Click '...'
+        3. Notice '...'
+
+  - type: textarea
+    id: screenshot
+    validations:
+      required: true
+    attributes:
+      label: Screenshot or recording
+      description: Drag & drop a screenshot or short screen recording that shows the problem.
+      placeholder: Drag & drop your screenshot or recording here.
+
+  - type: textarea
+    id: additional
+    validations:
+      required: false
+    attributes:
+      label: Anything else?
+      description: Anything else that might help — browser console errors, whether it happens on other devices, etc.
