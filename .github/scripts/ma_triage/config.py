@@ -44,6 +44,13 @@ LABEL_REMINDED_2 = "triage/reminded-2"  # 7-day warning sent
 LABEL_NEEDS_DIAGNOSTICS = "triage/needs-diagnostics"  # info/diagnostics missing
 LABEL_OUTDATED = "triage/outdated-version"  # running an old version
 
+# Form-kind labels applied by the issue templates themselves. Used to branch
+# validation/parsing by form (see template.form_kind). The main bug form carries
+# only "triage"; the frontend and translation forms add their own label.
+LABEL_TRIAGE = "triage"
+LABEL_FRONTEND = "frontend"
+LABEL_TRANSLATION = "translation"
+
 # Install-method labels (created only if they already exist in the repo).
 LABEL_HAOS_ADDON = "HA Player"  # closest existing label; see PROVIDER_LABELS note
 
@@ -116,6 +123,51 @@ PROVIDER_LABELS: dict[str, str] = {
 CORE_TEAM_HANDLE = "music-assistant"
 
 # --------------------------------------------------------------------------- #
+# Provider detection from free text
+# --------------------------------------------------------------------------- #
+# The reworked bug form no longer has dedicated "Music Providers"/"Player
+# Providers" sections, so we also detect providers mentioned in free text
+# ("What happened?", "How to reproduce", the title, …). Maps a lower-cased alias
+# to the provider label. Matching is word-boundary based (see providers.py), and
+# only labels that already exist in the repo are ever applied. Keep aliases
+# specific to avoid false positives.
+PROVIDER_TEXT_ALIASES: dict[str, str] = {
+    "spotify": "spotify",
+    "tidal": "tidal",
+    "qobuz": "qobuz",
+    "youtube music": "youtube_music",
+    "youtube_music": "youtube_music",
+    "ytmusic": "youtube_music",
+    "apple music": "apple_music",
+    "apple_music": "apple_music",
+    "deezer": "deezer",
+    "soundcloud": "soundcloud",
+    "tunein": "tunein",
+    "radio browser": "radiobrowser",
+    "radiobrowser": "radiobrowser",
+    "plex": "plex",
+    "jellyfin": "jellyfin",
+    "subsonic": "subsonic",
+    "navidrome": "subsonic",
+    "audiobookshelf": "audiobookshelf",
+    "filesystem": "filesystem_local",
+    "snapcast": "snapcast",
+    "sonos": "sonos",
+    "airplay": "airplay",
+    "chromecast": "Chromecast",
+    "google cast": "Chromecast",
+    "squeezelite": "Squeezelite",
+    "squeezebox": "Squeezelite",
+    "slimproto": "Squeezelite",
+    "musiccast": "MusicCast",
+    "wiim": "WiiM",
+    "dlna": "dlna",
+    "upnp": "dlna",
+    "fully kiosk": "fully_kiosk",
+    "fully_kiosk": "fully_kiosk",
+}
+
+# --------------------------------------------------------------------------- #
 # Lifecycle thresholds (days)
 # --------------------------------------------------------------------------- #
 REMINDER_1_DAYS = 3  # gentle reminder
@@ -127,12 +179,16 @@ LOCK_AFTER_CLOSED_DAYS = 14  # lock closed threads after this many inactive days
 # Safety caps for untrusted downloads / parsing
 # --------------------------------------------------------------------------- #
 MAX_DOWNLOAD_BYTES = 5 * 1024 * 1024  # 5 MB hard cap for any attachment
+MAX_LOG_TAIL_BYTES = 512 * 1024  # for oversized logs, also grab the last ~512 KB
 MAX_JSON_DEPTH = 40  # reject absurdly nested JSON (billion-laughs style)
 MAX_STRING_ECHO = 500  # max chars of any diagnostics-derived string echoed back
 MAX_EXCEPTIONS_SHOWN = 5  # top-N exception fingerprints surfaced in the comment
 MAX_PROVIDERS_SHOWN = 20  # cap provider lists in the comment
 MAX_LOG_WALL_LINES = 30  # a pasted block longer than this counts as a "log wall"
 MAX_AI_INPUT_CHARS = 8000  # bound the text handed to the model
+
+# GitHub issue forms render an empty optional field as this literal string.
+NO_RESPONSE_SENTINEL = "_No response_"
 
 # --------------------------------------------------------------------------- #
 # Feature flags (repo variables / env)
@@ -150,6 +206,10 @@ def _flag(name: str, default: bool) -> bool:
 DRY_RUN = _flag("TRIAGE_DRY_RUN", True)
 AI_ENABLED = _flag("TRIAGE_AI_ENABLED", False)
 COPILOT_AUTO = _flag("TRIAGE_COPILOT_AUTO", False)
+# Scan an attached raw log file when no diagnostics JSON is present (common on
+# MA versions older than the diagnostics feature). The log is redacted before any
+# of it is echoed (see logscan.py / sanitize.py).
+SCAN_LOGS = _flag("TRIAGE_SCAN_LOGS", True)
 AI_MODEL = os.environ.get("TRIAGE_AI_MODEL", "openai/gpt-4o-mini")
 AI_ENDPOINT = os.environ.get(
     "TRIAGE_AI_ENDPOINT", "https://models.github.ai/inference/chat/completions"
@@ -198,3 +258,29 @@ AUTO_CLOSE_MESSAGE = (
 # Hidden marker placed on reminder comments so the sweep can tell them apart from
 # genuine user activity.
 REMINDER_MARKER = "<!-- ma-triage-reminder -->"
+
+# Note added when the analysis came from a raw log file rather than a diagnostics
+# report (older MA versions). We only ever show redacted, derived facts from logs.
+LOG_FALLBACK_NOTE = (
+    "ℹ️ I analysed the **attached log file** (no diagnostics report was found). "
+    "Logs give me less to go on than a diagnostics report, and I only surface "
+    "redacted, derived facts from them. If you're on Music Assistant 2.9.6 or "
+    "newer, a diagnostics report would help us a lot more — see **Settings → "
+    "Download diagnostics**."
+)
+
+# Note added when the reporter selected the unsupported install method.
+UNSUPPORTED_INSTALL_NOTE = (
+    "⚠️ You indicated you're running Music Assistant via an **unsupported install "
+    "method**. Only the Home Assistant add-on and the official Docker container "
+    "are supported. We're happy to take a look, but issues specific to "
+    "unsupported setups may be closed if they can't be reproduced on a supported "
+    "one."
+)
+
+# Frontend form: what we say when required info / a screenshot is missing.
+FRONTEND_MISSING_MESSAGE = (
+    "To help us look into this UI issue, could you make sure the report includes "
+    "a **screenshot or short screen recording** that shows the problem, plus the "
+    "steps to reproduce it? That's by far the most useful thing for frontend bugs."
+)

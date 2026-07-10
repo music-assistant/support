@@ -86,3 +86,87 @@ def test_download_ok(monkeypatch):
     )
     url = "https://github.com/user-attachments/files/1/a.json"
     assert attachments.download_capped(url) == b"hello"
+
+
+MEDIA_BODY = """
+### What happened?
+The settings screen is blank.
+
+Screenshot: ![shot](https://github.com/user-attachments/assets/2b7c1f42-9a3e-4c1a-bb0a-1d2e3f4a5b6c)
+Recording uploaded as [clip.mp4](https://github.com/user-attachments/files/55/clip.mp4)
+Legacy image https://user-images.githubusercontent.com/123/abcdef.png
+"""
+
+
+def test_assets_url_is_allowlisted_and_media():
+    asset = "https://github.com/user-attachments/assets/2b7c1f42-9a3e-4c1a-bb0a-1d2e3f4a5b6c"
+    assert attachments.is_allowlisted(asset)
+    assert attachments.has_media_attachment(MEDIA_BODY)
+    media = attachments.find_media_urls(MEDIA_BODY)
+    assert asset in media
+    assert any(u.endswith("clip.mp4") for u in media)
+    assert any("user-images.githubusercontent.com" in u for u in media)
+
+
+def test_assets_are_not_treated_as_diagnostics_or_logs():
+    # An assets URL has no filename, so it must not be mistaken for a report/log.
+    assert attachments.find_diagnostics_url(MEDIA_BODY) is None
+    assert attachments.find_log_urls(MEDIA_BODY) == []
+
+
+def test_generic_json_upload_counts_as_diagnostics():
+    body = "report [diagnostics.json](https://github.com/user-attachments/files/7/diagnostics.json)"
+    url = attachments.find_diagnostics_url(body)
+    assert url is not None and url.endswith("diagnostics.json")
+
+
+def test_canonical_diagnostics_name_preferred_over_plain_json():
+    body = (
+        "a [notes.json](https://github.com/user-attachments/files/1/notes.json) "
+        "b [music-assistant-diagnostics-2024-05-01-120000.json]"
+        "(https://github.com/user-attachments/files/2/music-assistant-diagnostics-2024-05-01-120000.json)"
+    )
+    assert attachments.find_diagnostics_url(body).endswith(
+        "music-assistant-diagnostics-2024-05-01-120000.json"
+    )
+
+
+def test_no_media_for_plain_body():
+    assert attachments.has_media_attachment("just text, no attachments") is False
+
+
+class _RangeResp:
+    def __init__(self, content, status_code=200):
+        self.content = content
+        self.status_code = status_code
+        self.headers = {}
+
+    def raise_for_status(self):
+        pass
+
+
+def test_download_log_windowed_small_file(monkeypatch):
+    monkeypatch.setattr(
+        attachments.requests, "get", lambda *a, **k: _FakeResp([b"line1\nline2"])
+    )
+    url = "https://github.com/user-attachments/files/1/server.log"
+    assert attachments.download_log_windowed(url) == "line1\nline2"
+
+
+def test_download_log_windowed_head_and_tail(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_get(*a, **k):
+        # First call: streamed head (context-manager style, hits the cap).
+        if "Range" not in k.get("headers", {}):
+            calls["n"] += 1
+            return _FakeResp([b"H" * 4096])
+        # Second call: tail via Range → 206 Partial Content.
+        return _RangeResp(b"TAILDATA", status_code=206)
+
+    monkeypatch.setattr(attachments.requests, "get", fake_get)
+    url = "https://github.com/user-attachments/files/1/server.log"
+    out = attachments.download_log_windowed(url, head_bytes=4096, tail_bytes=8)
+    assert out.startswith("H" * 10)
+    assert "truncated by triage bot" in out
+    assert out.endswith("TAILDATA")

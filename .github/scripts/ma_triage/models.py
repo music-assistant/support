@@ -77,10 +77,17 @@ class Diagnostics:
     core_config_non_default: dict[str, Any] = field(default_factory=dict)
     exceptions: list[ExceptionEntry] = field(default_factory=list)
     has_log_tail: bool = False
+    # "json" for a real diagnostics report, "log" when reconstructed from a raw
+    # log file (only a subset of fields is then populated; see logscan.py).
+    source: str = "json"
 
     @property
     def providers_in_error(self) -> list[ProviderEntry]:
         return [p for p in self.providers if p.in_error]
+
+    @property
+    def from_log(self) -> bool:
+        return self.source == "log"
 
 
 @dataclass
@@ -117,10 +124,24 @@ class AIResult:
 class TriageResult:
     """Everything the bot decided about an issue in one pass."""
 
+    # Which issue form this came from: "main" (server bug), "frontend" (UI bug)
+    # or "translation". Drives validation, messaging and whether we comment.
+    form_kind: str = "main"
+    # True when the whole issue should be left alone (e.g. translation form).
+    skip: bool = False
+
     has_diagnostics: bool = False
     diagnostics_invalid: bool = False
+    # The attachment the form asked for is missing (diagnostics/log for the main
+    # form, a screenshot/recording for the frontend form).
+    missing_attachment: bool = False
     missing_sections: list[str] = field(default_factory=list)
     log_wall_detected: bool = False
+
+    # Facts read straight from the form fields (available even without a file).
+    reported_version: str | None = None
+    install_method: str | None = None
+
     findings: list[Finding] = field(default_factory=list)
     labels_to_add: set[str] = field(default_factory=set)
     maintainers_to_ping: set[str] = field(default_factory=set)
@@ -131,3 +152,32 @@ class TriageResult:
     def is_actionable(self) -> bool:
         """True when we have enough to diagnose (valid diagnostics present)."""
         return self.has_diagnostics and not self.diagnostics_invalid
+
+    @property
+    def needs_user_action(self) -> bool:
+        """True when the reporter still has to provide something."""
+        if self.skip:
+            return False
+        if self.form_kind == "frontend":
+            return bool(self.missing_sections or self.missing_attachment)
+        # main bug form
+        return bool(
+            self.missing_sections
+            or self.diagnostics_invalid
+            or (self.missing_attachment and not self.has_diagnostics)
+        )
+
+    @property
+    def should_comment(self) -> bool:
+        """Whether the bot has anything worth posting (keeps the tracker quiet).
+
+        - translation: never.
+        - frontend: only when the reporter needs to add something.
+        - main: whenever we have a diagnostics summary OR a request to make
+          (i.e. essentially always — a main report always yields useful output).
+        """
+        if self.skip or self.form_kind == "translation":
+            return False
+        if self.form_kind == "frontend":
+            return self.needs_user_action
+        return self.is_actionable or self.needs_user_action or bool(self.findings)

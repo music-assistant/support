@@ -21,12 +21,22 @@ import sys
 from datetime import datetime, timezone
 from typing import Any
 
-from . import ai, analyze, comment, config, copilot, lifecycle, template
-from .attachments import download_capped, find_diagnostics_url
+from . import ai, analyze, comment, config, copilot, lifecycle, logscan, template
+from .attachments import (
+    download_capped,
+    download_log_windowed,
+    find_diagnostics_url,
+    find_log_urls,
+    has_media_attachment,
+)
 from .diagnostics import try_parse
 from .gh import GitHubClient, log, summary
 from .models import TriageResult
-from .providers import filter_existing_labels, resolve_maintainers
+from .providers import (
+    detect_provider_labels_from_text,
+    filter_existing_labels,
+    resolve_maintainers,
+)
 
 
 def _env(name: str, default: str = "") -> str:
@@ -41,48 +51,120 @@ def _now_iso() -> str:
 # Shared analysis pipeline (no mutations)
 # --------------------------------------------------------------------------- #
 def build_result(
-    gh: GitHubClient, title: str, body: str, *, token: str
+    gh: GitHubClient,
+    title: str,
+    body: str,
+    *,
+    token: str,
+    labels: set[str] | list[str] | None = None,
 ) -> TriageResult:
-    """Run the full read-only analysis pipeline and return a TriageResult."""
-    result = TriageResult()
-    result.missing_sections = template.missing_sections(body)
-    result.log_wall_detected = template.detect_log_wall(body)
+    """Run the full read-only analysis pipeline and return a TriageResult.
 
+    ``labels`` are the issue's current labels, used to pick the form kind.
+    """
+    kind = template.form_kind(labels)
+    if kind == "translation":
+        # Translation contributions are not bug reports — never triage them.
+        return TriageResult(form_kind="translation", skip=True)
+
+    result = TriageResult(form_kind=kind)
+    result.missing_sections = template.missing_sections(body, kind)
+    result.log_wall_detected = template.detect_log_wall(body)
+    result.reported_version = template.extract_version(body)
+
+    if kind == "frontend":
+        # UI bug: the required "attachment" is a screenshot/recording.
+        result.missing_attachment = not has_media_attachment(body)
+        return result
+
+    # --- main server bug form ------------------------------------------------
+    result.install_method = template.extract_install_method(body)
+    _load_diagnostics_or_log(gh, body, result)
+
+    findings = list(result.findings)
+    labels_to_add: set[str] = set(result.labels_to_add)
+    maintainers: set[str] = set()
+
+    # Provider labels from the free-text fields + title (census gone from form).
+    labels_to_add |= detect_provider_labels_from_text(
+        template.provider_scan_text(body, title)
+    )
+
+    install_finding = analyze.install_method_finding(result.install_method)
+    if install_finding is not None:
+        findings.append(install_finding)
+
+    if result.is_actionable and result.diagnostics is not None:
+        diag = result.diagnostics
+        a_findings, a_labels = analyze.analyze(diag, gh)
+        findings.extend(a_findings)
+        labels_to_add |= a_labels
+
+        # Log-sourced reports rarely carry a version banner; fall back to the
+        # value the reporter typed into the form.
+        if not diag.system.version and result.reported_version:
+            v_findings, v_labels = analyze.version_findings(
+                result.reported_version, gh
+            )
+            findings.extend(v_findings)
+            labels_to_add |= v_labels
+
+        # Only involve maintainers from a *real* diagnostics census — log parsing
+        # of provider names is heuristic and must not ping people.
+        if diag.source == "json":
+            for provider in diag.providers_in_error:
+                for handle in resolve_maintainers(gh, provider.domain):
+                    maintainers.add(handle)
+
+        ai_result = ai.assess(
+            diag, title, body, token=token, candidate_labels=sorted(labels_to_add)
+        )
+        if ai_result is not None:
+            result.ai = ai_result
+            labels_to_add.update(ai_result.suggested_labels)
+    elif result.reported_version:
+        # No attachment we could parse — still nudge on an outdated version.
+        v_findings, v_labels = analyze.version_findings(result.reported_version, gh)
+        findings.extend(v_findings)
+        labels_to_add |= v_labels
+
+    findings.sort(key=lambda f: f.sort_key)
+    result.findings = findings
+    result.labels_to_add = labels_to_add
+    result.maintainers_to_ping = maintainers
+    return result
+
+
+def _load_diagnostics_or_log(
+    gh: GitHubClient, body: str, result: TriageResult
+) -> None:
+    """Populate diagnostics from an attached JSON report, else a raw log."""
     url = find_diagnostics_url(body)
     if url:
         raw = download_capped(url)
         if raw is None:
             result.diagnostics_invalid = True
+            return
+        diag = try_parse(raw)
+        if diag is None:
+            result.diagnostics_invalid = True
         else:
-            diag = try_parse(raw)
-            if diag is None:
-                result.diagnostics_invalid = True
-            else:
-                result.has_diagnostics = True
-                result.diagnostics = diag
+            result.has_diagnostics = True
+            result.diagnostics = diag
+        return
 
-    if result.is_actionable and result.diagnostics is not None:
-        diag = result.diagnostics
-        findings, suggested = analyze.analyze(diag, gh)
-        result.findings = findings
-        result.labels_to_add |= suggested
+    log_urls = find_log_urls(body)
+    if config.SCAN_LOGS and log_urls:
+        text = download_log_windowed(log_urls[0])
+        if text:
+            result.has_diagnostics = True
+            result.diagnostics = logscan.scan_log(text)
+        else:
+            result.diagnostics_invalid = True
+        return
 
-        for provider in diag.providers_in_error:
-            for handle in resolve_maintainers(gh, provider.domain):
-                result.maintainers_to_ping.add(handle)
-
-        ai_result = ai.assess(
-            diag,
-            title,
-            body,
-            token=token,
-            candidate_labels=sorted(suggested),
-        )
-        if ai_result is not None:
-            result.ai = ai_result
-            result.labels_to_add.update(ai_result.suggested_labels)
-
-    return result
+    # Nothing usable attached.
+    result.missing_attachment = True
 
 
 # --------------------------------------------------------------------------- #
@@ -96,10 +178,13 @@ def _resolve_labels(gh: GitHubClient, result: TriageResult) -> list[str]:
     # Response-state labels (only apply if present in the repo).
     if result.is_actionable:
         state_label = config.LABEL_NEEDS_ATTENTION
-    else:
+    elif result.needs_user_action:
         state_label = config.LABEL_WAITING_FOR_USER
-        if config.LABEL_NEEDS_DIAGNOSTICS in existing:
+        if result.form_kind == "main" and config.LABEL_NEEDS_DIAGNOSTICS in existing:
             keep.add(config.LABEL_NEEDS_DIAGNOSTICS)
+    else:
+        # Complete report with nothing outstanding (e.g. a filled-in frontend bug).
+        state_label = config.LABEL_NEEDS_ATTENTION
     if state_label in existing:
         keep.add(state_label)
     return sorted(keep)
@@ -112,25 +197,33 @@ def apply_triage(
     result: TriageResult,
     prior_state: dict[str, Any],
 ) -> None:
-    """Post the sticky comment and apply labels for a triage pass."""
+    """Apply labels and (when there's something useful to say) the sticky comment."""
     labels = _resolve_labels(gh, result)
     if labels:
         gh.add_labels(number, labels)
 
-    state = {
-        "v": 1,
-        "last_run": _now_iso(),
-        "has_diagnostics": result.has_diagnostics,
-        "invalid": result.diagnostics_invalid,
-        "ai": result.ai is not None,
-    }
-    if result.diagnostics is not None:
-        state["version"] = result.diagnostics.system.version
-    if "dispatch" in prior_state:  # preserve any earlier Copilot dispatch record
-        state["dispatch"] = prior_state["dispatch"]
+    if result.should_comment:
+        state = {
+            "v": 1,
+            "last_run": _now_iso(),
+            "form": result.form_kind,
+            "has_diagnostics": result.has_diagnostics,
+            "invalid": result.diagnostics_invalid,
+            "ai": result.ai is not None,
+        }
+        if result.diagnostics is not None:
+            state["version"] = result.diagnostics.system.version
+            state["source"] = result.diagnostics.source
+        if "dispatch" in prior_state:  # preserve any earlier Copilot dispatch record
+            state["dispatch"] = prior_state["dispatch"]
 
-    body = comment.build_body(result)
-    comment.upsert(gh, number, body, state)
+        body = comment.build_body(result)
+        comment.upsert(gh, number, body, state)
+    else:
+        summary(
+            f"#{number}: nothing actionable to post (form={result.form_kind}); "
+            "applied labels only."
+        )
 
     if config.COPILOT_AUTO and copilot.should_auto_dispatch(result):
         summary(
@@ -155,19 +248,35 @@ def cmd_triage(gh: GitHubClient, token: str) -> int:
         summary(f"#{number}: skipped (hold/skip label present).")
         return 0
 
+    summary(f"## Triage of #{number}\n")
+    result = build_result(gh, title, body, token=token, labels=labels)
+    if result.skip:
+        summary(f"#{number}: skipped ({result.form_kind} form — not triaged).")
+        return 0
+
     comments = gh.list_comments(number)
     prior_state = comment.parse_state(
         (comment.find_sticky(comments) or {}).get("body")
     )
 
-    summary(f"## Triage of #{number}\n")
-    result = build_result(gh, title, body, token=token)
     summary(
-        f"- diagnostics: {'valid' if result.is_actionable else 'missing/invalid'}"
+        f"- form: {result.form_kind}"
+        f" · diagnostics: {_diag_status(result)}"
         f" · findings: {len(result.findings)} · ai: {result.ai is not None}"
+        f" · comment: {result.should_comment}"
     )
     apply_triage(gh, number, issue, result, prior_state)
     return 0
+
+
+def _diag_status(result: TriageResult) -> str:
+    if result.is_actionable and result.diagnostics is not None:
+        return f"valid ({result.diagnostics.source})"
+    if result.diagnostics_invalid:
+        return "invalid"
+    if result.form_kind == "frontend":
+        return "n/a (frontend)"
+    return "missing"
 
 
 def cmd_respond(gh: GitHubClient) -> int:
@@ -200,9 +309,10 @@ def cmd_dispatch(gh: GitHubClient, token: str) -> int:
     issue = gh.get_issue(number)
     title = issue.get("title") or _env("ISSUE_TITLE")
     body = issue.get("body") or _env("ISSUE_BODY")
+    labels = lifecycle.issue_labels(issue)
 
     summary(f"## Copilot dispatch for #{number}\n")
-    result = build_result(gh, title, body, token=token)
+    result = build_result(gh, title, body, token=token, labels=labels)
     if not result.is_actionable:
         summary(f"#{number}: no valid diagnostics; not dispatching.")
         return 0

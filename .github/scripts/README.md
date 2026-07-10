@@ -3,11 +3,12 @@
 Autonomous, AI-assisted triage for issues in `music-assistant/support`.
 
 The bot reads the **diagnostics file** that reporters attach (produced by
-_Settings → Download diagnostics_ in Music Assistant), posts a single sticky
-summary comment, applies setup/provider labels, involves community provider
-maintainers, manages the issue's response state, and can optionally hand a
-high-confidence bug to the **Copilot coding agent** on `music-assistant/server`
-to draft a fix PR.
+_Settings → Download diagnostics_ in Music Assistant), or falls back to scanning
+an attached **raw log file** (for older versions without the diagnostics
+feature), posts a single sticky summary comment, applies setup/provider labels,
+involves community provider maintainers, manages the issue's response state, and
+can optionally hand a high-confidence bug to the **Copilot coding agent** on
+`music-assistant/server` to draft a fix PR.
 
 > ⚠️ **Experimental & dry-run by default.** With `TRIAGE_DRY_RUN` unset or
 > `true`, the bot makes **no changes** — it only writes what it _would_ do to
@@ -32,19 +33,34 @@ never interpolated into a shell command.
     └── tests/                # offline pytest suite + fixtures
 ```
 
+### Issue forms
+The bot branches on the issue form (detected from labels):
+- **main bug report** (`triage`): full diagnostics/log analysis + summary;
+- **frontend bug** (`triage`, `frontend`): checks a screenshot/recording is
+  attached and required fields are filled — stays silent when the report is
+  complete;
+- **translation** (`triage`, `translation`): skipped entirely.
+
 ### Tier 0 — deterministic (always on)
 From the diagnostics file the bot derives, with no AI:
 - **version check** vs the latest server release (outdated / pre-release);
 - **safe mode** banner;
 - **providers in error** (with sanitized error text);
 - **top exception fingerprints** by count;
-- **provider/setup labels** (only labels that already exist are applied);
+- **provider/setup labels** — from the diagnostics census *and* provider names
+  mentioned in the form text (only labels that already exist are applied);
 - **community maintainer** ping (from each provider's `codeowners`, skipping the
-  core `@music-assistant` team);
+  core `@music-assistant` team; never triggered by heuristic log parsing);
 - low-disk and other resource hints.
 
-If the diagnostics file is missing/invalid, or required template sections are
-empty, the bot posts a friendly request explaining how to download the file.
+If only a **raw log file** is attached (older Music Assistant versions), the bot
+redacts it first — stripping tokens, home directories, emails, MAC addresses and
+non-local IPs — then extracts the version banner, safe-mode, provider setup
+errors and exception fingerprints from the redacted text. Only derived facts and
+redacted snippets are ever echoed. Controlled by `TRIAGE_SCAN_LOGS` (default on).
+
+If no usable attachment is present, or required template sections are empty, the
+bot posts a friendly request explaining how to download the diagnostics report.
 
 ### Tier 1 — GitHub Models (optional)
 When `TRIAGE_AI_ENABLED=true`, a bounded, sanitized summary is sent to the
@@ -83,6 +99,7 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 |---|---|---|
 | `TRIAGE_DRY_RUN` | `true` | Kill switch. `false` to make real changes. |
 | `TRIAGE_AI_ENABLED` | `false` | Enable Tier-1 GitHub Models assessment. |
+| `TRIAGE_SCAN_LOGS` | `true` | Scan an attached raw log (redacted) when no diagnostics report is present. |
 | `TRIAGE_AI_MODEL` | `openai/gpt-4o-mini` | Model id for Tier 1. |
 | `TRIAGE_COPILOT_AUTO` | `false` | Allow auto-recommending Tier-2 dispatch. |
 | `TRIAGE_COPILOT_AUTO_DAILY_CAP` | `3` | Max auto dispatches/day. |
@@ -148,6 +165,7 @@ python -m ma_triage triage
    via the `triage/dispatch-copilot` label.
 4. Optionally enable `TRIAGE_COPILOT_AUTO` with a low daily cap.
 
-> Note: `REQUIRED_SECTIONS` in `ma_triage/template.py` and the provider→label map
-> in `ma_triage/config.py` should be kept in sync with the issue template and the
-> repo's labels as they evolve.
+> Note: the per-form required-section lists in `ma_triage/template.py` and the
+> provider→label maps in `ma_triage/config.py` (`PROVIDER_LABELS` and the free-
+> text `PROVIDER_TEXT_ALIASES`) should be kept in sync with the issue forms and
+> the repo's labels as they evolve.

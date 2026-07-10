@@ -1,11 +1,16 @@
-"""Issue-template completeness checks and "wall of log" detection.
+"""Issue-template parsing, per-form completeness checks and log-wall detection.
 
-The bug-report template renders as ``### Section\n\n<value>`` blocks. We check
-that the important sections are filled in, and detect when a reporter pasted a
-large log directly into the issue instead of attaching the file.
+GitHub issue *forms* render each field label as a ``### <label>`` heading followed
+by the reporter's answer. We branch behaviour by *form kind* (detected from the
+issue's labels) and validate the required sections for that specific form.
 
-``REQUIRED_SECTIONS`` must be kept in sync with ``.github/ISSUE_TEMPLATE`` (the
-template is being reworked to request the diagnostics file).
+Section headers are kept in sync with ``.github/ISSUE_TEMPLATE/*.yml``:
+
+* ``bug_report.yml``            → main server bug form   (label ``triage``)
+* ``frontend_bug_report.yml``   → frontend/UI bug form   (labels ``triage``,
+  ``frontend``)
+* ``translation_contribute.yml``→ translation form       (labels ``triage``,
+  ``translation``) — triage is skipped entirely for these.
 """
 
 from __future__ import annotations
@@ -14,18 +19,40 @@ import re
 
 from . import config
 
-# Section headings that must be present and non-empty. Keep in sync with the
-# issue form. Kept intentionally small/robust so template tweaks don't cause
-# false "missing section" nags.
-REQUIRED_SECTIONS = (
-    "The problem",
-    "How to reproduce",
+# --------------------------------------------------------------------------- #
+# Section headers (must match the issue forms exactly)
+# --------------------------------------------------------------------------- #
+SECTION_WHAT_HAPPENED = "What happened?"
+SECTION_HOW_TO_REPRODUCE = "How to reproduce"
+SECTION_VERSION = "Music Assistant version"
+SECTION_INSTALL_METHOD = "How do you run Music Assistant?"
+SECTION_DIAGNOSTICS = "Diagnostics report or log file"
+SECTION_AFFECTED_PROVIDERS = "Affected provider(s)"
+SECTION_ANYTHING_ELSE = "Anything else?"
+SECTION_BROWSER_OS = "Browser and operating system"
+SECTION_SCREENSHOT = "Screenshot or recording"
+
+# Required *text* sections per form (the attachment fields are validated
+# separately via attachments.py, since their content is a URL/upload).
+REQUIRED_SECTIONS_MAIN = (
+    SECTION_WHAT_HAPPENED,
+    SECTION_HOW_TO_REPRODUCE,
+    SECTION_VERSION,
+    SECTION_INSTALL_METHOD,
+)
+REQUIRED_SECTIONS_FRONTEND = (
+    SECTION_VERSION,
+    SECTION_BROWSER_OS,
+    SECTION_WHAT_HAPPENED,
+    SECTION_HOW_TO_REPRODUCE,
 )
 
-# Placeholder fragments that indicate a section was left untouched.
-_PLACEHOLDERS = (
-    "DO NOT PASTE",
-    "For Audiobookshelf include broken book ASINs here",
+# Free-text sections scanned for provider mentions (main form).
+PROVIDER_SCAN_SECTIONS = (
+    SECTION_AFFECTED_PROVIDERS,
+    SECTION_WHAT_HAPPENED,
+    SECTION_HOW_TO_REPRODUCE,
+    SECTION_ANYTHING_ELSE,
 )
 
 _RE_SECTION = re.compile(r"^###\s+(.*?)\s*$")
@@ -35,6 +62,20 @@ _RE_LOG_LINE = re.compile(
     r"|(?:\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})"
 )
 _RE_FENCE = re.compile(r"```")
+
+
+def form_kind(labels: set[str] | list[str] | None) -> str:
+    """Classify the issue form from its labels.
+
+    Returns ``"translation"``, ``"frontend"`` or ``"main"``. Matching is
+    case-insensitive and tolerant of extra labels.
+    """
+    names = {str(name).strip().lower() for name in (labels or [])}
+    if config.LABEL_TRANSLATION.lower() in names:
+        return "translation"
+    if config.LABEL_FRONTEND.lower() in names:
+        return "frontend"
+    return "main"
 
 
 def parse_sections(body: str | None) -> dict[str, str]:
@@ -58,21 +99,57 @@ def parse_sections(body: str | None) -> dict[str, str]:
     return sections
 
 
-def missing_sections(body: str | None) -> list[str]:
-    """Return required sections that are absent, empty, or placeholder-only."""
+def _is_empty(content: str | None) -> bool:
+    """True when a section is blank or the form's ``_No response_`` sentinel."""
+    text = (content or "").strip()
+    if not text:
+        return True
+    return text == config.NO_RESPONSE_SENTINEL
+
+
+def section_value(body: str | None, name: str) -> str | None:
+    """Return a section's content, or ``None`` if absent/empty/``_No response_``."""
+    value = parse_sections(body).get(name)
+    return None if _is_empty(value) else value.strip()
+
+
+def required_sections_for(kind: str) -> tuple[str, ...]:
+    if kind == "frontend":
+        return REQUIRED_SECTIONS_FRONTEND
+    return REQUIRED_SECTIONS_MAIN
+
+
+def missing_sections(body: str | None, kind: str = "main") -> list[str]:
+    """Required sections (for the given form) that are absent or empty."""
     sections = parse_sections(body)
     missing: list[str] = []
-    for name in REQUIRED_SECTIONS:
-        content = sections.get(name, "").strip()
-        if not content or _is_placeholder(content):
+    for name in required_sections_for(kind):
+        if _is_empty(sections.get(name)):
             missing.append(name)
     return missing
 
 
-def _is_placeholder(content: str) -> bool:
-    if len(content) > 100:
-        return False
-    return any(p in content for p in _PLACEHOLDERS)
+def extract_version(body: str | None) -> str | None:
+    """Reporter-entered value of the "Music Assistant version" field."""
+    return section_value(body, SECTION_VERSION)
+
+
+def extract_install_method(body: str | None) -> str | None:
+    """Reporter-selected value of "How do you run Music Assistant?"."""
+    return section_value(body, SECTION_INSTALL_METHOD)
+
+
+def provider_scan_text(body: str | None, title: str | None = None) -> str:
+    """Concatenate the fields worth scanning for provider mentions."""
+    sections = parse_sections(body)
+    parts: list[str] = []
+    if title:
+        parts.append(title)
+    for name in PROVIDER_SCAN_SECTIONS:
+        value = sections.get(name)
+        if not _is_empty(value):
+            parts.append(value)
+    return "\n".join(parts)
 
 
 def detect_log_wall(body: str | None) -> bool:

@@ -99,3 +99,8 @@ def sample_raw():
 @pytest.fixture
 def injection_raw():
     return (FIXTURES / "injection-diagnostics.json").read_bytes()
+
+
+@pytest.fixture
+def sample_log():
+    return (FIXTURES / "sample.log").read_bytes()

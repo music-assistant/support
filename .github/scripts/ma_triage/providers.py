@@ -10,6 +10,7 @@ maintainers.
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 
 from . import config
@@ -19,6 +20,34 @@ from .gh import GitHubClient, log
 def domain_to_label(domain: str) -> str:
     """Return the repo label for a provider domain (falls back to the domain)."""
     return config.PROVIDER_LABELS.get(domain, domain)
+
+
+@lru_cache(maxsize=1)
+def _alias_patterns() -> list[tuple[re.Pattern[str], str]]:
+    """Compile the provider alias map into word-boundary regexes (once)."""
+    patterns: list[tuple[re.Pattern[str], str]] = []
+    for alias, label in config.PROVIDER_TEXT_ALIASES.items():
+        # Word boundaries around the alias; tolerate spaces/underscores between
+        # words ("youtube music" also matches "youtube_music").
+        escaped = re.escape(alias).replace(r"\ ", r"[\s_]+")
+        patterns.append((re.compile(rf"(?<![\w]){escaped}(?![\w])", re.IGNORECASE), label))
+    return patterns
+
+
+def detect_provider_labels_from_text(text: str | None) -> set[str]:
+    """Suggest provider labels for provider names mentioned in free text.
+
+    Uses the alias map in :data:`config.PROVIDER_TEXT_ALIASES` with word-boundary
+    matching. Returned labels are still filtered against the repo's real labels by
+    the caller, so a false positive can only surface a label that already exists.
+    """
+    if not text:
+        return set()
+    found: set[str] = set()
+    for pattern, label in _alias_patterns():
+        if pattern.search(text):
+            found.add(label)
+    return found
 
 
 def filter_existing_labels(labels: set[str], existing: set[str]) -> set[str]:

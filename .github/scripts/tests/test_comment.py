@@ -35,6 +35,31 @@ def test_build_body_invalid():
     assert "couldn't read it" in body or "regenerate" in body
 
 
+def test_build_body_frontend_missing():
+    result = TriageResult(
+        form_kind="frontend", missing_attachment=True, missing_sections=[]
+    )
+    body = comment.build_body(result)
+    assert config.FRONTEND_MISSING_MESSAGE[:20] in body
+    assert config.STICKY_MARKER in body
+
+
+def test_build_body_log_source_note(sample_log, fake_gh):
+    from ma_triage import analyze, logscan
+    diag = logscan.scan_log(sample_log)
+    findings, labels = analyze.analyze(diag, fake_gh)
+    result = TriageResult(
+        form_kind="main", has_diagnostics=True, findings=findings,
+        labels_to_add=labels, diagnostics=diag,
+    )
+    body = comment.build_body(result)
+    assert "attached log file" in body  # log-fallback note present
+    assert "attached log" in body  # findings section wording
+    # No raw secret leaks through the rendered comment.
+    assert "/home/frank" not in body
+    assert "sk-abcdef0123456789ABCDEF" not in body
+
+
 def test_ai_section_rendered(sample_raw, fake_gh):
     result = _actionable_result(sample_raw, fake_gh)
     result.ai = AIResult(

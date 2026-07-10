@@ -52,6 +52,7 @@ jobs:
           TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
           TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
           TRIAGE_AI_MODEL: ${{ vars.TRIAGE_AI_MODEL }}
+          TRIAGE_SCAN_LOGS: ${{ vars.TRIAGE_SCAN_LOGS }}
           TRIAGE_COPILOT_AUTO: ${{ vars.TRIAGE_COPILOT_AUTO }}
         run: python -m ma_triage triage
 

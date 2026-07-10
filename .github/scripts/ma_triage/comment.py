@@ -27,10 +27,13 @@ _SEVERITY_ICON = {
 }
 
 _DIAGNOSTICS_HOWTO = (
-    "You can grab it in the Music Assistant UI: **Settings → Download "
-    "diagnostics**. The file is privacy-sanitized (paths, tokens, emails and "
-    "non-local IPs are removed) and helps us understand your setup at a glance. "
-    "Please attach the `music-assistant-diagnostics-*.json` file to this issue."
+    "On Music Assistant **2.10 or newer**, grab it from **Settings → Download "
+    "diagnostics** and attach the `music-assistant-diagnostics-*.json` file. On "
+    "**2.9.6–2.9.x** you can open `/diagnostics?include_log_tail=true` and save "
+    "the JSON. On **older versions** (no diagnostics feature yet), attach your "
+    "**server log file** instead. Diagnostics are privacy-sanitized (paths, "
+    "tokens, emails and non-local IPs are removed) and let us understand your "
+    "setup at a glance."
 )
 
 
@@ -67,14 +70,23 @@ def find_sticky(comments: list[dict[str, Any]]) -> dict[str, Any] | None:
 # --------------------------------------------------------------------------- #
 # Body builders
 # --------------------------------------------------------------------------- #
+def _source_noun(result: TriageResult) -> str:
+    """"diagnostics" or "log", matching what we actually parsed."""
+    diag = result.diagnostics
+    if diag is not None and diag.source == "log":
+        return "log"
+    return "diagnostics"
+
+
 def _findings_section(result: TriageResult) -> str:
+    noun = _source_noun(result)
     if not result.findings:
         return (
-            "I went through the attached diagnostics and didn't spot any obvious "
+            f"I went through the attached {noun} and didn't spot any obvious "
             "problems in the automated checks. A maintainer will take a closer "
             "look."
         )
-    parts = ["Here's what I found in the attached diagnostics:\n"]
+    parts = [f"Here's what I found in the attached {noun}:\n"]
     for finding in result.findings:
         icon = _SEVERITY_ICON.get(finding.severity, "•")
         parts.append(f"{icon} **{finding.title}**\n\n{finding.detail}\n")
@@ -110,8 +122,12 @@ def _system_summary(result: TriageResult) -> str:
     bits = []
     if sys.version:
         bits.append(f"**Version:** {inline(sys.version)}")
+    elif result.reported_version:
+        bits.append(f"**Version:** {inline(result.reported_version)}")
     if sys.hass_addon is not None:
         bits.append(f"**Install:** {'HA add-on' if sys.hass_addon else 'standalone'}")
+    elif result.install_method:
+        bits.append(f"**Install:** {inline(result.install_method, max_len=60)}")
     if sys.python_version:
         bits.append(f"**Python:** {inline(sys.python_version)}")
     if sys.platform:
@@ -124,11 +140,30 @@ def _system_summary(result: TriageResult) -> str:
     return " · ".join(bits)
 
 
+def _frontend_body(result: TriageResult) -> list[str]:
+    """Missing-info request for a frontend/UI bug report."""
+    parts: list[str] = []
+    if result.missing_sections:
+        pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
+        parts.append(
+            f"To help us look into this UI issue, could you fill in the "
+            f"following section(s): {pretty}?\n"
+        )
+    if result.missing_attachment:
+        parts.append(config.FRONTEND_MISSING_MESSAGE)
+    return parts
+
+
 def build_body(result: TriageResult) -> str:
     """Render the full sticky-comment body for a triage pass."""
     parts = [config.STICKY_MARKER, "", config.GREETING, ""]
 
-    if result.is_actionable:
+    if result.form_kind == "frontend":
+        parts.extend(_frontend_body(result))
+    elif result.is_actionable:
+        if result.diagnostics is not None and result.diagnostics.source == "log":
+            parts.append(config.LOG_FALLBACK_NOTE)
+            parts.append("")
         summary = _system_summary(result)
         if summary:
             parts.append(summary)
@@ -139,13 +174,12 @@ def build_body(result: TriageResult) -> str:
             parts.append(ai)
     elif result.diagnostics_invalid:
         parts.append(
-            "Thanks for attaching a diagnostics file! Unfortunately I couldn't "
-            "read it — it may be truncated, from an incompatible version, or not "
-            "the right file. Could you regenerate and re-attach it?\n\n"
-            + _DIAGNOSTICS_HOWTO
+            "Thanks for attaching a file! Unfortunately I couldn't read it — it "
+            "may be truncated, from an incompatible version, or not the right "
+            "file. Could you regenerate and re-attach it?\n\n" + _DIAGNOSTICS_HOWTO
         )
     else:
-        # No diagnostics attached.
+        # Main form, no usable attachment.
         if result.missing_sections:
             pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
             parts.append(
@@ -154,13 +188,17 @@ def build_body(result: TriageResult) -> str:
             )
         parts.append(
             "It would also really help if you could attach a **diagnostics "
-            "file**. " + _DIAGNOSTICS_HOWTO
+            "report or log file**. " + _DIAGNOSTICS_HOWTO
         )
+        # Even without a file we can still nudge on an outdated version, etc.
+        if result.findings:
+            parts.append("")
+            parts.append(_findings_section(result))
 
     if result.log_wall_detected:
         parts.append(
             "\n> 💡 It looks like a large log was pasted directly into the issue. "
-            "A diagnostics file (or a log attached as a file) is much easier for "
+            "A diagnostics report (or a log attached as a file) is much easier for "
             "us to work with than inline logs."
         )
 

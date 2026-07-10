@@ -34,17 +34,28 @@ def analyze(diag: Diagnostics, gh: GitHubClient) -> tuple[list[Finding], set[str
 def _check_version(
     diag: Diagnostics, gh: GitHubClient, findings: list[Finding], labels: set[str]
 ) -> None:
-    verdict: VersionVerdict = evaluate(diag.system.version, gh)
-    reported = diag.system.version or "unknown"
+    v_findings, v_labels = version_findings(diag.system.version, gh)
+    findings.extend(v_findings)
+    labels.update(v_labels)
+
+
+def version_findings(
+    reported_version: str | None, gh: GitHubClient
+) -> tuple[list[Finding], set[str]]:
+    """Version findings from a plain version string (diagnostics or form field)."""
+    findings: list[Finding] = []
+    labels: set[str] = set()
+    verdict: VersionVerdict = evaluate(reported_version, gh)
+    reported = reported_version or "unknown"
     if verdict.outdated and verdict.latest_stable:
         findings.append(
             Finding(
                 Severity.WARNING,
                 "Outdated version",
-                f"This report is from **{reported}**, but the latest stable "
-                f"release is **{verdict.latest_stable}**. A number of issues are "
-                f"fixed in newer releases — please update and check whether the "
-                f"problem persists.",
+                f"This report is from **{inline(reported)}**, but the latest "
+                f"stable release is **{verdict.latest_stable}**. A number of "
+                f"issues are fixed in newer releases — please update and check "
+                f"whether the problem persists.",
                 labels=[config.LABEL_OUTDATED],
             )
         )
@@ -54,10 +65,25 @@ def _check_version(
             Finding(
                 Severity.INFO,
                 "Pre-release build",
-                f"This report is from a pre-release build (**{reported}**). "
+                f"This report is from a pre-release build (**{inline(reported)}**). "
                 f"That's fine and appreciated — just noting it for context.",
             )
         )
+    return findings, labels
+
+
+def install_method_finding(install_method: str | None) -> Finding | None:
+    """Flag the unsupported install method selected on the main bug form."""
+    if not install_method:
+        return None
+    lowered = install_method.lower()
+    if "unsupported" in lowered or lowered.startswith("other"):
+        return Finding(
+            Severity.WARNING,
+            "Unsupported install method",
+            config.UNSUPPORTED_INSTALL_NOTE,
+        )
+    return None
 
 
 def _check_safe_mode(diag: Diagnostics, findings: list[Finding]) -> None:
