@@ -21,7 +21,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any
 
-from . import ai, analyze, comment, config, copilot, lifecycle, logscan, template
+from . import ai, analyze, comment, config, copilot, embeddings, lifecycle, logscan, rag, template
 from .attachments import (
     download_capped,
     download_log_windowed,
@@ -57,10 +57,13 @@ def build_result(
     *,
     token: str,
     labels: set[str] | list[str] | None = None,
+    number: int = 0,
 ) -> TriageResult:
     """Run the full read-only analysis pipeline and return a TriageResult.
 
     ``labels`` are the issue's current labels, used to pick the form kind.
+    ``number`` is the issue number (used only to exclude the post itself from
+    related-post detection).
     """
     kind = template.form_kind(labels)
     if kind == "translation":
@@ -133,6 +136,10 @@ def build_result(
     result.findings = findings
     result.labels_to_add = labels_to_add
     result.maintainers_to_ping = maintainers
+
+    # Phase 2 RAG layer (docs-grounded answer + related posts). Returns None when
+    # disabled or on any failure, so Tier-0/Tier-1 output is unchanged.
+    result.rag = rag.answer(gh, title=title, body=body, number=number, token=token)
     return result
 
 
@@ -209,7 +216,7 @@ def apply_triage(
     if labels:
         gh.add_labels(number, labels)
 
-    if result.should_comment:
+    if result.should_comment or (result.rag is not None and result.rag.has_output):
         state = {
             "v": 1,
             "last_run": _now_iso(),
@@ -221,6 +228,13 @@ def apply_triage(
         if result.diagnostics is not None:
             state["version"] = result.diagnostics.system.version
             state["source"] = result.diagnostics.source
+        if result.rag is not None:
+            state["rag"] = {
+                "tier": result.rag.tier,
+                "cited": [c.id for c in result.rag.cited_chunks],
+                "related": [p.number for p in result.rag.related_posts],
+                "suppressed": result.rag.suppressed,
+            }
         if "dispatch" in prior_state:  # preserve any earlier Copilot dispatch record
             state["dispatch"] = prior_state["dispatch"]
 
@@ -256,7 +270,7 @@ def cmd_triage(gh: GitHubClient, token: str) -> int:
         return 0
 
     summary(f"## Triage of #{number}\n")
-    result = build_result(gh, title, body, token=token, labels=labels)
+    result = build_result(gh, title, body, token=token, labels=labels, number=number)
     if result.skip:
         summary(f"#{number}: skipped ({result.form_kind} form — not triaged).")
         return 0
@@ -319,7 +333,7 @@ def cmd_dispatch(gh: GitHubClient, token: str) -> int:
     labels = lifecycle.issue_labels(issue)
 
     summary(f"## Copilot dispatch for #{number}\n")
-    result = build_result(gh, title, body, token=token, labels=labels)
+    result = build_result(gh, title, body, token=token, labels=labels, number=number)
     if not result.is_actionable:
         summary(f"#{number}: no valid diagnostics; not dispatching.")
         return 0
@@ -347,10 +361,128 @@ def cmd_dispatch(gh: GitHubClient, token: str) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------- #
+# RAG index build (Phase 2)
+# --------------------------------------------------------------------------- #
+def _build_docs_index(gh: GitHubClient, token: str) -> None:
+    prev = embeddings.load_index(gh, config.DOCS_INDEX_PATH)
+    index, changed = embeddings.build_docs_index(gh, token=token, previous=prev)
+    if index is None:
+        summary("- docs: build skipped (embeddings unavailable / rate limited)")
+        return
+    count = len(index.get("chunks", []))
+    if not changed:
+        summary(f"- docs: unchanged ({count} chunks); no commit")
+        return
+    embeddings.save_index(
+        gh, config.DOCS_INDEX_PATH, index, message=f"Update docs index ({count} chunks)"
+    )
+    summary(f"- docs: {count} chunks indexed")
+
+
+def _collect_posts(gh: GitHubClient) -> list[dict[str, Any]]:
+    posts: list[dict[str, Any]] = []
+    for issue in gh.list_recent_issues(limit=config.INDEX_MAX_POSTS):
+        posts.append(
+            {
+                "kind": "issue",
+                "number": issue.get("number"),
+                "title": issue.get("title") or "",
+                "body": issue.get("body") or "",
+                "url": issue.get("html_url") or "",
+                "state": issue.get("state"),
+                "updated_at": issue.get("updated_at"),
+            }
+        )
+    for disc in gh.list_discussions(limit=config.INDEX_MAX_POSTS):
+        category = ((disc.get("category") or {}).get("name") or "").lower()
+        if category in config.DISCUSSION_EXCLUDE_CATEGORIES:
+            # e.g. translation-category discussions: not useful as related posts.
+            continue
+        posts.append(
+            {
+                "kind": "discussion",
+                "number": disc.get("number"),
+                "title": disc.get("title") or "",
+                "body": disc.get("body") or "",
+                "url": disc.get("url") or "",
+                "state": "closed" if disc.get("closed") else "open",
+                "updated_at": disc.get("updatedAt"),
+            }
+        )
+    posts.sort(key=lambda p: p.get("updated_at") or "", reverse=True)
+    return posts
+
+
+def _build_posts_index(gh: GitHubClient, token: str) -> None:
+    prev = embeddings.load_index(gh, config.POSTS_INDEX_PATH)
+    posts = _collect_posts(gh)
+    index, changed = embeddings.build_posts_index(
+        gh, posts, token=token, previous=prev
+    )
+    if index is None:
+        summary("- posts: build skipped (embeddings unavailable / rate limited)")
+        return
+    count = len(index.get("posts", []))
+    if not changed:
+        summary(f"- posts: unchanged ({count} posts); no commit")
+        return
+    embeddings.save_index(
+        gh, config.POSTS_INDEX_PATH, index, message=f"Update posts index ({count} posts)"
+    )
+    summary(f"- posts: {count} posts indexed")
+
+
+def cmd_index(gh: GitHubClient, token: str, target: str = "all") -> int:
+    summary(f"## RAG index build ({target})\n")
+    if target not in ("docs", "posts", "all"):
+        log(f"unknown index target: {target} (use docs|posts|all)")
+        return 2
+    if target in ("docs", "all"):
+        _build_docs_index(gh, token)
+    if target in ("posts", "all"):
+        _build_posts_index(gh, token)
+    return 0
+
+
+def cmd_index_append(gh: GitHubClient, token: str) -> int:
+    """Embed a single new issue and upsert it into the posts index."""
+    number = int(_env("ISSUE_NUMBER"))
+    summary(f"## RAG posts-index append for #{number}\n")
+    issue = gh.get_issue(number)
+    if "pull_request" in issue:
+        summary(f"#{number}: is a pull request; skipping append.")
+        return 0
+    post = {
+        "kind": "issue",
+        "number": number,
+        "title": issue.get("title") or _env("ISSUE_TITLE"),
+        "body": issue.get("body") or _env("ISSUE_BODY"),
+        "url": issue.get("html_url") or "",
+        "state": issue.get("state"),
+        "updated_at": issue.get("updated_at"),
+    }
+    index, _changed = embeddings.append_post(gh, post, token=token)
+    if index is None:
+        summary(f"#{number}: append skipped (embeddings unavailable).")
+        return 0
+    embeddings.save_index(
+        gh,
+        config.POSTS_INDEX_PATH,
+        index,
+        message=f"Append issue #{number} to posts index",
+    )
+    summary(f"#{number}: appended ({len(index.get('posts', []))} posts total).")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     if not argv:
-        log("usage: python -m ma_triage {triage|respond|sweep|dispatch}")
+        log(
+            "usage: python -m ma_triage "
+            "{triage|respond|sweep|dispatch|index|index-append}"
+        )
         return 2
     command = argv[0]
 
@@ -372,6 +504,11 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_sweep(gh)
     if command == "dispatch":
         return cmd_dispatch(gh, token)
+    if command == "index":
+        target = argv[1] if len(argv) > 1 else "all"
+        return cmd_index(gh, token, target)
+    if command == "index-append":
+        return cmd_index_append(gh, token)
     log(f"unknown command: {command}")
     return 2
 

@@ -1,5 +1,5 @@
 from ma_triage import config
-from ma_triage.sanitize import fenced, inline
+from ma_triage.sanitize import fenced, inline, link_label, markdown_safe
 
 
 def test_inline_neutralizes_mentions():
@@ -48,3 +48,23 @@ def test_fenced_defuses_state_marker():
     out = fenced("<!-- ma-triage-state:{\"x\":1} -->")
     assert "<!--" not in out
     assert "&lt;!--" in out
+
+
+def test_link_label_escapes_brackets_and_preceding_backslashes():
+    out = link_label(r"pwn\](https://evil.example)")
+    assert out.startswith(r"pwn\\\]")
+    assert "\u200b" not in out
+
+
+def test_markdown_safe_defangs_links_images_and_bare_urls():
+    out = markdown_safe(
+        "[click](https://evil.example) ![x](http://evil.example) "
+        "https://evil.example mailto:bad@example.com www.evil.example"
+    )
+    assert r"\[click\]" in out
+    assert r"!\[x\]" in out
+    assert "https://evil.example" not in out
+    assert "http://evil.example" not in out
+    assert "mailto:bad@example.com" not in out
+    assert "www.evil.example" not in out
+    assert "https:\u200b//evil.example" in out

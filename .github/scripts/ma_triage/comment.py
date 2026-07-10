@@ -17,8 +17,8 @@ from typing import Any
 
 from . import config
 from .gh import GitHubClient
-from .models import Severity, TriageResult
-from .sanitize import inline
+from .models import RagResult, Severity, TriageResult
+from .sanitize import inline, link_label, markdown_safe
 
 _SEVERITY_ICON = {
     Severity.CRITICAL: "🔴",
@@ -165,6 +165,58 @@ def _missing_sections_line(result: TriageResult) -> str:
     )
 
 
+def _doc_link(label: str, url: str) -> str:
+    """A sanitized markdown bullet link to a docs page.
+
+    Doc content is from the public docs repo (comparatively trusted) but is still
+    sanitized before echoing; the URL is derived from our own config + slug.
+    """
+    return f"- [{link_label(label, max_len=160) or url}]({url})"
+
+
+def _rag_section(result: TriageResult) -> str:
+    """Render the optional docs-answer + related-posts sections.
+
+    Returns ``""`` when the RAG layer produced nothing (or is disabled), so the
+    comment is byte-identical to Phase 1 in that case.
+    """
+    rag: RagResult | None = result.rag
+    if rag is None or not rag.has_output:
+        return ""
+    parts: list[str] = []
+
+    if rag.tier == "high" and rag.doc_answer is not None:
+        parts.append(config.DOCS_ANSWER_HEADING)
+        # The answer is model-generated and grounded in the cited docs; sanitize
+        # it anyway so it can never ping users or break out of the comment.
+        parts.append(
+            markdown_safe(
+                rag.doc_answer.answer, max_len=config.MAX_DOC_ANSWER_CHARS
+            )
+        )
+        if rag.cited_chunks:
+            parts.append("\n**Sources:**")
+            for chunk in rag.cited_chunks:
+                parts.append(_doc_link(chunk.label, chunk.url))
+        parts.append("\n" + config.DOCS_ANSWER_DISCLAIMER)
+    elif rag.tier == "medium" and rag.doc_hits:
+        parts.append(config.DOCS_LINKS_HEADING)
+        parts.append("These documentation pages look related to your report:")
+        for hit in rag.doc_hits[: config.DOCS_LINKS_SHOWN]:
+            parts.append(_doc_link(hit.chunk.label, hit.chunk.url))
+        parts.append("\n" + config.DOCS_ANSWER_DISCLAIMER)
+
+    if rag.related_posts:
+        parts.append("\n" + config.RELATED_POSTS_HEADING)
+        parts.append(config.RELATED_POSTS_INTRO)
+        for post in rag.related_posts:
+            closed = " _(closed)_" if post.state == "closed" else ""
+            title = link_label(post.title, max_len=140)
+            parts.append(f"- [#{post.number}: {title}]({post.url}){closed}")
+
+    return "\n".join(parts)
+
+
 def build_body(result: TriageResult) -> str:
     """Render the full sticky-comment body for a triage pass."""
     parts = [config.STICKY_MARKER, "", config.GREETING, ""]
@@ -224,6 +276,11 @@ def build_body(result: TriageResult) -> str:
             "A diagnostics report (or a log attached as a file) is much easier for "
             "us to work with than inline logs."
         )
+
+    rag_section = _rag_section(result)
+    if rag_section:
+        parts.append("")
+        parts.append(rag_section)
 
     if result.maintainers_to_ping:
         pings = " ".join(f"@{m}" for m in sorted(result.maintainers_to_ping))

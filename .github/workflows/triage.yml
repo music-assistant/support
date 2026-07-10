@@ -54,6 +54,16 @@ jobs:
           TRIAGE_AI_MODEL: ${{ vars.TRIAGE_AI_MODEL }}
           TRIAGE_SCAN_LOGS: ${{ vars.TRIAGE_SCAN_LOGS }}
           TRIAGE_COPILOT_AUTO: ${{ vars.TRIAGE_COPILOT_AUTO }}
+          # RAG layer (Phase 2) — only active when TRIAGE_AI_ENABLED is true.
+          TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
+          TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
+          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
+          TRIAGE_ANSWER_MODEL: ${{ vars.TRIAGE_ANSWER_MODEL }}
+          TRIAGE_ANSWER_HI: ${{ vars.TRIAGE_ANSWER_HI }}
+          TRIAGE_ANSWER_LO: ${{ vars.TRIAGE_ANSWER_LO }}
+          TRIAGE_DOCS_REPO: ${{ vars.TRIAGE_DOCS_REPO }}
+          TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
+          TRIAGE_RELATED_POSTS: ${{ vars.TRIAGE_RELATED_POSTS }}
         run: python -m ma_triage triage
 
   respond:
@@ -82,3 +92,47 @@ jobs:
           COMMENT_USER_TYPE: ${{ github.event.comment.user.type }}
           TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
         run: python -m ma_triage respond
+
+  # Separate, least-privilege job: embed a newly-opened issue and append it to
+  # the posts index on the `triage-index` branch. It has `contents: write` (to
+  # commit the index) but deliberately NOT `issues: write` — so the job that can
+  # write repo contents can never comment, and vice-versa. Only runs when the AI
+  # layer is enabled (it makes one embedding call).
+  index-append:
+    if: >-
+      ${{ github.event_name == 'issues'
+      && github.event.action == 'opened'
+      && !github.event.issue.pull_request
+      && vars.TRIAGE_AI_ENABLED == 'true'
+      && vars.TRIAGE_RAG_ENABLED != 'false' }}
+    runs-on: ubuntu-latest
+    # Serialise with the nightly index build (and other appends) so concurrent
+    # force-pushes to the triage-index branch can't drop each other's writes.
+    concurrency:
+      group: rag-index-write
+      cancel-in-progress: false
+    permissions:
+      contents: write # commit the posts index to the triage-index branch
+      models: read # embeddings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Append issue to posts index
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+          TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
+          TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
+          TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
+          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
+          TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
+          TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
+        run: python -m ma_triage index-append

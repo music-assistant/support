@@ -26,6 +26,7 @@ never interpolated into a shell command.
 ├── workflows/
 │   ├── triage.yml            # issues opened/edited/reopened + new comments
 │   ├── triage_scheduled.yml  # daily reminder / auto-close sweep
+│   ├── docs_embeddings.yml   # nightly RAG index build (docs + posts)
 │   └── copilot_dispatch.yml  # hand a bug to the Copilot coding agent
 └── scripts/
     ├── ma_triage/            # the bot (see module docstrings)
@@ -39,7 +40,10 @@ The bot branches on the issue form (detected from labels):
 - **frontend bug** (`triage`, `frontend`): checks a screenshot/recording is
   attached and required fields are filled — stays silent when the report is
   complete;
-- **translation** (`triage`, `translation`): skipped entirely.
+- **translation**: translation contributions are moving to a GitHub **Discussion**
+  (via a contact link in the issue chooser) rather than an issue form, so no
+  issue carries a `translation` label anymore. The label-based skip guard is kept
+  as a harmless safety net.
 
 ### Tier 0 — deterministic (always on)
 From the diagnostics file the bot derives, with no AI:
@@ -73,6 +77,38 @@ A maintainer applies the `triage/dispatch-copilot` label (or runs the dispatch
 workflow manually) to hand the bug to the Copilot coding agent on the server
 repo. See **Copilot dispatch token** below.
 
+### Docs-grounded answers & similar reports (Phase 2, optional)
+When `TRIAGE_AI_ENABLED=true` (and `TRIAGE_RAG_ENABLED` is not `false`), the bot
+adds a **retrieval-augmented** layer on top of the tiers above, modelled on
+`zwave-js-bot`:
+
+- **Docs Q&A.** The incoming issue is embedded once and matched against an index
+  of the public docs (`music-assistant/music-assistant.io`, chunked by heading).
+  Retrieval is hybrid and entirely local — dense cosine **plus** BM25 over the
+  breadcrumbs+body, fused with Reciprocal Rank Fusion — so exact tokens (provider
+  domains, error codes) are not lost. The top chunks and the issue go to a single
+  judge call that returns `{answers_question, confidence, answer, cited_sections}`.
+- **Similar past reports.** The issue embedding is compared (dense cosine) to an
+  index of past issues + discussions to surface likely duplicates / prior answers.
+  If the index is missing, this degrades to a plain GitHub issue search.
+  Translation-category discussions are excluded from this index (they aren't
+  docs-answerable and would only add noise). Live triage of discussions
+  themselves is out of scope for this phase.
+- **Confidence tiers.** `HIGH` (≥ `TRIAGE_ANSWER_HI`) posts a doc-grounded answer
+  with cited links; `MEDIUM` (≥ `TRIAGE_ANSWER_LO`) posts doc links only;
+  `LOW` stays silent (deterministic triage and duplicate links may still post).
+  An answer matching a previously down-voted (`suppress.json`) fingerprint is
+  demoted a tier.
+- **Cost.** Per issue: **1 embedding + ≤1 judge chat**, only when AI is enabled.
+  Indexing runs nightly, cached by content SHA (unchanged chunks are never
+  re-embedded) and skips on rate-limit. All output is rendered as extra sections
+  in the same sticky comment, and everything echoed is sanitized.
+
+The two indexes (`docs.json`, `posts.json`) and the down-vote fingerprints
+(`suppress.json`) are stored as JSON on an orphan **`triage-index`** branch
+(keeping `main` clean) and read at runtime. When they are absent the whole layer
+degrades gracefully and Tier-0/Tier-1 behaviour is unchanged.
+
 ## Response-state lifecycle
 
 | Trigger | Effect |
@@ -104,6 +140,30 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 | `TRIAGE_COPILOT_AUTO` | `false` | Allow auto-recommending Tier-2 dispatch. |
 | `TRIAGE_COPILOT_AUTO_DAILY_CAP` | `3` | Max auto dispatches/day. |
 | `TRIAGE_COPILOT_AUTO_MIN_CONFIDENCE` | `0.75` | Min AI confidence to auto-dispatch. |
+| `TRIAGE_RAG_ENABLED` | `true` | Sub-flag for the Phase-2 RAG layer (still requires `TRIAGE_AI_ENABLED`). |
+| `TRIAGE_EMBED_MODEL` | `openai/text-embedding-3-small` | Embeddings model (GitHub Models). |
+| `TRIAGE_EMBED_DIM` | `512` | Embedding dimensionality (keeps indexes small). |
+| `TRIAGE_ANSWER_MODEL` | `openai/gpt-4o` | Judge/answer chat model. |
+| `TRIAGE_ANSWER_HI` | `0.75` | Min confidence for a full doc-grounded answer. |
+| `TRIAGE_ANSWER_LO` | `0.45` | Min confidence for doc links only. |
+| `TRIAGE_DOCS_REPO` | `music-assistant/music-assistant.io` | Public docs source. |
+| `TRIAGE_INDEX_BRANCH` | `triage-index` | Orphan branch holding the JSON indexes. |
+| `TRIAGE_INDEX_MAX_POSTS` | `500` | Cap on posts embedded into the similar-posts index. |
+
+### RAG indexes (`triage-index` branch)
+The `docs_embeddings.yml` workflow builds `docs.json` / `posts.json` and commits
+them to the orphan `triage-index` branch. It runs nightly, on manual
+`workflow_dispatch`, and on a `repository_dispatch` (`docs-changed`) the docs repo
+can send. Build them on demand with:
+
+```bash
+python -m ma_triage index all     # or: docs | posts
+```
+
+The index-build workflow (and the small `index-append` job in `triage.yml` that
+appends each new issue) has `contents: write` + `models: read` but **no**
+`issues:` permission — the job that can write repo contents can never comment,
+and vice-versa. Both honour `TRIAGE_DRY_RUN` (dry-run previews the commit).
 
 ### Repo secret
 | Secret | Needed for | Notes |
@@ -126,17 +186,23 @@ dispatching, and skips cleanly otherwise.
 
 ## Security model
 
-- Triggers are `issues`, `issue_comment` and `schedule` only — **no
+- Triggers are `issues`, `issue_comment`, `schedule`, `workflow_dispatch` and
+  `repository_dispatch` (the last two only for the RAG index build) — **no
   `pull_request_target`**.
 - Issue content flows through `env:` → `os.environ`; it is never placed in a
   shell command line.
 - Attachment downloads are **host-allowlisted** (`user-attachments` / repo
   `files`) and **byte-capped** while streaming; JSON is parsed with size/depth
   guards; nothing from a file is ever executed.
-- Everything echoed back from a diagnostics file is escaped: `@mentions` and
-  `#refs` are neutralised, HTML/markers are escaped, code spans/fences can't be
-  broken out of, and strings are length-capped.
-- Least-privilege permissions per workflow; one concurrent run per issue.
+- The docs corpus comes from the **public** docs repo (read with the default
+  token, no secret); doc text is comparatively trusted but is still sanitized
+  before it is echoed into a comment.
+- Everything echoed back from a diagnostics file (or a doc / model answer) is
+  escaped: `@mentions` and `#refs` are neutralised, HTML/markers are escaped,
+  code spans/fences can't be broken out of, and strings are length-capped.
+- Least-privilege permissions **per job**: the commenting jobs get `issues:
+  write` but never `contents: write`; the index-writing jobs get `contents:
+  write` + `models: read` but never `issues:` access. One concurrent run per issue.
 
 ## Local development / testing
 
