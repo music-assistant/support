@@ -201,6 +201,38 @@ def _flag(name: str, default: bool) -> bool:
     return val.strip().lower() in ("1", "true", "yes", "on")
 
 
+def _env_str(name: str, default: str) -> str:
+    """Env value, treating unset OR empty as "use the default".
+
+    GitHub Actions passes an unset ``${{ vars.X }}`` as an *empty string*, so a
+    plain ``os.environ.get(name, default)`` would wrongly yield ``""`` and, for
+    numeric config, crash on ``int("")``. All TRIAGE_* config reads go through
+    these helpers so an unset repo variable falls back to the default.
+    """
+    val = os.environ.get(name)
+    return val if val not in (None, "") else default
+
+
+def _env_int(name: str, default: int) -> int:
+    val = os.environ.get(name)
+    if not val or not val.strip():
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    val = os.environ.get(name)
+    if not val or not val.strip():
+        return default
+    try:
+        return float(val)
+    except ValueError:
+        return default
+
+
 # Dry-run defaults to TRUE: the prototype logs intended actions and mutates
 # nothing until a maintainer explicitly opts in by setting TRIAGE_DRY_RUN=false.
 DRY_RUN = _flag("TRIAGE_DRY_RUN", True)
@@ -210,16 +242,12 @@ COPILOT_AUTO = _flag("TRIAGE_COPILOT_AUTO", False)
 # MA versions older than the diagnostics feature). The log is redacted before any
 # of it is echoed (see logscan.py / sanitize.py).
 SCAN_LOGS = _flag("TRIAGE_SCAN_LOGS", True)
-AI_MODEL = os.environ.get("TRIAGE_AI_MODEL", "openai/gpt-4o-mini")
-AI_ENDPOINT = os.environ.get(
-    "TRIAGE_AI_ENDPOINT", "https://models.github.ai/inference/chat/completions"
-)
+AI_MODEL = _env_str("TRIAGE_AI_MODEL", "openai/gpt-4o-mini")
+AI_ENDPOINT = _env_str("TRIAGE_AI_ENDPOINT", "https://models.github.ai/inference/chat/completions")
 # Daily hard cap on automatic Copilot dispatches (guards cost / PR noise).
-COPILOT_AUTO_DAILY_CAP = int(os.environ.get("TRIAGE_COPILOT_AUTO_DAILY_CAP", "3"))
+COPILOT_AUTO_DAILY_CAP = _env_int("TRIAGE_COPILOT_AUTO_DAILY_CAP", 3)
 # Minimum AI confidence (0-1) required before auto-dispatching to Copilot.
-COPILOT_AUTO_MIN_CONFIDENCE = float(
-    os.environ.get("TRIAGE_COPILOT_AUTO_MIN_CONFIDENCE", "0.75")
-)
+COPILOT_AUTO_MIN_CONFIDENCE = _env_float("TRIAGE_COPILOT_AUTO_MIN_CONFIDENCE", 0.75)
 
 # --------------------------------------------------------------------------- #
 # RAG layer (Phase 2) — docs-grounded answers + similar-post detection
@@ -231,15 +259,15 @@ RAG_ENABLED = _flag("TRIAGE_RAG_ENABLED", True)
 
 # Public docs repository (Astro/Starlight). Readable with the default
 # GITHUB_TOKEN — it is public, so no secret is required.
-DOCS_REPO = os.environ.get("TRIAGE_DOCS_REPO", "music-assistant/music-assistant.io")
-DOCS_CONTENT_ROOT = os.environ.get("TRIAGE_DOCS_CONTENT_ROOT", "src/content/docs")
-DOCS_SITE = os.environ.get("TRIAGE_DOCS_SITE", "https://www.music-assistant.io")
-DOCS_REF = os.environ.get("TRIAGE_DOCS_REF", "main")
+DOCS_REPO = _env_str("TRIAGE_DOCS_REPO", "music-assistant/music-assistant.io")
+DOCS_CONTENT_ROOT = _env_str("TRIAGE_DOCS_CONTENT_ROOT", "src/content/docs")
+DOCS_SITE = _env_str("TRIAGE_DOCS_SITE", "https://www.music-assistant.io")
+DOCS_REF = _env_str("TRIAGE_DOCS_REF", "main")
 # Doc paths (relative to the content root) whose prefix excludes them from the
 # index — the dated blog posts are announcements, not troubleshooting material.
 DOCS_EXCLUDE_PREFIXES = tuple(
     p.strip()
-    for p in os.environ.get("TRIAGE_DOCS_EXCLUDE", "blog/").split(",")
+    for p in _env_str("TRIAGE_DOCS_EXCLUDE", "blog/").split(",")
     if p.strip()
 )
 # Discussion categories excluded from the similar-posts index (case-insensitive).
@@ -249,52 +277,48 @@ DOCS_EXCLUDE_PREFIXES = tuple(
 # into the posts index for related-post links.)
 DISCUSSION_EXCLUDE_CATEGORIES = tuple(
     c.strip().lower()
-    for c in os.environ.get(
-        "TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES", "translations,translation"
-    ).split(",")
+    for c in _env_str("TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES", "translations,translation").split(",")
     if c.strip()
 )
 
 # Orphan branch in THIS repo that stores the JSON indexes (keeps ``main`` clean).
-INDEX_BRANCH = os.environ.get("TRIAGE_INDEX_BRANCH", "triage-index")
+INDEX_BRANCH = _env_str("TRIAGE_INDEX_BRANCH", "triage-index")
 DOCS_INDEX_PATH = "docs.json"
 POSTS_INDEX_PATH = "posts.json"
 SUPPRESS_INDEX_PATH = "suppress.json"
 
 # GitHub Models — embeddings + judge/answer chat (both OpenAI-compatible, served
 # from models.github.ai with the default token + ``models: read`` permission).
-EMBED_MODEL = os.environ.get("TRIAGE_EMBED_MODEL", "openai/text-embedding-3-small")
+EMBED_MODEL = _env_str("TRIAGE_EMBED_MODEL", "openai/text-embedding-3-small")
 # Reduced embedding dimensionality (OpenAI ``dimensions`` param) keeps the JSON
 # indexes small and the pure-Python cosine fast. Set to 0 to use the model default.
-EMBED_DIM = int(os.environ.get("TRIAGE_EMBED_DIM", "512"))
-EMBED_ENDPOINT = os.environ.get(
-    "TRIAGE_EMBED_ENDPOINT", "https://models.github.ai/inference/embeddings"
-)
-EMBED_BATCH = int(os.environ.get("TRIAGE_EMBED_BATCH", "64"))
-ANSWER_MODEL = os.environ.get("TRIAGE_ANSWER_MODEL", "openai/gpt-4o")
+EMBED_DIM = _env_int("TRIAGE_EMBED_DIM", 512)
+EMBED_ENDPOINT = _env_str("TRIAGE_EMBED_ENDPOINT", "https://models.github.ai/inference/embeddings")
+EMBED_BATCH = _env_int("TRIAGE_EMBED_BATCH", 64)
+ANSWER_MODEL = _env_str("TRIAGE_ANSWER_MODEL", "openai/gpt-4o")
 
 # Confidence-tier thresholds for the doc-answer judge (0-1). See rag.tier().
-ANSWER_HI = float(os.environ.get("TRIAGE_ANSWER_HI", "0.75"))
-ANSWER_LO = float(os.environ.get("TRIAGE_ANSWER_LO", "0.45"))
+ANSWER_HI = _env_float("TRIAGE_ANSWER_HI", 0.75)
+ANSWER_LO = _env_float("TRIAGE_ANSWER_LO", 0.45)
 
 # Retrieval knobs.
-DOCS_TOP_K = int(os.environ.get("TRIAGE_DOCS_TOP_K", "6"))
-RELATED_POSTS = int(os.environ.get("TRIAGE_RELATED_POSTS", "3"))
-RELATED_MIN_SCORE = float(os.environ.get("TRIAGE_RELATED_MIN_SCORE", "0.35"))
+DOCS_TOP_K = _env_int("TRIAGE_DOCS_TOP_K", 6)
+RELATED_POSTS = _env_int("TRIAGE_RELATED_POSTS", 3)
+RELATED_MIN_SCORE = _env_float("TRIAGE_RELATED_MIN_SCORE", 0.35)
 # Minimum dense cosine for the top doc hit to show links when the judge call
 # itself failed (retrieval-only MEDIUM fallback).
-DOCS_MIN_DENSE = float(os.environ.get("TRIAGE_DOCS_MIN_DENSE", "0.30"))
+DOCS_MIN_DENSE = _env_float("TRIAGE_DOCS_MIN_DENSE", 0.30)
 # Max doc links rendered in a MEDIUM (links-only) comment section.
-DOCS_LINKS_SHOWN = int(os.environ.get("TRIAGE_DOCS_LINKS_SHOWN", "3"))
+DOCS_LINKS_SHOWN = _env_int("TRIAGE_DOCS_LINKS_SHOWN", 3)
 # A cited-answer fingerprint with at least this many downvotes is suppressed.
-SUPPRESS_MIN_DOWNVOTES = int(os.environ.get("TRIAGE_SUPPRESS_MIN_DOWNVOTES", "1"))
+SUPPRESS_MIN_DOWNVOTES = _env_int("TRIAGE_SUPPRESS_MIN_DOWNVOTES", 1)
 RRF_K = 60  # reciprocal-rank-fusion constant
 BM25_K1 = 1.5
 BM25_B = 0.75
 
 # Indexing caps / cost guards.
-INDEX_MAX_POSTS = int(os.environ.get("TRIAGE_INDEX_MAX_POSTS", "500"))
-DOCS_CHUNK_MAX_CHARS = int(os.environ.get("TRIAGE_DOCS_CHUNK_MAX_CHARS", "2000"))
+INDEX_MAX_POSTS = _env_int("TRIAGE_INDEX_MAX_POSTS", 500)
+DOCS_CHUNK_MAX_CHARS = _env_int("TRIAGE_DOCS_CHUNK_MAX_CHARS", 2000)
 MAX_POST_EMBED_CHARS = 6000  # bound the text embedded per post / query
 MAX_DOC_ANSWER_CHARS = 1200  # cap the judge's answer echoed into the comment
 
