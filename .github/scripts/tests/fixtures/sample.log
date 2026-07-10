@@ -1,0 +1,29 @@
+2024-05-01 12:00:00 INFO (MainThread) [music_assistant] Starting Music Assistant 2.8.1 (schema 1)
+2024-05-01 12:00:00 INFO (MainThread) [music_assistant] Running from /home/frank/.mass on Linux
+2024-05-01 12:00:01 WARNING (MainThread) [music_assistant] Starting in SAFE MODE after a previous crash
+2024-05-01 12:00:02 DEBUG (MainThread) [aiohttp] Authorization: Bearer sk-abcdef0123456789ABCDEF
+2024-05-01 12:00:02 DEBUG (MainThread) [config] api_key=super-secret-value-1234 loaded
+2024-05-01 12:00:02 DEBUG (MainThread) [config] token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payloadpart.signature
+2024-05-01 12:00:03 INFO (MainThread) [net] contacting api at 8.8.8.8 from 192.168.1.50 (mac aa:bb:cc:dd:ee:ff)
+2024-05-01 12:00:03 INFO (MainThread) [account] registered to frank@example.com
+2024-05-01 12:00:05 ERROR (MainThread) [music_assistant.providers] Error setting up provider sonos
+2024-05-01 12:00:06 ERROR (MainThread) [music_assistant.providers] Failed to set up spotify provider
+2024-05-01 12:00:07 ERROR (MainThread) [music_assistant] Unhandled exception in event loop
+Traceback (most recent call last):
+  File "/home/frank/.mass/app.py", line 42, in run
+    do_thing()
+  File "/home/frank/.mass/thing.py", line 7, in do_thing
+    raise ValueError("bad state 12345")
+ValueError: bad state 12345
+2024-05-01 12:00:08 ERROR (MainThread) [music_assistant] Unhandled exception in event loop
+Traceback (most recent call last):
+  File "/home/frank/.mass/app.py", line 42, in run
+    do_thing()
+  File "/home/frank/.mass/thing.py", line 7, in do_thing
+    raise ValueError("bad state 67890")
+ValueError: bad state 67890
+2024-05-01 12:00:09 ERROR (MainThread) [music_assistant] Timer failed
+Traceback (most recent call last):
+  File "/home/frank/.mass/timer.py", line 3, in tick
+    conn.send()
+ConnectionResetError: [Errno 104] Connection reset by peer
