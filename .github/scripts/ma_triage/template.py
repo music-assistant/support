@@ -27,7 +27,6 @@ SECTION_HOW_TO_REPRODUCE = "How to reproduce"
 SECTION_VERSION = "Music Assistant version"
 SECTION_INSTALL_METHOD = "How do you run Music Assistant?"
 SECTION_DIAGNOSTICS = "Diagnostics report or log file"
-SECTION_AFFECTED_PROVIDERS = "Affected provider(s)"
 SECTION_ANYTHING_ELSE = "Anything else?"
 SECTION_BROWSER_OS = "Browser and operating system"
 SECTION_SCREENSHOT = "Screenshot or recording"
@@ -47,9 +46,11 @@ REQUIRED_SECTIONS_FRONTEND = (
     SECTION_HOW_TO_REPRODUCE,
 )
 
-# Free-text sections scanned for provider mentions (main form).
+# Free-text sections scanned for provider mentions (main form). The optional
+# "Affected provider(s)" field was removed from the form (support #5808); the
+# "What happened?" hint now asks reporters to name the provider/player in prose,
+# so the free-text scan below keeps its signal.
 PROVIDER_SCAN_SECTIONS = (
-    SECTION_AFFECTED_PROVIDERS,
     SECTION_WHAT_HAPPENED,
     SECTION_HOW_TO_REPRODUCE,
     SECTION_ANYTHING_ELSE,

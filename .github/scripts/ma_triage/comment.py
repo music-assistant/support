@@ -154,6 +154,17 @@ def _frontend_body(result: TriageResult) -> list[str]:
     return parts
 
 
+def _missing_sections_line(result: TriageResult) -> str:
+    """A gentle request for empty required sections (main form)."""
+    if result.form_kind != "main" or not result.missing_sections:
+        return ""
+    pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
+    return (
+        f"One thing to help us dig in: the following required section(s) look "
+        f"empty — {pretty}. Could you fill them in?"
+    )
+
+
 def build_body(result: TriageResult) -> str:
     """Render the full sticky-comment body for a triage pass."""
     parts = [config.STICKY_MARKER, "", config.GREETING, ""]
@@ -172,6 +183,10 @@ def build_body(result: TriageResult) -> str:
         ai = _ai_section(result)
         if ai:
             parts.append(ai)
+        # Even with usable diagnostics, still ask for any empty required sections.
+        missing = _missing_sections_line(result)
+        if missing:
+            parts.append("\n" + missing)
     elif result.diagnostics_invalid:
         parts.append(
             "Thanks for attaching a file! Unfortunately I couldn't read it — it "

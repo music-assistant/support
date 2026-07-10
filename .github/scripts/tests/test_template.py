@@ -73,7 +73,7 @@ def test_provider_scan_text_includes_title_and_fields():
     body = _main_body(
         **{
             "What happened?": "Spotify stopped working",
-            "Affected provider(s)": "Sonos",
+            "Anything else?": "also affects Sonos",
         }
     )
     text = template.provider_scan_text(body, title="Playback fails on Chromecast")

@@ -1,6 +1,13 @@
 from ma_triage import __main__ as main
 from ma_triage import config
 
+MAIN_BODY_FULL = (
+    "### What happened?\n\nIt crashes on startup\n\n"
+    "### How to reproduce\n\nStart the server\n\n"
+    "### Music Assistant version\n\n2.9.5\n\n"
+    "### How do you run Music Assistant?\n\nHome Assistant add-on"
+)
+
 
 def test_build_result_actionable(sample_raw, fake_gh, monkeypatch):
     monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
@@ -30,7 +37,9 @@ def test_build_result_invalid_download(fake_gh, monkeypatch):
 def test_resolve_labels_filters_to_existing(sample_raw, fake_gh, monkeypatch):
     monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
     monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
-    result = main.build_result(fake_gh, "title", "body", token="t")
+    result = main.build_result(
+        fake_gh, "title", MAIN_BODY_FULL, token="t", labels=["triage"]
+    )
     labels = main._resolve_labels(fake_gh, result)
     # only labels that exist in the fake repo survive
     assert set(labels).issubset(fake_gh.list_labels())
@@ -43,6 +52,29 @@ def test_resolve_labels_needs_diagnostics_when_missing(fake_gh):
     labels = main._resolve_labels(fake_gh, result)
     assert config.LABEL_WAITING_FOR_USER in labels
     assert config.LABEL_NEEDS_DIAGNOSTICS in labels
+
+
+def test_valid_diagnostics_but_missing_section_waits_for_user(
+    sample_raw, fake_gh, monkeypatch
+):
+    # Valid diagnostics attached, but the required "What happened?" is empty:
+    # the reporter still owes us info, so state = waiting-for-user (not attention).
+    monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
+    monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
+    body = (
+        "### What happened?\n\n_No response_\n\n"
+        "### How to reproduce\n\nStart it\n\n"
+        "### Music Assistant version\n\n2.9.5\n\n"
+        "### How do you run Music Assistant?\n\nHome Assistant add-on"
+    )
+    result = main.build_result(fake_gh, "t", body, token="t", labels=["triage"])
+    assert result.is_actionable  # we can still diagnose
+    assert result.needs_user_action  # but info is missing
+    labels = main._resolve_labels(fake_gh, result)
+    assert config.LABEL_WAITING_FOR_USER in labels
+    assert config.LABEL_NEEDS_ATTENTION not in labels
+    # diagnostics were provided, so don't nag for diagnostics specifically
+    assert config.LABEL_NEEDS_DIAGNOSTICS not in labels
 
 
 # --------------------------------------------------------------------------- #

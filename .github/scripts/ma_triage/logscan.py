@@ -25,17 +25,24 @@ from .models import Diagnostics, ExceptionEntry, ProviderEntry, SystemInfo
 # --------------------------------------------------------------------------- #
 _REDACTED = "<redacted>"
 
-# key=value / key: value secrets (tokens, passwords, api keys, …).
+# key=value / key: value secrets (tokens, passwords, api keys, …). The value
+# charset includes base64 / url-safe characters (+ / = ~) so tokens like
+# "abcd/efgh+ijkl==" are redacted in full rather than truncated at the slash.
 _RE_SECRET_KV = re.compile(
     r"(?i)\b(authorization|auth|api[_-]?key|apikey|access[_-]?token|"
     r"refresh[_-]?token|client[_-]?secret|token|password|passwd|pwd|secret)"
     r"(\s*[:=]\s*|\s+)"
     r"(?:bearer\s+)?"
-    r"['\"]?[A-Za-z0-9._\-]{4,}['\"]?"
+    r"['\"]?[A-Za-z0-9._\-+/=~]{4,}['\"]?"
 )
 _RE_BEARER = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._\-]{4,}")
 # JWT-ish / long opaque tokens.
 _RE_JWT = re.compile(r"\beyJ[A-Za-z0-9._\-]{10,}")
+# Credentials embedded in a URL: scheme://user:pass@host. Lengths are bounded so
+# a long run of scheme/userinfo-valid characters can't cause O(n^2) backtracking.
+_RE_URL_CREDS = re.compile(
+    r"(?i)\b([a-z][a-z0-9+.\-]{0,15}://)[^\s/:@]{1,256}:[^\s/@]{1,256}@"
+)
 # Query-string credentials, e.g. ?token=... or &sig=...
 _RE_QUERY_SECRET = re.compile(
     r"(?i)([?&](?:token|sig|signature|key|api_key|password|auth)=)[^&\s\"']+"
@@ -45,6 +52,12 @@ _RE_HOME_WIN = re.compile(r"(?i)[A-Z]:\\Users\\[^\\\s\"']+")
 _RE_EMAIL = re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b")
 _RE_MAC = re.compile(r"\b(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\b")
 _RE_IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+# IPv6 candidate: 3-8 colon-separated hex groups. Bounded quantifiers only (no
+# catastrophic backtracking); every candidate is validated via ipaddress below,
+# so timestamps like "12:00:00" and MAC placeholders are left untouched.
+_RE_IPV6 = re.compile(
+    r"(?<![\w:.])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:.])"
+)
 
 
 def _redact_ip(match: re.Match[str]) -> str:
@@ -59,8 +72,22 @@ def _redact_ip(match: re.Match[str]) -> str:
     return "<redacted-ip>"
 
 
+def _redact_ipv6(match: re.Match[str]) -> str:
+    text = match.group(0)
+    try:
+        ip = ipaddress.ip_address(text)
+    except ValueError:
+        return text  # not actually an IPv6 address (e.g. a timestamp)
+    if ip.version != 6:
+        return text
+    if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_unspecified:
+        return text
+    return "<redacted-ip>"
+
+
 def redact(text: str) -> str:
     """Strip secrets/PII from raw log text before any of it is used or echoed."""
+    text = _RE_URL_CREDS.sub(rf"\1{_REDACTED}@", text)
     text = _RE_QUERY_SECRET.sub(rf"\1{_REDACTED}", text)
     text = _RE_SECRET_KV.sub(rf"\1\2{_REDACTED}", text)
     text = _RE_BEARER.sub(f"Bearer {_REDACTED}", text)
@@ -70,6 +97,7 @@ def redact(text: str) -> str:
     text = _RE_EMAIL.sub("<redacted-email>", text)
     text = _RE_MAC.sub("<redacted-mac>", text)
     text = _RE_IPV4.sub(_redact_ip, text)
+    text = _RE_IPV6.sub(_redact_ipv6, text)
     return text
 
 
@@ -98,8 +126,10 @@ _RE_PROVIDER_ERROR = re.compile(
 )
 
 _RE_TRACEBACK_START = re.compile(r"^\s*Traceback \(most recent call last\):\s*$")
-# The final "ExceptionType: message" line of a traceback (not indented).
-_RE_EXC_LINE = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception|Warning|Interrupt|Exit|Timeout|Cancelled))(?:: (.*))?$")
+# The "ExceptionType: message" line that ends a traceback (not indented). Any
+# dotted identifier is accepted — this is only evaluated *after* a traceback
+# header, so custom exception names (e.g. "InvalidState") aren't dropped.
+_RE_EXC_LINE = re.compile(r"^([A-Za-z_][\w.]*)(?:: (.*))?$")
 _RE_TRACEBACK_CONT = (
     "During handling of the above exception",
     "The above exception was the direct cause",
@@ -161,25 +191,36 @@ def _extract_exceptions(text: str) -> list[ExceptionEntry]:
         if not _RE_TRACEBACK_START.match(lines[i]):
             i += 1
             continue
-        # Walk to the exception type/message line that ends this traceback.
+        # Walk the (possibly chained) traceback block and keep the FINAL
+        # exception as its representative, so a chained traceback counts once.
         j = i + 1
         exc_type: str | None = None
         exc_msg: str | None = None
         while j < n:
             stripped = lines[j].rstrip()
-            if stripped.startswith(" ") or stripped.startswith("\t") or not stripped:
+            # Blank lines and indented frame lines are part of the body.
+            if not stripped or stripped[0] in (" ", "\t"):
                 j += 1
                 continue
-            if _RE_TRACEBACK_START.match(lines[j]) or any(
-                c in stripped for c in _RE_TRACEBACK_CONT
-            ):
-                # Chained exception — keep scanning to the final one.
+            # A nested/chained traceback header: skip it and keep scanning.
+            if _RE_TRACEBACK_START.match(stripped):
                 j += 1
                 continue
-            exc_match = _RE_EXC_LINE.match(stripped)
-            if exc_match:
-                exc_type = exc_match.group(1)
-                exc_msg = exc_match.group(2)
+            # First non-indented content line → the exception line.
+            match = _RE_EXC_LINE.match(stripped)
+            if not match:
+                break  # normal log resumed; traceback block ended
+            exc_type = match.group(1)
+            exc_msg = match.group(2)
+            # Peek past blanks: only keep scanning if a chained exception
+            # explicitly follows; otherwise this was the final exception.
+            k = j + 1
+            while k < n and not lines[k].strip():
+                k += 1
+            if k < n and any(c in lines[k] for c in _RE_TRACEBACK_CONT):
+                j = k + 1
+                continue
+            j += 1
             break
         if exc_type:
             key = f"{exc_type}|{_normalise_msg(exc_msg or '')}"
@@ -191,7 +232,7 @@ def _extract_exceptions(text: str) -> list[ExceptionEntry]:
                     count=0,  # filled in below
                     message=(exc_msg or None),
                 )
-        i = j + 1
+        i = max(j, i + 1)
     result: list[ExceptionEntry] = []
     for key, entry in reps.items():
         entry.count = counts[key]

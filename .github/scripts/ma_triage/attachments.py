@@ -224,18 +224,27 @@ def download_log_windowed(
 
 
 def _fetch_tail(url: str, tail_bytes: int) -> str | None:
+    # Stream the response so that, if the server ignores the Range request and
+    # returns the whole file (200 instead of 206), we never buffer more than
+    # ~tail_bytes into memory (avoids OOM on a huge log).
     try:
-        resp = requests.get(
+        with requests.get(
             url,
+            stream=True,
             timeout=30,
             headers={
                 "User-Agent": "ma-triage-bot",
                 "Range": f"bytes=-{tail_bytes}",
             },
-        )
+        ) as resp:
+            if resp.status_code != 206:  # server ignored the Range request
+                return None
+            buf = bytearray()
+            for chunk in resp.iter_content(chunk_size=64 * 1024):
+                buf.extend(chunk)
+                if len(buf) >= tail_bytes:
+                    break
+            return bytes(buf[:tail_bytes]).decode("utf-8", errors="replace")
     except requests.RequestException as exc:
         log(f"Tail fetch failed for {url}: {exc}")
         return None
-    if resp.status_code != 206:  # server ignored the Range request
-        return None
-    return resp.content[:tail_bytes].decode("utf-8", errors="replace")

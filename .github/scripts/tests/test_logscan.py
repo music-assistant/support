@@ -63,3 +63,58 @@ def test_redacted_facts_only_no_raw_secret_in_findings(sample_log, fake_gh):
     assert "sk-abcdef0123456789ABCDEF" not in blob
     assert "/home/frank" not in blob
     assert "frank@example.com" not in blob
+
+
+def test_redaction_covers_url_creds_base64_and_ipv6():
+    raw = (
+        "connecting to https://admin:hunter2@example.com/api\n"
+        "api_key=ZmFrZS9rZXkrdmFsdWU9PQ==\n"
+        "remote peer 2606:4700:4700::1111 responded\n"
+        "local peer fe80::1 and ::1 are fine\n"
+    )
+    out = logscan.redact(raw)
+    # URL basic-auth creds stripped (host kept)
+    assert "hunter2" not in out
+    assert "admin:hunter2@" not in out
+    assert "example.com" in out
+    # base64 secret value redacted in full (no trailing fragment survives)
+    assert "ZmFrZS9rZXkrdmFsdWU9PQ==" not in out
+    assert "dmFsdWU9PQ==" not in out
+    # public IPv6 redacted, link-local / loopback kept
+    assert "2606:4700:4700::1111" not in out
+    assert "fe80::1" in out
+    assert "::1 are fine" in out
+
+
+def test_chained_exception_counts_once_as_final_type():
+    log_text = (
+        "Traceback (most recent call last):\n"
+        '  File "a.py", line 1, in f\n'
+        "    g()\n"
+        "KeyError: 'x'\n"
+        "\n"
+        "During handling of the above exception, another exception occurred:\n"
+        "\n"
+        "Traceback (most recent call last):\n"
+        '  File "b.py", line 2, in h\n'
+        "    boom()\n"
+        "RuntimeError: wrapped failure\n"
+        "2024-05-01 12:00:00 INFO [mass] back to normal logging\n"
+    )
+    diag = logscan.scan_log(log_text)
+    types = [e.exc_type for e in diag.exceptions]
+    # One fingerprint, represented by the FINAL exception (not split in two).
+    assert types == ["RuntimeError"]
+    assert diag.exceptions[0].count == 1
+
+
+def test_custom_exception_type_not_dropped():
+    log_text = (
+        "Traceback (most recent call last):\n"
+        '  File "a.py", line 1, in f\n'
+        "    g()\n"
+        "InvalidState: provider not ready\n"
+        "2024-05-01 12:00:00 INFO [mass] next line\n"
+    )
+    diag = logscan.scan_log(log_text)
+    assert [e.exc_type for e in diag.exceptions] == ["InvalidState"]

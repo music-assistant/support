@@ -175,13 +175,19 @@ def _resolve_labels(gh: GitHubClient, result: TriageResult) -> list[str]:
     existing = gh.list_labels()
     keep = filter_existing_labels(result.labels_to_add, existing)
 
-    # Response-state labels (only apply if present in the repo).
-    if result.is_actionable:
-        state_label = config.LABEL_NEEDS_ATTENTION
-    elif result.needs_user_action:
+    # Response-state labels (only apply if present in the repo). A pending user
+    # action takes precedence over actionability: e.g. valid diagnostics but an
+    # empty required "What happened?" still means we're waiting on the reporter.
+    if result.needs_user_action:
         state_label = config.LABEL_WAITING_FOR_USER
-        if result.form_kind == "main" and config.LABEL_NEEDS_DIAGNOSTICS in existing:
+        if (
+            result.form_kind == "main"
+            and not result.has_diagnostics
+            and config.LABEL_NEEDS_DIAGNOSTICS in existing
+        ):
             keep.add(config.LABEL_NEEDS_DIAGNOSTICS)
+    elif result.is_actionable:
+        state_label = config.LABEL_NEEDS_ATTENTION
     else:
         # Complete report with nothing outstanding (e.g. a filled-in frontend bug).
         state_label = config.LABEL_NEEDS_ATTENTION

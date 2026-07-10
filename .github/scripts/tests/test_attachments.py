@@ -136,13 +136,22 @@ def test_no_media_for_plain_body():
 
 
 class _RangeResp:
-    def __init__(self, content, status_code=200):
-        self.content = content
+    def __init__(self, content, status_code=206):
+        self._content = content
         self.status_code = status_code
         self.headers = {}
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
     def raise_for_status(self):
         pass
+
+    def iter_content(self, chunk_size=1):
+        yield self._content
 
 
 def test_download_log_windowed_small_file(monkeypatch):
@@ -170,3 +179,18 @@ def test_download_log_windowed_head_and_tail(monkeypatch):
     assert out.startswith("H" * 10)
     assert "truncated by triage bot" in out
     assert out.endswith("TAILDATA")
+
+
+def test_download_log_windowed_ignores_non_206_tail(monkeypatch):
+    # If the server ignores the Range request (returns 200), we must NOT append
+    # a tail (and must not buffer the whole body). Head-only is returned.
+    def fake_get(*a, **k):
+        if "Range" not in k.get("headers", {}):
+            return _FakeResp([b"H" * 4096])
+        return _RangeResp(b"X" * 10_000_000, status_code=200)
+
+    monkeypatch.setattr(attachments.requests, "get", fake_get)
+    url = "https://github.com/user-attachments/files/1/server.log"
+    out = attachments.download_log_windowed(url, head_bytes=4096, tail_bytes=8)
+    assert out == "H" * 4096
+    assert "truncated" not in out
