@@ -46,10 +46,10 @@ REQUIRED_SECTIONS_FRONTEND = (
     SECTION_HOW_TO_REPRODUCE,
 )
 
-# Free-text sections scanned for provider mentions (main form). The optional
-# "Affected provider(s)" field was removed from the form (support #5808); the
-# "What happened?" hint now asks reporters to name the provider/player in prose,
-# so the free-text scan below keeps its signal.
+# Free-text sections scanned for provider mentions (main form). The old
+# "Affected provider(s)" field was fully removed from the form (support #5808);
+# the "What happened?" hint now asks reporters to name the provider/player in
+# prose, so the free-text scan below keeps its signal.
 PROVIDER_SCAN_SECTIONS = (
     SECTION_WHAT_HAPPENED,
     SECTION_HOW_TO_REPRODUCE,
