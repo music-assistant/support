@@ -32,7 +32,13 @@ body:
       required: true
     attributes:
       label: What happened?
-      description: A clear and concise description of the problem. Tell us what you did, what happened, and what you expected to happen instead. If it relates to a specific music provider or player, please name it here.
+      description: >-
+        A clear and concise description of the problem — tell us what you did,
+        what happened, and what you expected to happen instead. Be specific,
+        for example: "playback stops after a few seconds on my Sonos speakers",
+        "Spotify tracks won't start playing", "a player never shows up in the
+        list", or "the queue skips tracks". If it involves a specific music
+        provider or player, please name it here.
 
   - type: textarea
     id: reproduce
@@ -76,8 +82,8 @@ body:
       description: |
         Please attach a **diagnostics report** — it contains everything we need (versions, platform, providers and their error states, and an optional log excerpt) and is privacy-sanitized, so it is safe to share publicly.
 
-        - Go to **Settings → Download diagnostics**, then drag the downloaded `music-assistant-diagnostics-<date>.json` file into the box below.
-        - **Don't see that button?** You're on an older version — attach your full server log instead, from **Settings → System → Server Logging**.
+        - Go to **Settings → System → Diagnostics → Download diagnostics**, then drag the downloaded `music-assistant-diagnostics-<date>.json` file into the box below.
+        - **Don't see that button?** Attach your full server log instead, from **Settings → System → Server Logging**.
 
         Please **attach the file** — do not paste its contents. If you really can't provide either, explain why.
       placeholder: Drag & drop your diagnostics report (or log file) here.
