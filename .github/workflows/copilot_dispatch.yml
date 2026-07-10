@@ -1,0 +1,58 @@
+# Copilot coding-agent dispatch (experimental, Tier 2).
+#
+# Hands a triaged bug off to the Copilot coding agent on music-assistant/server
+# so it can draft a fix PR there. Triggered conservatively: a maintainer applies
+# the `triage/dispatch-copilot` label, or the workflow is run manually.
+#
+# REQUIRES a repo secret `COPILOT_DISPATCH_TOKEN` that is a **user-to-server**
+# token (a machine-user PAT, or a GitHub App user-to-server token) belonging to
+# an identity with a Copilot seat and write access to music-assistant/server.
+# The default Actions token / GitHub App *installation* token is NOT accepted by
+# the coding-agent API. Honours TRIAGE_DRY_RUN.
+name: Copilot dispatch
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Support issue number to dispatch
+        required: true
+
+concurrency:
+  group: copilot-dispatch-${{ github.event.issue.number || github.event.inputs.issue_number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dispatch:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+      || github.event.label.name == 'triage/dispatch-copilot' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Dispatch to Copilot coding agent
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_DISPATCH_TOKEN: ${{ secrets.COPILOT_DISPATCH_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number || github.event.issue.number }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+          TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
+          TRIAGE_AI_MODEL: ${{ vars.TRIAGE_AI_MODEL }}
+          TRIAGE_COPILOT_AUTO: ${{ vars.TRIAGE_COPILOT_AUTO }}
+          TRIAGE_COPILOT_AUTO_DAILY_CAP: ${{ vars.TRIAGE_COPILOT_AUTO_DAILY_CAP }}
+          TRIAGE_COPILOT_AUTO_MIN_CONFIDENCE: ${{ vars.TRIAGE_COPILOT_AUTO_MIN_CONFIDENCE }}
+        run: python -m ma_triage dispatch

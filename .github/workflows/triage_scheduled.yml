@@ -1,0 +1,39 @@
+# Scheduled triage sweep (experimental).
+#
+# Once a day, walks open `waiting-for-user` issues and — based on days since the
+# reporter was last active — sends a gentle reminder (3d), a close warning (7d)
+# and finally auto-closes (14d). Issues labelled bug/enhancement/pinned/etc. are
+# exempt. Honours the same TRIAGE_DRY_RUN kill switch as the main workflow.
+name: Issue triage sweep
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # daily at 03:17 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: triage-sweep
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Run sweep
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+        run: python -m ma_triage sweep

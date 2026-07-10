@@ -1,0 +1,6 @@
+# Runtime dependency for the Music Assistant triage bot (.github/scripts/ma_triage).
+# Kept intentionally tiny and audit-friendly — no heavyweight SDKs.
+requests>=2.31,<3
+
+# Dev/test only:
+#   pytest>=8
