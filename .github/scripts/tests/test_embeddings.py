@@ -183,6 +183,27 @@ def test_build_posts_index_and_append_dedupe(ai_on):
     assert {p["number"] for p in idx3["posts"]} == {1, 2, 3}
 
 
+def test_build_posts_index_truncates_long_body(monkeypatch):
+    # A very long issue/discussion body must be capped before embedding so it
+    # can't blow the model's token limit and fail the whole batch (see #posts).
+    monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
+    captured = {}
+
+    def spy(texts, *, token):
+        captured["texts"] = texts
+        return [fake_embedding(t) for t in texts]
+
+    monkeypatch.setattr(embeddings, "embed_texts", spy)
+    gh = FakeGH()
+    long_body = "x" * (config.MAX_POST_EMBED_CHARS + 5000)
+    posts = [{"kind": "issue", "number": 1, "title": "t", "body": long_body,
+              "url": "u", "state": "open"}]
+    index, _ = embeddings.build_posts_index(gh, posts, token="t")
+    assert index is not None
+    assert captured["texts"]
+    assert all(len(t) <= config.MAX_POST_EMBED_CHARS for t in captured["texts"])
+
+
 def test_append_post_skip_on_embed_failure(monkeypatch):
     monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
     monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
