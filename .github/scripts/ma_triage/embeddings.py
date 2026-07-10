@@ -292,8 +292,12 @@ def build_posts_index(
             records.append(cached)
         else:
             to_embed.append(post)
+            # Cap each target so a very long issue/discussion body can't exceed
+            # the embedding model's token limit and fail the whole batch.
             embed_targets.append(
-                f"{post.get('title', '')}\n\n{post.get('body', '')}"
+                f"{post.get('title', '')}\n\n{post.get('body', '')}"[
+                    : config.MAX_POST_EMBED_CHARS
+                ]
             )
 
     if to_embed:
