@@ -1,0 +1,72 @@
+# RAG index build (experimental, Phase 2).
+#
+# Builds the two embedding indexes the triage bot's RAG layer reads at runtime —
+# `docs.json` (documentation chunks) and `posts.json` (past issues + discussions)
+# — and commits them to the orphan `triage-index` branch so `main` stays clean.
+#
+# COST / RATE LIMITS: embeddings run via GitHub Models (free tier is rate
+# limited). The build is cached by content SHA, so unchanged chunks are never
+# re-embedded, and a rate-limited run skips the commit rather than writing a
+# broken index. Runs nightly (not per-minute).
+#
+# SAFETY: this job needs `contents: write` to push the index branch, but it has
+# NO `issues:` permission — it can never comment on or modify issues. Honours the
+# TRIAGE_DRY_RUN kill switch (dry-run previews the commit in the job summary).
+name: RAG index build
+
+on:
+  schedule:
+    - cron: "37 4 * * *" # nightly at 04:37 UTC (offset from the triage sweep)
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which index to build
+        type: choice
+        default: all
+        options: [all, docs, posts]
+  # Lets the docs repo trigger a rebuild on a docs change via a cross-repo
+  # `repository_dispatch` (GitHub cannot path-filter another repo's pushes).
+  repository_dispatch:
+    types: [docs-changed]
+
+concurrency:
+  group: rag-index-write
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit the indexes to the triage-index branch
+  models: read # GitHub Models embeddings
+
+jobs:
+  build:
+    # Manual dispatch always runs; scheduled/dispatch builds only when AI is on.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+      || vars.TRIAGE_AI_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Build RAG indexes
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          # Untrusted only in the sense of a maintainer-chosen enum; passed as an
+          # env var (never interpolated into the shell command line).
+          INDEX_TARGET: ${{ github.event.inputs.target || 'all' }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+          TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
+          TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
+          TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
+          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
+          TRIAGE_DOCS_REPO: ${{ vars.TRIAGE_DOCS_REPO }}
+          TRIAGE_DOCS_SITE: ${{ vars.TRIAGE_DOCS_SITE }}
+          TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
+          TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
+        run: python -m ma_triage index "$INDEX_TARGET"

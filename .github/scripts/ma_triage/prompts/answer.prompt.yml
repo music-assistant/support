@@ -1,0 +1,61 @@
+# GitHub Models prompt file for the Music Assistant triage bot's doc-answer
+# judge (Phase 2 RAG layer). This is the source-of-truth copy of the judge
+# prompt + output schema; `ma_triage/ai.py` mirrors it at runtime so the bot has
+# no YAML runtime dependency. It can also be run/evaluated with the `gh models`
+# tooling. Keep the two in sync.
+name: MA triage docs answer judge
+description: >-
+  Given a Music Assistant issue and documentation sections retrieved by hybrid
+  search, decide whether the docs answer the question and produce a grounded,
+  cited answer with a confidence score.
+model: openai/gpt-4o
+modelParameters:
+  temperature: 0.1
+responseFormat: json_schema
+jsonSchema:
+  name: docs_answer
+  strict: true
+  schema:
+    type: object
+    additionalProperties: false
+    properties:
+      answers_question:
+        type: boolean
+        description: Whether the provided documentation sections answer the question.
+      confidence:
+        type: number
+        description: Confidence in the answer, from 0 to 1.
+      answer:
+        type: string
+        description: A concise, friendly answer grounded ONLY in the provided sections.
+      cited_sections:
+        type: array
+        description: The exact [id] values of the sections used to answer.
+        items:
+          type: string
+    required:
+      - answers_question
+      - confidence
+      - answer
+      - cited_sections
+messages:
+  - role: system
+    content: >-
+      You are a documentation assistant for the open-source project Music
+      Assistant. You are given a user's issue and a set of numbered documentation
+      sections retrieved from the official docs. Decide whether those sections
+      actually answer the user's question. Ground your answer ONLY in the
+      provided sections — never invent settings, versions, or steps that are not
+      present. Cite the sections you used by their exact [id]. If the sections do
+      not answer the question, set answers_question=false, keep confidence low,
+      and leave the answer brief. Reflect genuine uncertainty in `confidence`
+      (0-1). Keep the answer concise, friendly, and directly actionable.
+  - role: user
+    content: |-
+      ISSUE TITLE: {{title}}
+
+      ISSUE BODY (excerpt):
+      {{body}}
+
+      DOCUMENTATION SECTIONS:
+      {{sections}}

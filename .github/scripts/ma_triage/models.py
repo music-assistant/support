@@ -120,6 +120,88 @@ class AIResult:
     user_message: str | None = None
 
 
+# --------------------------------------------------------------------------- #
+# RAG layer (Phase 2)
+# --------------------------------------------------------------------------- #
+@dataclass
+class DocChunk:
+    """A single heading-delimited chunk of a documentation page."""
+
+    id: str  # stable "<path>#<heading-anchor>"
+    path: str  # docs slug, e.g. "faq/troubleshooting"
+    url: str  # full cite URL incl. heading anchor
+    title: str  # page title (frontmatter or first H1)
+    heading: str  # this chunk's heading ("" for the page intro)
+    text: str
+    breadcrumbs: list[str] = field(default_factory=list)
+    sha: str = ""  # sha256 of ``text`` — lets the builder skip re-embedding
+    embedding: list[float] = field(default_factory=list)
+
+    @property
+    def label(self) -> str:
+        """Human-readable citation label for the comment."""
+        crumbs = [c for c in self.breadcrumbs if c]
+        return " › ".join(crumbs) if crumbs else (self.title or self.path)
+
+
+@dataclass
+class DocHit:
+    """A retrieved doc chunk with its fused relevance score."""
+
+    chunk: DocChunk
+    score: float
+
+
+@dataclass
+class DocAnswer:
+    """The judge model's verdict about whether the docs answer the question."""
+
+    answers_question: bool
+    confidence: float  # 0-1
+    answer: str
+    cited_sections: list[str] = field(default_factory=list)  # DocChunk ids
+
+
+@dataclass
+class RelatedPost:
+    """A similar past issue or discussion surfaced from the posts index."""
+
+    kind: str  # "issue" | "discussion"
+    number: int
+    title: str
+    url: str
+    score: float = 0.0
+    state: str | None = None  # "open" | "closed"
+
+
+@dataclass
+class RagResult:
+    """Everything the RAG layer decided for one post.
+
+    ``tier`` is one of ``"high" | "medium" | "low"``; only ``high``/``medium``
+    render anything in the comment (``low`` stays silent). This whole object is
+    ``None`` on ``TriageResult`` whenever the RAG layer is disabled or fails, so
+    Phase-1 behaviour is completely unchanged in that case.
+    """
+
+    tier: str = "low"
+    doc_answer: DocAnswer | None = None
+    cited_chunks: list[DocChunk] = field(default_factory=list)
+    doc_hits: list[DocHit] = field(default_factory=list)
+    related_posts: list[RelatedPost] = field(default_factory=list)
+    suppressed: bool = False
+
+    @property
+    def has_docs_output(self) -> bool:
+        return self.tier in ("high", "medium") and bool(
+            self.cited_chunks or self.doc_hits
+        )
+
+    @property
+    def has_output(self) -> bool:
+        return self.has_docs_output or bool(self.related_posts)
+
+
 @dataclass
 class TriageResult:
     """Everything the bot decided about an issue in one pass."""
@@ -150,6 +232,9 @@ class TriageResult:
     maintainers_to_ping: set[str] = field(default_factory=set)
     ai: AIResult | None = None
     diagnostics: Diagnostics | None = None
+    # RAG layer output (Phase 2). ``None`` whenever the RAG layer is disabled or
+    # failed, which keeps the rendered comment byte-identical to Phase 1.
+    rag: RagResult | None = None
 
     @property
     def is_actionable(self) -> bool:

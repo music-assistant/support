@@ -18,7 +18,7 @@ from typing import Any
 import requests
 
 from . import config
-from .models import AIResult, Diagnostics
+from .models import AIResult, Diagnostics, DocAnswer, DocHit
 from .sanitize import fenced, inline
 
 # Allowed values for the model's `category` field; anything else → "unknown".
@@ -171,4 +171,123 @@ def assess(
         return _coerce(data)
     except Exception as exc:  # noqa: BLE001 — never let AI break triage
         print(f"AI assessment skipped: {exc}")
+        return None
+
+
+# --------------------------------------------------------------------------- #
+# Doc-answer judge (Phase 2 RAG) — the single chat call per post
+# --------------------------------------------------------------------------- #
+# JSON schema for the judge's structured verdict.
+_ANSWER_SCHEMA: dict[str, Any] = {
+    "name": "docs_answer",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "answers_question": {"type": "boolean"},
+            "confidence": {"type": "number"},
+            "answer": {"type": "string"},
+            "cited_sections": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["answers_question", "confidence", "answer", "cited_sections"],
+    },
+}
+
+_ANSWER_SYSTEM_PROMPT = (
+    "You are a documentation assistant for the open-source project Music "
+    "Assistant. You are given a user's issue and a set of numbered documentation "
+    "sections retrieved from the official docs. Decide whether those sections "
+    "actually answer the user's question. Ground your answer ONLY in the "
+    "provided sections — never invent settings, versions, or steps that are not "
+    "present. Cite the sections you used by their exact [id]. If the sections do "
+    "not answer the question, set answers_question=false, keep confidence low, "
+    "and leave the answer brief. Reflect genuine uncertainty in `confidence` "
+    "(0-1). Keep the answer concise, friendly, and directly actionable."
+)
+
+
+def build_answer_messages(
+    title: str, body: str, doc_hits: list[DocHit]
+) -> list[dict[str, str]]:
+    """Assemble the (bounded, sanitized) judge messages from retrieved docs."""
+    sections: list[str] = []
+    for hit in doc_hits:
+        chunk = hit.chunk
+        # The id is our own internally-generated key ("<slug>#<anchor>") and the
+        # judge must echo it back verbatim to cite a section, so it is shown RAW
+        # — it must NOT go through inline(), which would insert a zero-width space
+        # after the '#' and make every citation fail the exact-match filter.
+        sections.append(
+            f"[{chunk.id}] {inline(chunk.label, max_len=200)}\n"
+            f"{fenced(chunk.text, max_len=1200)}"
+        )
+    user_content = (
+        f"ISSUE TITLE: {inline(title, max_len=300)}\n\n"
+        f"ISSUE BODY (excerpt):\n{fenced(body, max_len=2000)}\n\n"
+        f"DOCUMENTATION SECTIONS:\n" + "\n\n".join(sections)
+    )
+    if len(user_content) > config.MAX_AI_INPUT_CHARS:
+        user_content = user_content[: config.MAX_AI_INPUT_CHARS] + "\n…[truncated]"
+    return [
+        {"role": "system", "content": _ANSWER_SYSTEM_PROMPT},
+        {"role": "user", "content": user_content},
+    ]
+
+
+def _coerce_answer(data: dict[str, Any], valid_ids: set[str]) -> DocAnswer:
+    try:
+        confidence = float(data.get("confidence", 0.0))
+    except (TypeError, ValueError):
+        confidence = 0.0
+    cited = data.get("cited_sections") or []
+    if not isinstance(cited, list):
+        cited = []
+    # Drop any hallucinated ids the model did not actually receive.
+    cited = [str(c) for c in cited if str(c) in valid_ids]
+    answer = str(data.get("answer", "")).strip()[: config.MAX_DOC_ANSWER_CHARS]
+    return DocAnswer(
+        answers_question=bool(data.get("answers_question", False)),
+        confidence=max(0.0, min(1.0, confidence)),
+        answer=answer,
+        cited_sections=cited,
+    )
+
+
+def judge_answer(
+    title: str, body: str, doc_hits: list[DocHit], *, token: str
+) -> DocAnswer | None:
+    """Ask the judge whether the retrieved docs answer the post. ``None`` on any
+    failure or when the RAG layer is disabled — so triage is never affected."""
+    if not (config.AI_ENABLED and config.RAG_ENABLED):
+        return None
+    if not doc_hits:
+        return None
+    messages = build_answer_messages(title or "", body or "", doc_hits)
+    payload = {
+        "model": config.ANSWER_MODEL,
+        "messages": messages,
+        "temperature": 0.1,
+        "response_format": {"type": "json_schema", "json_schema": _ANSWER_SCHEMA},
+    }
+    valid_ids = {hit.chunk.id for hit in doc_hits}
+    try:
+        resp = requests.post(
+            config.AI_ENDPOINT,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json=payload,
+            timeout=60,
+        )
+        if resp.status_code >= 400:
+            print(f"Doc-answer judge skipped: HTTP {resp.status_code}: {resp.text[:200]}")
+            return None
+        content = resp.json()["choices"][0]["message"]["content"]
+        data = json.loads(content)
+        return _coerce_answer(data, valid_ids)
+    except Exception as exc:  # noqa: BLE001 — never let AI break triage
+        print(f"Doc-answer judge skipped: {exc}")
         return None

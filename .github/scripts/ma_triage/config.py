@@ -222,6 +222,83 @@ COPILOT_AUTO_MIN_CONFIDENCE = float(
 )
 
 # --------------------------------------------------------------------------- #
+# RAG layer (Phase 2) — docs-grounded answers + similar-post detection
+# --------------------------------------------------------------------------- #
+# The RAG layer is *additionally* gated behind AI_ENABLED (see rag.py). This
+# sub-flag lets a maintainer turn off just the RAG features while keeping the
+# Tier-1 assessment. Effective enablement is ``AI_ENABLED and RAG_ENABLED``.
+RAG_ENABLED = _flag("TRIAGE_RAG_ENABLED", True)
+
+# Public docs repository (Astro/Starlight). Readable with the default
+# GITHUB_TOKEN — it is public, so no secret is required.
+DOCS_REPO = os.environ.get("TRIAGE_DOCS_REPO", "music-assistant/music-assistant.io")
+DOCS_CONTENT_ROOT = os.environ.get("TRIAGE_DOCS_CONTENT_ROOT", "src/content/docs")
+DOCS_SITE = os.environ.get("TRIAGE_DOCS_SITE", "https://www.music-assistant.io")
+DOCS_REF = os.environ.get("TRIAGE_DOCS_REF", "main")
+# Doc paths (relative to the content root) whose prefix excludes them from the
+# index — the dated blog posts are announcements, not troubleshooting material.
+DOCS_EXCLUDE_PREFIXES = tuple(
+    p.strip()
+    for p in os.environ.get("TRIAGE_DOCS_EXCLUDE", "blog/").split(",")
+    if p.strip()
+)
+# Discussion categories excluded from the similar-posts index (case-insensitive).
+# Translation contributions live in a Discussion category and are not useful as
+# "similar reports" for bug issues, so they are skipped by default. (Live
+# discussion triage is out of scope for this phase; discussions are only read
+# into the posts index for related-post links.)
+DISCUSSION_EXCLUDE_CATEGORIES = tuple(
+    c.strip().lower()
+    for c in os.environ.get(
+        "TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES", "translations,translation"
+    ).split(",")
+    if c.strip()
+)
+
+# Orphan branch in THIS repo that stores the JSON indexes (keeps ``main`` clean).
+INDEX_BRANCH = os.environ.get("TRIAGE_INDEX_BRANCH", "triage-index")
+DOCS_INDEX_PATH = "docs.json"
+POSTS_INDEX_PATH = "posts.json"
+SUPPRESS_INDEX_PATH = "suppress.json"
+
+# GitHub Models — embeddings + judge/answer chat (both OpenAI-compatible, served
+# from models.github.ai with the default token + ``models: read`` permission).
+EMBED_MODEL = os.environ.get("TRIAGE_EMBED_MODEL", "openai/text-embedding-3-small")
+# Reduced embedding dimensionality (OpenAI ``dimensions`` param) keeps the JSON
+# indexes small and the pure-Python cosine fast. Set to 0 to use the model default.
+EMBED_DIM = int(os.environ.get("TRIAGE_EMBED_DIM", "512"))
+EMBED_ENDPOINT = os.environ.get(
+    "TRIAGE_EMBED_ENDPOINT", "https://models.github.ai/inference/embeddings"
+)
+EMBED_BATCH = int(os.environ.get("TRIAGE_EMBED_BATCH", "64"))
+ANSWER_MODEL = os.environ.get("TRIAGE_ANSWER_MODEL", "openai/gpt-4o")
+
+# Confidence-tier thresholds for the doc-answer judge (0-1). See rag.tier().
+ANSWER_HI = float(os.environ.get("TRIAGE_ANSWER_HI", "0.75"))
+ANSWER_LO = float(os.environ.get("TRIAGE_ANSWER_LO", "0.45"))
+
+# Retrieval knobs.
+DOCS_TOP_K = int(os.environ.get("TRIAGE_DOCS_TOP_K", "6"))
+RELATED_POSTS = int(os.environ.get("TRIAGE_RELATED_POSTS", "3"))
+RELATED_MIN_SCORE = float(os.environ.get("TRIAGE_RELATED_MIN_SCORE", "0.35"))
+# Minimum dense cosine for the top doc hit to show links when the judge call
+# itself failed (retrieval-only MEDIUM fallback).
+DOCS_MIN_DENSE = float(os.environ.get("TRIAGE_DOCS_MIN_DENSE", "0.30"))
+# Max doc links rendered in a MEDIUM (links-only) comment section.
+DOCS_LINKS_SHOWN = int(os.environ.get("TRIAGE_DOCS_LINKS_SHOWN", "3"))
+# A cited-answer fingerprint with at least this many downvotes is suppressed.
+SUPPRESS_MIN_DOWNVOTES = int(os.environ.get("TRIAGE_SUPPRESS_MIN_DOWNVOTES", "1"))
+RRF_K = 60  # reciprocal-rank-fusion constant
+BM25_K1 = 1.5
+BM25_B = 0.75
+
+# Indexing caps / cost guards.
+INDEX_MAX_POSTS = int(os.environ.get("TRIAGE_INDEX_MAX_POSTS", "500"))
+DOCS_CHUNK_MAX_CHARS = int(os.environ.get("TRIAGE_DOCS_CHUNK_MAX_CHARS", "2000"))
+MAX_POST_EMBED_CHARS = 6000  # bound the text embedded per post / query
+MAX_DOC_ANSWER_CHARS = 1200  # cap the judge's answer echoed into the comment
+
+# --------------------------------------------------------------------------- #
 # User-facing copy
 # --------------------------------------------------------------------------- #
 DISCLOSURE_FOOTER = (
@@ -293,4 +370,22 @@ SCREENSHOT_ATTACHMENT_NOTE = (
     "screenshot usually doesn't include enough to go on. Could you attach the "
     "actual **diagnostics report** (a `.json` file) or your **full log file** "
     "instead?"
+)
+
+# --------------------------------------------------------------------------- #
+# RAG layer copy (docs-grounded answers + similar past reports)
+# --------------------------------------------------------------------------- #
+# Shown for a HIGH-confidence, docs-grounded answer (generated prose + links).
+DOCS_ANSWER_HEADING = "### 📚 This might be answered in the docs"
+# Shown for a MEDIUM-confidence result (relevant links only, no generated prose).
+DOCS_LINKS_HEADING = "### 📚 Docs that might help"
+DOCS_ANSWER_DISCLAIMER = (
+    "_This is an automated suggestion based on the documentation — it may not "
+    "perfectly match your setup, and a maintainer will still take a look. If it "
+    "helped, a 👍 on this comment helps me learn; a 👎 tells me I got it wrong._"
+)
+RELATED_POSTS_HEADING = "### 🔁 Similar past reports"
+RELATED_POSTS_INTRO = (
+    "These earlier issues or discussions look related and might already have an "
+    "answer (or indicate a duplicate):"
 )
