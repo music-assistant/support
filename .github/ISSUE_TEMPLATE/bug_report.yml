@@ -76,9 +76,8 @@ body:
       description: |
         Please attach a **diagnostics report** — it contains everything we need (versions, platform, providers and their error states, and an optional log excerpt) and is privacy-sanitized, so it is safe to share publicly.
 
-        - **Music Assistant 2.10 or newer:** go to **Settings → Download diagnostics** and drag the `music-assistant-diagnostics-<date>.json` file into the box below.
-        - **Music Assistant 2.9.6 or newer** (no button yet): while logged in as admin, browse to `http://<your-ma-host>:8095/diagnostics?include_log_tail=true` (when you open MA through Home Assistant, just add `/diagnostics?include_log_tail=true` to the address instead), save the file and drag it in below.
-        - **Older than 2.9.6:** attach your full server log instead, from **Settings → System → Server Logging**.
+        - Go to **Settings → Download diagnostics**, then drag the downloaded `music-assistant-diagnostics-<date>.json` file into the box below.
+        - **Don't see that button?** You're on an older version — attach your full server log instead, from **Settings → System → Server Logging**.
 
         Please **attach the file** — do not paste its contents. If you really can't provide either, explain why.
       placeholder: Drag & drop your diagnostics report (or log file) here.
