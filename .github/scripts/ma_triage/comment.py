@@ -97,11 +97,11 @@ def _ai_section(result: TriageResult) -> str:
     ai = result.ai
     if ai is None:
         return ""
-    lines = ["\n### 🤖 AI assessment\n"]
+    inner: list[str] = []
     if ai.summary:
-        lines.append(inline(ai.summary, max_len=1000))
+        inner.append(inline(ai.summary, max_len=1000))
     if ai.likely_root_cause:
-        lines.append(f"\n**Likely cause:** {inline(ai.likely_root_cause, max_len=1000)}")
+        inner.append(f"\n**Likely cause:** {inline(ai.likely_root_cause, max_len=1000)}")
     meta = []
     if ai.category:
         meta.append(f"category: `{inline(ai.category, max_len=40)}`")
@@ -110,8 +110,19 @@ def _ai_section(result: TriageResult) -> str:
     if ai.possibly_fixed_in_version:
         meta.append(f"possibly fixed in: `{inline(ai.possibly_fixed_in_version, max_len=40)}`")
     if meta:
-        lines.append("\n_" + " · ".join(meta) + "_")
-    return "\n".join(lines)
+        inner.append("\n_" + " · ".join(meta) + "_")
+    if not inner:
+        return ""
+    # Rendered collapsed: it's an AI hypothesis for a maintainer to sanity-check,
+    # not a conclusion shown front-and-centre to the reporter.
+    body = "\n".join(inner)
+    return (
+        "\n<details>\n"
+        "<summary>🤖 AI assessment — possible root cause (for maintainers; may be "
+        "wrong)</summary>\n\n"
+        f"{body}\n"
+        "</details>"
+    )
 
 
 def _system_summary(result: TriageResult) -> str:

@@ -93,6 +93,9 @@ def test_ai_section_rendered(sample_raw, fake_gh):
     assert "AI assessment" in body
     assert "Sonos device offline." in body
     assert "60%" in body
+    # rendered as a collapsed block for maintainers, not an always-open section
+    assert "<details>" in body and "<summary>" in body
+    assert "### 🤖 AI assessment" not in body
 
 
 def test_state_roundtrip():
