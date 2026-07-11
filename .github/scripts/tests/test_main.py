@@ -180,3 +180,24 @@ def test_models_token_falls_back_when_unset_or_blank(monkeypatch):
     assert main._models_token("ghtok") == "ghtok"
     monkeypatch.setenv("GH_MODELS_TOKEN", "")
     assert main._models_token("ghtok") == "ghtok"
+
+
+def test_apply_triage_state_labels_mutually_exclusive(fake_gh):
+    from ma_triage.models import TriageResult
+    # Existing issue already needs-attention; this pass -> waiting-for-user.
+    issue = {"number": 42, "labels": [{"name": "needs-attention"}, {"name": "sonos"}]}
+    result = TriageResult(form_kind="main", missing_sections=["What happened?"])
+    main.apply_triage(fake_gh, 42, issue, result)
+    added = [c for c in fake_gh.calls if c[0] == "add_labels"]
+    assert any("waiting-for-user" in c[2] for c in added)
+    # the opposite state label is removed rather than left to contradict
+    assert ("remove_label", 42, "needs-attention") in fake_gh.calls
+
+
+def test_apply_triage_keeps_state_when_unchanged(fake_gh):
+    from ma_triage.models import TriageResult
+    # Already waiting-for-user; a still-missing-info pass must not remove it.
+    issue = {"number": 43, "labels": [{"name": "waiting-for-user"}]}
+    result = TriageResult(form_kind="main", missing_sections=["What happened?"])
+    main.apply_triage(fake_gh, 43, issue, result)
+    assert not any(c[0] == "remove_label" for c in fake_gh.calls)
