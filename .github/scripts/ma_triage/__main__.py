@@ -259,10 +259,12 @@ def apply_triage(
 # --------------------------------------------------------------------------- #
 def cmd_triage(gh: GitHubClient, token: str) -> int:
     number = int(_env("ISSUE_NUMBER"))
-    title = _env("ISSUE_TITLE")
-    body = _env("ISSUE_BODY")
 
     issue = gh.get_issue(number)
+    # On a manual workflow_dispatch there is no issue event payload, so fall back
+    # to the values fetched from the API.
+    title = _env("ISSUE_TITLE") or issue.get("title") or ""
+    body = _env("ISSUE_BODY") or issue.get("body") or ""
     labels = lifecycle.issue_labels(issue)
     if config.LABEL_HOLD in labels or config.LABEL_SKIP in labels:
         summary(f"#{number}: skipped (hold/skip label present).")
