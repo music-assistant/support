@@ -30,6 +30,7 @@ def related_from_index(
     posts: list[dict],
     *,
     exclude_number: int,
+    exclude_kind: str = "issue",
     k: int | None = None,
     min_score: float | None = None,
 ) -> list[RelatedPost]:
@@ -44,7 +45,7 @@ def related_from_index(
     for post in posts:
         number = int(post.get("number", 0))
         kind = post.get("kind", "issue")
-        if kind == "issue" and number == exclude_number:
+        if kind == exclude_kind and number == exclude_number:
             continue
         key = (kind, number)
         if key in seen:
@@ -79,7 +80,8 @@ def _title_query(title: str) -> str:
 
 
 def related_from_search(
-    gh: GitHubClient, title: str, *, exclude_number: int, k: int | None = None
+    gh: GitHubClient, title: str, *, exclude_number: int, exclude_kind: str = "issue",
+    k: int | None = None
 ) -> list[RelatedPost]:
     """Fallback: GitHub issue search over the title keywords."""
     top_k = config.RELATED_POSTS if k is None else k
@@ -97,7 +99,10 @@ def related_from_search(
         if "pull_request" in item:
             continue
         number = int(item.get("number", 0))
-        if number == exclude_number:
+        # The search only returns issues, so only skip the self-number when the
+        # incoming post is itself an issue (a discussion sharing that number is
+        # a different post and should still be surfaceable).
+        if exclude_kind == "issue" and number == exclude_number:
             continue
         results.append(
             RelatedPost(
@@ -121,10 +126,15 @@ def find_related(
     title: str,
     posts: list[dict],
     exclude_number: int,
+    exclude_kind: str = "issue",
 ) -> list[RelatedPost]:
     """Related posts from the index when available, else the search fallback."""
     if posts and query_vec:
-        hits = related_from_index(query_vec, posts, exclude_number=exclude_number)
+        hits = related_from_index(
+            query_vec, posts, exclude_number=exclude_number, exclude_kind=exclude_kind
+        )
         if hits:
             return hits
-    return related_from_search(gh, title, exclude_number=exclude_number)
+    return related_from_search(
+        gh, title, exclude_number=exclude_number, exclude_kind=exclude_kind
+    )

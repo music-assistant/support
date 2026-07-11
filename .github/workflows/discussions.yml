@@ -78,7 +78,8 @@ jobs:
     if: >-
       ${{ github.event.action == 'created'
       && vars.TRIAGE_AI_ENABLED == 'true'
-      && vars.TRIAGE_RAG_ENABLED != 'false' }}
+      && vars.TRIAGE_RAG_ENABLED != 'false'
+      && vars.TRIAGE_DISCUSSIONS_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     # Serialise with the nightly index build (and issue appends) so concurrent
     # force-pushes to the triage-index branch can't drop each other's writes.
@@ -105,6 +106,7 @@ jobs:
           TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
           TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
           TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
+          TRIAGE_DISCUSSIONS_ENABLED: ${{ vars.TRIAGE_DISCUSSIONS_ENABLED }}
           TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
           TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}

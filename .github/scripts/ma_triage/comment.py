@@ -353,12 +353,14 @@ def upsert_discussion(
 ) -> None:
     """Create or update the single sticky comment on a Discussion (GraphQL).
 
-    ``comments`` are the discussion's existing comments (``{id, body}`` nodes);
-    the sticky is found via the hidden marker and updated in place, else a new
-    comment is added to the discussion.
+    ``comments`` are the discussion's existing comments (``{id, body,
+    viewerDidAuthor}`` nodes). Only comments the bot itself authored
+    (``viewerDidAuthor``) are considered when locating the sticky, so a user
+    can't hijack the update by planting the marker text in their own comment.
     """
     full = f"{body}\n\n{_render_state(state)}"
-    existing = find_sticky(comments)
+    owned = [c for c in comments if c.get("viewerDidAuthor")]
+    existing = find_sticky(owned)
     if existing:
         gh.update_discussion_comment(existing["id"], full)
     else:

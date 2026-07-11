@@ -324,7 +324,7 @@ class GitHubClient:
               category { name }
               comments(first:100, after:$c){
                 pageInfo{ hasNextPage endCursor }
-                nodes{ id body }
+                nodes{ id body viewerDidAuthor }
               }
             }
           }

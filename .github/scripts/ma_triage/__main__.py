@@ -475,7 +475,9 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
     body = _env("DISCUSSION_BODY") or disc.get("body") or ""
     summary(f"## Triage of discussion #{number}\n")
 
-    rag_result = rag.answer(gh, title=title, body=body, number=number, token=token)
+    rag_result = rag.answer(
+        gh, title=title, body=body, number=number, token=token, kind="discussion"
+    )
     if rag_result is None or not rag_result.has_output:
         summary(f"#{number}: no confident docs answer or related posts; staying silent.")
         return 0
@@ -508,6 +510,9 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
 def cmd_discussion_append(gh: GitHubClient, token: str) -> int:
     """Embed a single new discussion and upsert it into the posts index."""
     number = int(_env("DISCUSSION_NUMBER"))
+    if not (config.AI_ENABLED and config.RAG_ENABLED and config.DISCUSSIONS_ENABLED):
+        summary(f"discussion #{number}: skipped (discussion triage disabled).")
+        return 0
     summary(f"## RAG posts-index append for discussion #{number}\n")
     disc = gh.get_discussion(number)
     if not disc:
