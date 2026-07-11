@@ -185,13 +185,13 @@ def _doc_link(label: str, url: str) -> str:
     return f"- [{link_label(label, max_len=160) or url}]({url})"
 
 
-def _rag_section(result: TriageResult) -> str:
+def _render_rag(rag: RagResult | None) -> str:
     """Render the optional docs-answer + related-posts sections.
 
     Returns ``""`` when the RAG layer produced nothing (or is disabled), so the
-    comment is byte-identical to Phase 1 in that case.
+    issue comment is byte-identical to Phase 1 in that case. Shared by the issue
+    comment and the discussion comment.
     """
-    rag: RagResult | None = result.rag
     if rag is None or not rag.has_output:
         return ""
     parts: list[str] = []
@@ -225,6 +225,26 @@ def _rag_section(result: TriageResult) -> str:
             title = link_label(post.title, max_len=140)
             parts.append(f"- [#{post.number}: {title}]({post.url}){closed}")
 
+    return "\n".join(parts)
+
+
+def _rag_section(result: TriageResult) -> str:
+    return _render_rag(result.rag)
+
+
+def build_discussion_body(rag: RagResult, *, title: str = "") -> str:
+    """Render the sticky comment for a Discussion.
+
+    Discussions have no diagnostics, template or labels — the body is purely the
+    RAG output (a docs-grounded answer and/or related past posts) wrapped in the
+    standard greeting + disclosure footer. Callers only invoke this when
+    ``rag.has_output`` is true.
+    """
+    parts = [config.STICKY_MARKER, "", config.DISCUSSION_GREETING, ""]
+    section = _render_rag(rag)
+    if section:
+        parts.append(section)
+    parts.append(config.DISCLOSURE_FOOTER)
     return "\n".join(parts)
 
 
@@ -321,3 +341,27 @@ def upsert(
         gh.update_comment(existing["id"], full)
     else:
         gh.create_comment(number, full)
+
+
+def upsert_discussion(
+    gh: GitHubClient,
+    discussion_id: str,
+    body: str,
+    state: dict[str, Any],
+    *,
+    comments: list[dict[str, Any]],
+) -> None:
+    """Create or update the single sticky comment on a Discussion (GraphQL).
+
+    ``comments`` are the discussion's existing comments (``{id, body,
+    viewerDidAuthor}`` nodes). Only comments the bot itself authored
+    (``viewerDidAuthor``) are considered when locating the sticky, so a user
+    can't hijack the update by planting the marker text in their own comment.
+    """
+    full = f"{body}\n\n{_render_state(state)}"
+    owned = [c for c in comments if c.get("viewerDidAuthor")]
+    existing = find_sticky(owned)
+    if existing:
+        gh.update_discussion_comment(existing["id"], full)
+    else:
+        gh.add_discussion_comment(discussion_id, full)

@@ -80,6 +80,7 @@ def answer(
     body: str,
     number: int,
     token: str,
+    kind: str = "issue",
 ) -> RagResult | None:
     """Run the RAG pipeline for one post. ``None`` when disabled or on failure."""
     if not (config.AI_ENABLED and config.RAG_ENABLED):
@@ -133,6 +134,7 @@ def answer(
             title=title,
             posts=posts,
             exclude_number=number,
+            exclude_kind=kind,
         )
 
         result = RagResult(

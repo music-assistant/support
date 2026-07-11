@@ -250,6 +250,13 @@ AI_ENDPOINT = _env_str("TRIAGE_AI_ENDPOINT", "https://models.github.ai/inference
 # Tier-1 assessment. Effective enablement is ``AI_ENABLED and RAG_ENABLED``.
 RAG_ENABLED = _flag("TRIAGE_RAG_ENABLED", True)
 
+# Live discussion triage (docs-grounded answers + related posts on GitHub
+# Discussions). Gated *additionally* behind AI_ENABLED and RAG_ENABLED, and
+# defaults OFF so merging the feature is dormant until a maintainer opts in by
+# setting TRIAGE_DISCUSSIONS_ENABLED=true. Effective enablement is
+# ``AI_ENABLED and RAG_ENABLED and DISCUSSIONS_ENABLED``.
+DISCUSSIONS_ENABLED = _flag("TRIAGE_DISCUSSIONS_ENABLED", False)
+
 # Public docs repository (Astro/Starlight). Readable with the default
 # GITHUB_TOKEN — it is public, so no secret is required.
 DOCS_REPO = _env_str("TRIAGE_DOCS_REPO", "music-assistant/music-assistant.io")
@@ -263,11 +270,10 @@ DOCS_EXCLUDE_PREFIXES = tuple(
     for p in _env_str("TRIAGE_DOCS_EXCLUDE", "blog/").split(",")
     if p.strip()
 )
-# Discussion categories excluded from the similar-posts index (case-insensitive).
-# Translation contributions live in a Discussion category and are not useful as
-# "similar reports" for bug issues, so they are skipped by default. (Live
-# discussion triage is out of scope for this phase; discussions are only read
-# into the posts index for related-post links.)
+# Discussion categories excluded (case-insensitive) from BOTH the similar-posts
+# index and live discussion triage. Translation contributions live in a
+# Discussion category and are neither useful as "similar reports" for bug issues
+# nor something the bot should auto-answer, so they are skipped by default.
 DISCUSSION_EXCLUDE_CATEGORIES = tuple(
     c.strip().lower()
     for c in _env_str("TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES", "translations,translation").split(",")
@@ -328,6 +334,13 @@ DISCLOSURE_FOOTER = (
 )
 
 GREETING = "Hi, and thanks for taking the time to report this! 🙏"
+
+# Greeting for the sticky comment posted on a Discussion (a question, not a bug
+# report). Kept short and clearly automated; the disclosure footer still applies.
+DISCUSSION_GREETING = (
+    "👋 Thanks for starting a discussion! Here are a few automated pointers that "
+    "might help while the community and maintainers take a look."
+)
 
 # Lifecycle reminder / close copy. `{days}` is filled in at send time.
 REMINDER_1_MESSAGE = (

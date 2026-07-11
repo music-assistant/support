@@ -44,7 +44,7 @@ class FakeGH:
 
     def __init__(self, *, latest_tag="2.9.5", labels=None, manifests=None,
                  index_files=None, tree=None, issues=None, discussions=None,
-                 search_items=None):
+                 search_items=None, discussion=None):
         self.dry_run = False
         self.repo = "music-assistant/support"
         self._latest_tag = latest_tag
@@ -55,6 +55,7 @@ class FakeGH:
         self._tree = list(tree or [])
         self._issues = list(issues or [])
         self._discussions = list(discussions or [])
+        self._discussion_obj = discussion
         self._search_items = list(search_items or [])
         self.calls: list[tuple] = []
 
@@ -95,6 +96,9 @@ class FakeGH:
     def list_discussions(self, *, limit=500):
         return list(self._discussions)[:limit]
 
+    def get_discussion(self, number):
+        return self._discussion_obj
+
     # mutations (recorded) --------------------------------------------------
     def add_labels(self, number, labels):
         self.calls.append(("add_labels", number, tuple(labels)))
@@ -109,6 +113,12 @@ class FakeGH:
 
     def update_comment(self, comment_id, body):
         self.calls.append(("update_comment", comment_id, body))
+
+    def add_discussion_comment(self, discussion_id, body):
+        self.calls.append(("add_discussion_comment", discussion_id, body))
+
+    def update_discussion_comment(self, comment_id, body):
+        self.calls.append(("update_discussion_comment", comment_id, body))
 
     def add_assignees(self, number, assignees):
         self.calls.append(("add_assignees", number, tuple(assignees)))
