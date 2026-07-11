@@ -7,7 +7,6 @@ shell interpolation of untrusted issue content):
     python -m ma_triage triage     # analyse an opened/edited issue
     python -m ma_triage respond     # react to a new issue comment
     python -m ma_triage sweep       # scheduled reminder / auto-close pass
-    python -m ma_triage dispatch    # hand a bug off to the Copilot coding agent
 
 Required env: ``GITHUB_TOKEN``. Issue subcommands also read ``ISSUE_NUMBER``
 (and, for triage, ``ISSUE_TITLE`` / ``ISSUE_BODY``). Feature flags come from the
@@ -21,7 +20,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any
 
-from . import ai, analyze, comment, config, copilot, embeddings, lifecycle, logscan, rag, template
+from . import ai, analyze, comment, config, embeddings, lifecycle, logscan, rag, template
 from .attachments import (
     download_capped,
     download_log_windowed,
@@ -221,7 +220,6 @@ def apply_triage(
     number: int,
     issue: dict[str, Any],
     result: TriageResult,
-    prior_state: dict[str, Any],
 ) -> None:
     """Apply labels and (when there's something useful to say) the sticky comment."""
     labels = _resolve_labels(gh, result)
@@ -247,23 +245,12 @@ def apply_triage(
                 "related": [p.number for p in result.rag.related_posts],
                 "suppressed": result.rag.suppressed,
             }
-        if "dispatch" in prior_state:  # preserve any earlier Copilot dispatch record
-            state["dispatch"] = prior_state["dispatch"]
-
         body = comment.build_body(result)
         comment.upsert(gh, number, body, state)
     else:
         summary(
             f"#{number}: nothing actionable to post (form={result.form_kind}); "
             "applied labels only."
-        )
-
-    if config.COPILOT_AUTO and copilot.should_auto_dispatch(result):
-        summary(
-            f"#{number}: meets auto-dispatch criteria "
-            f"(category=bug, confidence≥{config.COPILOT_AUTO_MIN_CONFIDENCE}). "
-            "Apply the 'triage/dispatch-copilot' label (or run the dispatch "
-            "workflow) to hand it to the Copilot coding agent."
         )
 
 
@@ -287,18 +274,13 @@ def cmd_triage(gh: GitHubClient, token: str) -> int:
         summary(f"#{number}: skipped ({result.form_kind} form — not triaged).")
         return 0
 
-    comments = gh.list_comments(number)
-    prior_state = comment.parse_state(
-        (comment.find_sticky(comments) or {}).get("body")
-    )
-
     summary(
         f"- form: {result.form_kind}"
         f" · diagnostics: {_diag_status(result)}"
         f" · findings: {len(result.findings)} · ai: {result.ai is not None}"
         f" · comment: {result.should_comment}"
     )
-    apply_triage(gh, number, issue, result, prior_state)
+    apply_triage(gh, number, issue, result)
     return 0
 
 
@@ -332,44 +314,6 @@ def cmd_respond(gh: GitHubClient) -> int:
 def cmd_sweep(gh: GitHubClient) -> int:
     summary("## Scheduled triage sweep\n")
     lifecycle.sweep(gh)
-    return 0
-
-
-def cmd_dispatch(gh: GitHubClient, token: str) -> int:
-    number = int(_env("ISSUE_NUMBER"))
-    dispatch_token = os.environ.get("COPILOT_DISPATCH_TOKEN")
-
-    issue = gh.get_issue(number)
-    title = issue.get("title") or _env("ISSUE_TITLE")
-    body = issue.get("body") or _env("ISSUE_BODY")
-    labels = lifecycle.issue_labels(issue)
-
-    summary(f"## Copilot dispatch for #{number}\n")
-    result = build_result(gh, title, body, token=token, labels=labels, number=number)
-    if not result.is_actionable:
-        summary(f"#{number}: no valid diagnostics; not dispatching.")
-        return 0
-    if not copilot.within_daily_cap(gh):
-        summary(f"#{number}: daily Copilot dispatch cap reached; skipping.")
-        return 0
-
-    outcome = copilot.dispatch(gh, issue, result, token=dispatch_token)
-    summary(f"#{number}: dispatch → {outcome.reason}")
-
-    # Record the outcome in the sticky comment's state for traceability.
-    comments = gh.list_comments(number)
-    sticky = comment.find_sticky(comments)
-    state = comment.parse_state(sticky.get("body") if sticky else None)
-    state["dispatch"] = {
-        "at": _now_iso(),
-        "dispatched": outcome.dispatched,
-        "reason": outcome.reason,
-        "task_url": outcome.task_url,
-        "pr_url": outcome.pr_url,
-    }
-    if sticky:
-        body_only = (sticky["body"] or "").split(config.STATE_BEGIN)[0].rstrip()
-        comment.upsert(gh, number, body_only, state, comments=comments)
     return 0
 
 
@@ -493,7 +437,7 @@ def main(argv: list[str] | None = None) -> int:
     if not argv:
         log(
             "usage: python -m ma_triage "
-            "{triage|respond|sweep|dispatch|index|index-append}"
+            "{triage|respond|sweep|index|index-append}"
         )
         return 2
     command = argv[0]
@@ -516,8 +460,6 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_respond(gh)
     if command == "sweep":
         return cmd_sweep(gh)
-    if command == "dispatch":
-        return cmd_dispatch(gh, models_token)
     if command == "index":
         target = argv[1] if len(argv) > 1 else "all"
         return cmd_index(gh, models_token, target)

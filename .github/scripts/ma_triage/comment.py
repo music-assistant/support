@@ -2,8 +2,8 @@
 
 The bot keeps exactly one comment per issue, found via a hidden marker. A small
 JSON blob is embedded in an HTML comment so subsequent runs can recover what the
-bot previously did (reminder stage, whether a Copilot task was dispatched, …)
-without needing any external state store.
+bot previously did (reminder stage, prior findings, …) without needing any
+external state store.
 
 All diagnostics-derived text routed through here is already sanitized by the
 callers (see :mod:`ma_triage.sanitize`); this module additionally never

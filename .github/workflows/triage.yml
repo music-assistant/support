@@ -53,7 +53,6 @@ jobs:
           TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
           TRIAGE_AI_MODEL: ${{ vars.TRIAGE_AI_MODEL }}
           TRIAGE_SCAN_LOGS: ${{ vars.TRIAGE_SCAN_LOGS }}
-          TRIAGE_COPILOT_AUTO: ${{ vars.TRIAGE_COPILOT_AUTO }}
           # RAG layer (Phase 2) — only active when TRIAGE_AI_ENABLED is true.
           TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
           TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
