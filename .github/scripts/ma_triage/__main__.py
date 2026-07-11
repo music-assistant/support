@@ -226,6 +226,16 @@ def apply_triage(
     if labels:
         gh.add_labels(number, labels)
 
+    # Keep the two response-state labels mutually exclusive: if this pass set one,
+    # drop the opposite when the issue still carries it (e.g. on re-triage of an
+    # issue whose state has since flipped).
+    state_pair = {config.LABEL_NEEDS_ATTENTION, config.LABEL_WAITING_FOR_USER}
+    applied_state = state_pair & set(labels)
+    if applied_state:
+        current = set(lifecycle.issue_labels(issue))
+        for stale in (state_pair & current) - applied_state:
+            gh.remove_label(number, stale)
+
     if result.should_comment or (result.rag is not None and result.rag.has_output):
         state = {
             "v": 1,
