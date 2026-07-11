@@ -306,6 +306,65 @@ class GitHubClient:
             cursor = page_info.get("endCursor")
         return out[:limit]
 
+    def get_discussion(self, number: int) -> dict[str, Any] | None:
+        """Fetch one discussion + all its comment ids/bodies via GraphQL.
+
+        Discussions are GraphQL-only (no REST). Returns a normalized dict
+        ``{id, number, title, body, url, category, comments}`` where each comment
+        is ``{id, body}`` (the node id is needed to update the sticky comment in
+        place). Returns ``None`` when the discussion can't be read (Discussions
+        disabled, not found, or an API error) so callers degrade to a no-op.
+        """
+        owner, name = self.repo.split("/", 1)
+        query = """
+        query($o:String!,$n:String!,$num:Int!,$c:String){
+          repository(owner:$o,name:$n){
+            discussion(number:$num){
+              id number title body url
+              category { name }
+              comments(first:100, after:$c){
+                pageInfo{ hasNextPage endCursor }
+                nodes{ id body }
+              }
+            }
+          }
+        }
+        """
+        comments: list[dict[str, Any]] = []
+        cursor: str | None = None
+        node: dict[str, Any] = {}
+        while True:
+            try:
+                data = self.graphql(
+                    query, {"o": owner, "n": name, "num": number, "c": cursor}
+                )
+            except Exception as exc:  # noqa: BLE001
+                log(f"Discussion #{number} fetch failed: {exc}")
+                return None
+            found = ((data.get("data") or {}).get("repository") or {}).get(
+                "discussion"
+            )
+            if not found:
+                return None
+            node = found
+            block = node.get("comments") or {}
+            comments.extend(
+                c for c in (block.get("nodes") or []) if isinstance(c, dict)
+            )
+            page_info = block.get("pageInfo") or {}
+            if not page_info.get("hasNextPage"):
+                break
+            cursor = page_info.get("endCursor")
+        return {
+            "id": node.get("id"),
+            "number": node.get("number"),
+            "title": node.get("title") or "",
+            "body": node.get("body") or "",
+            "url": node.get("url") or "",
+            "category": node.get("category") or {},
+            "comments": comments,
+        }
+
     # ------------------------------------------------------------------ #
     # Mutating helpers (no-op + log when dry-run)
     # ------------------------------------------------------------------ #
@@ -403,6 +462,32 @@ class GitHubClient:
         return self._mutate(
             f"minimize comment {node_id}",
             lambda: self.graphql(query, {"id": node_id, "classifier": classifier}),
+        )
+
+    def add_discussion_comment(self, discussion_id: str, body: str) -> Any:
+        query = """
+        mutation($d:ID!,$b:String!){
+          addDiscussionComment(input:{discussionId:$d, body:$b}){
+            comment { id }
+          }
+        }
+        """
+        return self._mutate(
+            f"post a comment on discussion {discussion_id}",
+            lambda: self.graphql(query, {"d": discussion_id, "b": body}),
+        )
+
+    def update_discussion_comment(self, comment_id: str, body: str) -> Any:
+        query = """
+        mutation($id:ID!,$b:String!){
+          updateDiscussionComment(input:{commentId:$id, body:$b}){
+            comment { id }
+          }
+        }
+        """
+        return self._mutate(
+            f"update discussion comment {comment_id}",
+            lambda: self.graphql(query, {"id": comment_id, "b": body}),
         )
 
     def commit_files(

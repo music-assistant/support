@@ -7,6 +7,7 @@ shell interpolation of untrusted issue content):
     python -m ma_triage triage     # analyse an opened/edited issue
     python -m ma_triage respond     # react to a new issue comment
     python -m ma_triage sweep       # scheduled reminder / auto-close pass
+    python -m ma_triage discussion  # answer a new/edited discussion (RAG)
 
 Required env: ``GITHUB_TOKEN``. Issue subcommands also read ``ISSUE_NUMBER``
 (and, for triage, ``ISSUE_TITLE`` / ``ISSUE_BODY``). Feature flags come from the
@@ -444,12 +445,107 @@ def cmd_index_append(gh: GitHubClient, token: str) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------- #
+# Discussions (GraphQL) — docs-grounded answers on Q&A discussions
+# --------------------------------------------------------------------------- #
+def cmd_discussion(gh: GitHubClient, token: str) -> int:
+    """Answer a new/edited Discussion with docs-grounded RAG output.
+
+    Discussions carry no diagnostics, issue-form or labels, so this is a pure
+    RAG pass: retrieve → judge → post the same confidence-tiered sticky comment
+    used for issues (HIGH = answer + sources, MEDIUM = doc links, plus related
+    past posts). Stays silent on LOW confidence with nothing related to show.
+    """
+    number = int(_env("DISCUSSION_NUMBER"))
+    if not (config.AI_ENABLED and config.RAG_ENABLED and config.DISCUSSIONS_ENABLED):
+        summary(f"discussion #{number}: skipped (discussion triage disabled).")
+        return 0
+
+    disc = gh.get_discussion(number)
+    if not disc:
+        summary(f"discussion #{number}: not found or unavailable; skipping.")
+        return 0
+
+    category = ((disc.get("category") or {}).get("name") or "").lower()
+    if category in config.DISCUSSION_EXCLUDE_CATEGORIES:
+        summary(f"discussion #{number}: skipped (excluded category '{category}').")
+        return 0
+
+    title = _env("DISCUSSION_TITLE") or disc.get("title") or ""
+    body = _env("DISCUSSION_BODY") or disc.get("body") or ""
+    summary(f"## Triage of discussion #{number}\n")
+
+    rag_result = rag.answer(gh, title=title, body=body, number=number, token=token)
+    if rag_result is None or not rag_result.has_output:
+        summary(f"#{number}: no confident docs answer or related posts; staying silent.")
+        return 0
+
+    summary(
+        f"- tier: {rag_result.tier} · docs: {rag_result.has_docs_output}"
+        f" · related: {len(rag_result.related_posts)}"
+    )
+    state = {
+        "v": 1,
+        "last_run": _now_iso(),
+        "kind": "discussion",
+        "rag": {
+            "tier": rag_result.tier,
+            "cited": [c.id for c in rag_result.cited_chunks],
+            "related": [p.number for p in rag_result.related_posts],
+            "suppressed": rag_result.suppressed,
+        },
+    }
+    comment.upsert_discussion(
+        gh,
+        disc["id"],
+        comment.build_discussion_body(rag_result, title=title),
+        state,
+        comments=disc.get("comments") or [],
+    )
+    return 0
+
+
+def cmd_discussion_append(gh: GitHubClient, token: str) -> int:
+    """Embed a single new discussion and upsert it into the posts index."""
+    number = int(_env("DISCUSSION_NUMBER"))
+    summary(f"## RAG posts-index append for discussion #{number}\n")
+    disc = gh.get_discussion(number)
+    if not disc:
+        summary(f"discussion #{number}: not found; skipping append.")
+        return 0
+    category = ((disc.get("category") or {}).get("name") or "").lower()
+    if category in config.DISCUSSION_EXCLUDE_CATEGORIES:
+        summary(f"discussion #{number}: excluded category '{category}'; not indexed.")
+        return 0
+    post = {
+        "kind": "discussion",
+        "number": number,
+        "title": disc.get("title") or _env("DISCUSSION_TITLE"),
+        "body": disc.get("body") or _env("DISCUSSION_BODY"),
+        "url": disc.get("url") or "",
+        "state": "open",
+        "updated_at": _now_iso(),
+    }
+    index, _changed = embeddings.append_post(gh, post, token=token)
+    if index is None:
+        summary(f"#{number}: append skipped (embeddings unavailable).")
+        return 0
+    embeddings.save_index(
+        gh,
+        config.POSTS_INDEX_PATH,
+        index,
+        message=f"Append discussion #{number} to posts index",
+    )
+    summary(f"#{number}: appended ({len(index.get('posts', []))} posts total).")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     if not argv:
         log(
             "usage: python -m ma_triage "
-            "{triage|respond|sweep|index|index-append}"
+            "{triage|respond|sweep|index|index-append|discussion|discussion-append}"
         )
         return 2
     command = argv[0]
@@ -477,6 +573,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_index(gh, models_token, target)
     if command == "index-append":
         return cmd_index_append(gh, models_token)
+    if command == "discussion":
+        return cmd_discussion(gh, models_token)
+    if command == "discussion-append":
+        return cmd_discussion_append(gh, models_token)
     log(f"unknown command: {command}")
     return 2
 

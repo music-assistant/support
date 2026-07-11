@@ -1,0 +1,114 @@
+# Music Assistant discussion triage (experimental).
+#
+# Answers newly opened/edited Discussions with a docs-grounded RAG reply and
+# links to similar past reports, posting a single sticky comment. Discussions
+# carry no diagnostics/labels, so this is purely the docs-answer + related-posts
+# pipeline shared with issue triage.
+#
+# SAFETY:
+# * All discussion content is treated as untrusted and passed to the script via
+#   `env:` only — never interpolated into a shell command.
+# * Least-privilege token; the answer job cannot write repo contents and the
+#   index job cannot write discussions.
+# * Dormant until opted in: requires the repo variables TRIAGE_AI_ENABLED=true
+#   AND TRIAGE_DISCUSSIONS_ENABLED=true (and defaults to dry-run otherwise).
+name: Discussion triage
+
+on:
+  discussion:
+    types: [created, edited]
+
+# One run at a time per discussion; queue rather than cancel so the sticky
+# comment stays coherent across quick edits.
+concurrency:
+  group: discussion-${{ github.event.discussion.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  discussions: write
+  models: read # docs-grounded answer via GitHub Models (only when AI enabled)
+
+jobs:
+  answer:
+    if: >-
+      ${{ vars.TRIAGE_AI_ENABLED == 'true'
+      && vars.TRIAGE_RAG_ENABLED != 'false'
+      && vars.TRIAGE_DISCUSSIONS_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Triage discussion
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DISCUSSION_NUMBER: ${{ github.event.discussion.number }}
+          # Untrusted content — safe because it is an env var, not shell input.
+          DISCUSSION_TITLE: ${{ github.event.discussion.title }}
+          DISCUSSION_BODY: ${{ github.event.discussion.body }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+          TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
+          TRIAGE_DISCUSSIONS_ENABLED: ${{ vars.TRIAGE_DISCUSSIONS_ENABLED }}
+          TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
+          TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
+          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
+          TRIAGE_ANSWER_MODEL: ${{ vars.TRIAGE_ANSWER_MODEL }}
+          TRIAGE_ANSWER_HI: ${{ vars.TRIAGE_ANSWER_HI }}
+          TRIAGE_ANSWER_LO: ${{ vars.TRIAGE_ANSWER_LO }}
+          TRIAGE_DOCS_REPO: ${{ vars.TRIAGE_DOCS_REPO }}
+          TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
+          TRIAGE_RELATED_POSTS: ${{ vars.TRIAGE_RELATED_POSTS }}
+          TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES: ${{ vars.TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES }}
+          # Optional PAT for GitHub Models (used only when set); falls back to
+          # the default token. Lets Models work when the org token can't.
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+        run: python -m ma_triage discussion
+
+  # Separate, least-privilege job: embed a newly-created discussion and append it
+  # to the posts index on the `triage-index` branch. It has `contents: write`
+  # (to commit the index) but deliberately NOT `discussions: write`.
+  index-append:
+    if: >-
+      ${{ github.event.action == 'created'
+      && vars.TRIAGE_AI_ENABLED == 'true'
+      && vars.TRIAGE_RAG_ENABLED != 'false' }}
+    runs-on: ubuntu-latest
+    # Serialise with the nightly index build (and issue appends) so concurrent
+    # force-pushes to the triage-index branch can't drop each other's writes.
+    concurrency:
+      group: rag-index-write
+      cancel-in-progress: false
+    permissions:
+      contents: write # commit the posts index to the triage-index branch
+      models: read # embeddings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt
+      - name: Append discussion to posts index
+        working-directory: .github/scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DISCUSSION_NUMBER: ${{ github.event.discussion.number }}
+          TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
+          TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
+          TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
+          TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
+          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
+          TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
+          TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
+          TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES: ${{ vars.TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES }}
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+        run: python -m ma_triage discussion-append
