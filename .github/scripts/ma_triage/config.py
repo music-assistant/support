@@ -38,7 +38,6 @@ LABEL_AUTO_CLOSED = "auto-closed"
 # Triage-control labels (bot managed / maintainer operated).
 LABEL_HOLD = "triage/hold"  # pause all automation on this issue
 LABEL_SKIP = "triage/skip"  # never triage this issue
-LABEL_DISPATCH_COPILOT = "triage/dispatch-copilot"  # hand off to coding agent
 LABEL_REMINDED_1 = "triage/reminded-1"  # 3-day reminder sent
 LABEL_REMINDED_2 = "triage/reminded-2"  # 7-day warning sent
 LABEL_NEEDS_DIAGNOSTICS = "triage/needs-diagnostics"  # info/diagnostics missing
@@ -74,7 +73,6 @@ CONTROL_LABELS = frozenset(
         LABEL_AUTO_CLOSED,
         LABEL_HOLD,
         LABEL_SKIP,
-        LABEL_DISPATCH_COPILOT,
         LABEL_REMINDED_1,
         LABEL_REMINDED_2,
         LABEL_NEEDS_DIAGNOSTICS,
@@ -237,17 +235,12 @@ def _env_float(name: str, default: float) -> float:
 # nothing until a maintainer explicitly opts in by setting TRIAGE_DRY_RUN=false.
 DRY_RUN = _flag("TRIAGE_DRY_RUN", True)
 AI_ENABLED = _flag("TRIAGE_AI_ENABLED", False)
-COPILOT_AUTO = _flag("TRIAGE_COPILOT_AUTO", False)
 # Scan an attached raw log file when no diagnostics JSON is present (common on
 # MA versions older than the diagnostics feature). The log is redacted before any
 # of it is echoed (see logscan.py / sanitize.py).
 SCAN_LOGS = _flag("TRIAGE_SCAN_LOGS", True)
 AI_MODEL = _env_str("TRIAGE_AI_MODEL", "openai/gpt-4o-mini")
 AI_ENDPOINT = _env_str("TRIAGE_AI_ENDPOINT", "https://models.github.ai/inference/chat/completions")
-# Daily hard cap on automatic Copilot dispatches (guards cost / PR noise).
-COPILOT_AUTO_DAILY_CAP = _env_int("TRIAGE_COPILOT_AUTO_DAILY_CAP", 3)
-# Minimum AI confidence (0-1) required before auto-dispatching to Copilot.
-COPILOT_AUTO_MIN_CONFIDENCE = _env_float("TRIAGE_COPILOT_AUTO_MIN_CONFIDENCE", 0.75)
 
 # --------------------------------------------------------------------------- #
 # RAG layer (Phase 2) — docs-grounded answers + similar-post detection

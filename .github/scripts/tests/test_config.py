@@ -45,7 +45,6 @@ def test_empty_env_vars_fall_back_to_defaults(monkeypatch):
         TRIAGE_ANSWER_MODEL="",
         TRIAGE_INDEX_BRANCH="",
         TRIAGE_DOCS_REPO="",
-        TRIAGE_COPILOT_AUTO_DAILY_CAP="",
     )
     assert config.EMBED_DIM == 512
     assert config.EMBED_BATCH == 64
@@ -53,7 +52,6 @@ def test_empty_env_vars_fall_back_to_defaults(monkeypatch):
     assert config.ANSWER_LO == 0.45
     assert config.RELATED_POSTS == 3
     assert config.INDEX_MAX_POSTS == 500
-    assert config.COPILOT_AUTO_DAILY_CAP == 3
     assert config.EMBED_MODEL == "openai/text-embedding-3-small"
     assert config.ANSWER_MODEL == "openai/gpt-4o"
     assert config.INDEX_BRANCH == "triage-index"

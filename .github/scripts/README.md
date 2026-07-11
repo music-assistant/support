@@ -6,9 +6,8 @@ The bot reads the **diagnostics file** that reporters attach (produced by
 _Settings → Download diagnostics_ in Music Assistant), or falls back to scanning
 an attached **raw log file** (for older versions without the diagnostics
 feature), posts a single sticky summary comment, applies setup/provider labels,
-involves community provider maintainers, manages the issue's response state, and
-can optionally hand a high-confidence bug to the **Copilot coding agent** on
-`music-assistant/server` to draft a fix PR.
+involves community provider maintainers, surfaces docs-grounded answers and
+similar past issues, and manages the issue's response state.
 
 > ⚠️ **Experimental & dry-run by default.** With `TRIAGE_DRY_RUN` unset or
 > `true`, the bot makes **no changes** — it only writes what it _would_ do to
@@ -26,8 +25,7 @@ never interpolated into a shell command.
 ├── workflows/
 │   ├── triage.yml            # issues opened/edited/reopened + new comments
 │   ├── triage_scheduled.yml  # daily reminder / auto-close sweep
-│   ├── docs_embeddings.yml   # nightly RAG index build (docs + posts)
-│   └── copilot_dispatch.yml  # hand a bug to the Copilot coding agent
+│   └── docs_embeddings.yml   # nightly RAG index build (docs + posts)
 └── scripts/
     ├── ma_triage/            # the bot (see module docstrings)
     ├── requirements.txt      # just `requests`
@@ -70,12 +68,9 @@ bot posts a friendly request explaining how to download the diagnostics report.
 When `TRIAGE_AI_ENABLED=true`, a bounded, sanitized summary is sent to the
 GitHub Models API for a short, strictly-typed assessment (category, confidence,
 likely cause, possibly-fixed-in version). Any failure degrades gracefully to the
-Tier-0 result. Uses the default `GITHUB_TOKEN` with `models: read`.
-
-### Tier 2 — Copilot coding-agent dispatch (optional, guarded)
-A maintainer applies the `triage/dispatch-copilot` label (or runs the dispatch
-workflow manually) to hand the bug to the Copilot coding agent on the server
-repo. See **Copilot dispatch token** below.
+Tier-0 result. Uses the default `GITHUB_TOKEN` with `models: read`, or a
+`GH_MODELS_TOKEN` PAT when set. The assessment renders as a collapsed
+`<details>` block for maintainers.
 
 ### Docs-grounded answers & similar reports (Phase 2, optional)
 When `TRIAGE_AI_ENABLED=true` (and `TRIAGE_RAG_ENABLED` is not `false`), the bot
@@ -126,7 +121,7 @@ Exempt from reminders/close: `bug`, `enhancement`, `pinned`,
 `lock_threads.yml` workflow.
 
 Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
-(never triage), `triage/dispatch-copilot` (hand to the coding agent).
+(never triage).
 
 ## Configuration
 
@@ -137,9 +132,6 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 | `TRIAGE_AI_ENABLED` | `false` | Enable Tier-1 GitHub Models assessment. |
 | `TRIAGE_SCAN_LOGS` | `true` | Scan an attached raw log (redacted) when no diagnostics report is present. |
 | `TRIAGE_AI_MODEL` | `openai/gpt-4o-mini` | Model id for Tier 1. |
-| `TRIAGE_COPILOT_AUTO` | `false` | Allow auto-recommending Tier-2 dispatch. |
-| `TRIAGE_COPILOT_AUTO_DAILY_CAP` | `3` | Max auto dispatches/day. |
-| `TRIAGE_COPILOT_AUTO_MIN_CONFIDENCE` | `0.75` | Min AI confidence to auto-dispatch. |
 | `TRIAGE_RAG_ENABLED` | `true` | Sub-flag for the Phase-2 RAG layer (still requires `TRIAGE_AI_ENABLED`). |
 | `TRIAGE_EMBED_MODEL` | `openai/text-embedding-3-small` | Embeddings model (GitHub Models). |
 | `TRIAGE_EMBED_DIM` | `512` | Embedding dimensionality (keeps indexes small). |
@@ -169,21 +161,6 @@ and vice-versa. Both honour `TRIAGE_DRY_RUN` (dry-run previews the commit).
 | Secret | Needed for | Notes |
 |---|---|---|
 | `GH_MODELS_TOKEN` | Tier 1 / RAG (optional) | PAT with the **Models** permission. Used for GitHub Models calls (embeddings + judge/assessment) when the org hasn't enabled Models for the default Actions token. Falls back to `GITHUB_TOKEN` when unset. |
-| `COPILOT_DISPATCH_TOKEN` | Tier 2 only | Must be a **user-to-server** token. |
-
-### Copilot dispatch token
-The coding-agent API only accepts a **user-to-server** token — the default
-Actions `GITHUB_TOKEN` and GitHub App **installation** tokens do **not** work.
-Provide one of:
-1. **Machine-user fine-grained PAT** (simplest) on a bot account that has a
-   Copilot seat and write access to `music-assistant/server`. Scopes:
-   metadata:read, actions/contents/issues/pull-requests:read+write.
-2. **`musicassistant-machine` App user-to-server token** via the device flow
-   (enable Device Flow; authorize once as a Copilot-seated user). Disable token
-   expiration for a long-lived `ghu_` token, or wire up refresh rotation.
-
-The runtime verifies the agent is actually available (`suggestedActors`) before
-dispatching, and skips cleanly otherwise.
 
 ## Security model
 
@@ -228,9 +205,8 @@ python -m ma_triage triage
 
 1. Land with `TRIAGE_DRY_RUN=true`; review job summaries on real issues.
 2. Set `TRIAGE_DRY_RUN=false` to enable Tier-0/1 actions.
-3. Provision `COPILOT_DISPATCH_TOKEN`; try Tier 2 via the dispatch workflow, then
-   via the `triage/dispatch-copilot` label.
-4. Optionally enable `TRIAGE_COPILOT_AUTO` with a low daily cap.
+3. Enable `TRIAGE_AI_ENABLED=true` (optionally provide `GH_MODELS_TOKEN`) and run
+   the RAG index build once for docs-grounded answers + similar issues.
 
 > Note: the per-form required-section lists in `ma_triage/template.py` and the
 > provider→label maps in `ma_triage/config.py` (`PROVIDER_LABELS` and the free-
