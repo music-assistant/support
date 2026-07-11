@@ -16,10 +16,16 @@ on:
     types: [opened, edited, reopened]
   issue_comment:
     types: [created]
+  # Manual re-triage of an existing issue (e.g. to backfill after a change).
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to (re)triage
+        required: true
 
 # One run at a time per issue; queue rather than cancel so state stays coherent.
 concurrency:
-  group: triage-${{ github.event.issue.number }}
+  group: triage-${{ github.event.issue.number || github.event.inputs.issue_number }}
   cancel-in-progress: false
 
 permissions:
@@ -29,8 +35,10 @@ permissions:
 
 jobs:
   analyze:
-    # Opened/edited/reopened issues (never PRs).
-    if: ${{ github.event_name == 'issues' && !github.event.issue.pull_request }}
+    # Opened/edited/reopened issues (never PRs), or a manual dispatch.
+    if: >-
+      ${{ (github.event_name == 'issues' && !github.event.issue.pull_request)
+      || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +53,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           # Untrusted content — safe because it is an env var, not shell input.
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
