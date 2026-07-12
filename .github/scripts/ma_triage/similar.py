@@ -20,9 +20,24 @@ import re
 from . import config
 from .gh import GitHubClient, log
 from .models import RelatedPost
+from .providers import detect_provider_labels_from_text
 from .retrieval import cosine
 
 _RE_WORD = re.compile(r"[A-Za-z0-9]+")
+
+
+def _provider_keys(labels: set[str] | list[str] | None) -> set[str]:
+    return {str(label).strip().lower() for label in (labels or []) if str(label).strip()}
+
+
+def _post_provider_keys(post: dict) -> set[str]:
+    stored = _provider_keys(post.get("providers"))
+    if stored:
+        return stored
+    # Backwards compatibility until the next posts-index rebuild adds metadata.
+    return _provider_keys(
+        detect_provider_labels_from_text(str(post.get("title", "")))
+    )
 
 
 def related_from_index(
@@ -31,6 +46,7 @@ def related_from_index(
     *,
     exclude_number: int,
     exclude_kind: str = "issue",
+    provider_labels: set[str] | None = None,
     k: int | None = None,
     min_score: float | None = None,
 ) -> list[RelatedPost]:
@@ -39,6 +55,7 @@ def related_from_index(
         return []
     top_k = config.RELATED_POSTS if k is None else k
     threshold = config.RELATED_MIN_SCORE if min_score is None else min_score
+    required_providers = _provider_keys(provider_labels)
 
     scored: list[tuple[float, dict]] = []
     seen: set[tuple[str, int]] = set()
@@ -46,6 +63,8 @@ def related_from_index(
         number = int(post.get("number", 0))
         kind = post.get("kind", "issue")
         if kind == exclude_kind and number == exclude_number:
+            continue
+        if required_providers and not (required_providers & _post_provider_keys(post)):
             continue
         key = (kind, number)
         if key in seen:
@@ -127,14 +146,57 @@ def find_related(
     posts: list[dict],
     exclude_number: int,
     exclude_kind: str = "issue",
+    provider_labels: set[str] | None = None,
 ) -> list[RelatedPost]:
     """Related posts from the index when available, else the search fallback."""
     if posts and query_vec:
         hits = related_from_index(
-            query_vec, posts, exclude_number=exclude_number, exclude_kind=exclude_kind
+            query_vec,
+            posts,
+            exclude_number=exclude_number,
+            exclude_kind=exclude_kind,
+            provider_labels=provider_labels,
         )
         if hits:
             return hits
+    # If the report names a provider, an unscoped text-search fallback can only
+    # reintroduce the noisy cross-provider matches this filter is meant to stop.
+    if provider_labels:
+        return []
     return related_from_search(
         gh, title, exclude_number=exclude_number, exclude_kind=exclude_kind
     )
+
+
+def find_pinned(
+    gh: GitHubClient, provider_labels: set[str] | None
+) -> list[RelatedPost]:
+    """Pinned support notices that mention an affected provider exactly."""
+    required = _provider_keys(provider_labels)
+    if not required:
+        return []
+    matches: list[RelatedPost] = []
+    try:
+        discussions = gh.list_pinned_discussions()
+    except Exception as exc:  # noqa: BLE001
+        log(f"Pinned discussion matching failed: {exc}")
+        return []
+    for discussion in discussions:
+        category = ((discussion.get("category") or {}).get("name") or "").lower()
+        if category in config.PINNED_EXCLUDE_CATEGORIES:
+            continue
+        text = f"{discussion.get('title', '')}\n{discussion.get('body', '')}"
+        mentioned = _provider_keys(detect_provider_labels_from_text(text))
+        if not (required & mentioned):
+            continue
+        matches.append(
+            RelatedPost(
+                kind="discussion",
+                number=int(discussion.get("number", 0)),
+                title=str(discussion.get("title", "")),
+                url=str(discussion.get("url", "")),
+                score=1.0,
+                state="closed" if discussion.get("closed") else "open",
+            )
+        )
+    return matches

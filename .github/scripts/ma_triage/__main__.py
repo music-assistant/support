@@ -33,9 +33,10 @@ from .diagnostics import try_parse
 from .gh import GitHubClient, log, summary
 from .models import TriageResult
 from .providers import (
-    detect_provider_labels_from_text,
+    detect_reported_provider_labels,
     filter_existing_labels,
     resolve_maintainers,
+    resolve_provider_doc,
 )
 
 
@@ -101,10 +102,21 @@ def build_result(
     labels_to_add: set[str] = set(result.labels_to_add)
     maintainers: set[str] = set()
 
-    # Provider labels from the free-text fields + title (census gone from form).
-    labels_to_add |= detect_provider_labels_from_text(
-        template.provider_scan_text(body, title)
+    # A title-level provider mention wins over incidental comparisons in the
+    # body. Diagnostics describe the whole installation and must never drive
+    # issue labels.
+    reported_providers = set(
+        sorted(
+            detect_reported_provider_labels(title, body),
+            key=str.lower,
+        )[: config.MAX_REPORTED_PROVIDERS]
     )
+    result.reported_providers = reported_providers
+    labels_to_add |= reported_providers
+    for provider in sorted(reported_providers, key=str.lower):
+        provider_doc = resolve_provider_doc(gh, provider)
+        if provider_doc is not None:
+            result.provider_docs.append(provider_doc)
 
     install_finding = analyze.install_method_finding(result.install_method)
     if install_finding is not None:
@@ -125,12 +137,11 @@ def build_result(
             findings.extend(v_findings)
             labels_to_add |= v_labels
 
-        # Only involve maintainers from a *real* diagnostics census — log parsing
-        # of provider names is heuristic and must not ping people.
-        if diag.source == "json":
-            for provider in diag.providers_in_error:
-                for handle in resolve_maintainers(gh, provider.domain):
-                    maintainers.add(handle)
+        # Ping conservatively: one clearly reported provider on an actionable
+        # report. Never ping maintainers for incidental census/error providers.
+        if len(reported_providers) == 1:
+            provider = next(iter(reported_providers))
+            maintainers.update(resolve_maintainers(gh, provider))
 
         ai_result = ai.assess(
             diag, title, body, token=token, candidate_labels=sorted(labels_to_add)
@@ -151,7 +162,14 @@ def build_result(
 
     # Phase 2 RAG layer (docs-grounded answer + related posts). Returns None when
     # disabled or on any failure, so Tier-0/Tier-1 output is unchanged.
-    result.rag = rag.answer(gh, title=title, body=body, number=number, token=token)
+    result.rag = rag.answer(
+        gh,
+        title=title,
+        body=body,
+        number=number,
+        token=token,
+        provider_labels=reported_providers,
+    )
     return result
 
 
@@ -242,6 +260,7 @@ def apply_triage(
             "v": 1,
             "last_run": _now_iso(),
             "form": result.form_kind,
+            "providers": sorted(result.reported_providers),
             "has_diagnostics": result.has_diagnostics,
             "invalid": result.diagnostics_invalid,
             "ai": result.ai is not None,
@@ -253,6 +272,7 @@ def apply_triage(
             state["rag"] = {
                 "tier": result.rag.tier,
                 "cited": [c.id for c in result.rag.cited_chunks],
+                "pinned": [p.number for p in result.rag.pinned_posts],
                 "related": [p.number for p in result.rag.related_posts],
                 "suppressed": result.rag.suppressed,
             }
@@ -352,12 +372,15 @@ def _build_docs_index(gh: GitHubClient, token: str) -> None:
 def _collect_posts(gh: GitHubClient) -> list[dict[str, Any]]:
     posts: list[dict[str, Any]] = []
     for issue in gh.list_recent_issues(limit=config.INDEX_MAX_POSTS):
+        title = issue.get("title") or ""
+        body = issue.get("body") or ""
         posts.append(
             {
                 "kind": "issue",
                 "number": issue.get("number"),
-                "title": issue.get("title") or "",
-                "body": issue.get("body") or "",
+                "title": title,
+                "body": body,
+                "providers": sorted(detect_reported_provider_labels(title, body)),
                 "url": issue.get("html_url") or "",
                 "state": issue.get("state"),
                 "updated_at": issue.get("updated_at"),
@@ -368,12 +391,15 @@ def _collect_posts(gh: GitHubClient) -> list[dict[str, Any]]:
         if category in config.DISCUSSION_EXCLUDE_CATEGORIES:
             # e.g. translation-category discussions: not useful as related posts.
             continue
+        title = disc.get("title") or ""
+        body = disc.get("body") or ""
         posts.append(
             {
                 "kind": "discussion",
                 "number": disc.get("number"),
-                "title": disc.get("title") or "",
-                "body": disc.get("body") or "",
+                "title": title,
+                "body": body,
+                "providers": sorted(detect_reported_provider_labels(title, body)),
                 "url": disc.get("url") or "",
                 "state": "closed" if disc.get("closed") else "open",
                 "updated_at": disc.get("updatedAt"),
@@ -422,11 +448,14 @@ def cmd_index_append(gh: GitHubClient, token: str) -> int:
     if "pull_request" in issue:
         summary(f"#{number}: is a pull request; skipping append.")
         return 0
+    title = issue.get("title") or _env("ISSUE_TITLE")
+    body = issue.get("body") or _env("ISSUE_BODY")
     post = {
         "kind": "issue",
         "number": number,
-        "title": issue.get("title") or _env("ISSUE_TITLE"),
-        "body": issue.get("body") or _env("ISSUE_BODY"),
+        "title": title,
+        "body": body,
+        "providers": sorted(detect_reported_provider_labels(title, body)),
         "url": issue.get("html_url") or "",
         "state": issue.get("state"),
         "updated_at": issue.get("updated_at"),
@@ -473,10 +502,22 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
 
     title = _env("DISCUSSION_TITLE") or disc.get("title") or ""
     body = _env("DISCUSSION_BODY") or disc.get("body") or ""
+    provider_labels = set(
+        sorted(
+            detect_reported_provider_labels(title, body),
+            key=str.lower,
+        )[: config.MAX_REPORTED_PROVIDERS]
+    )
     summary(f"## Triage of discussion #{number}\n")
 
     rag_result = rag.answer(
-        gh, title=title, body=body, number=number, token=token, kind="discussion"
+        gh,
+        title=title,
+        body=body,
+        number=number,
+        token=token,
+        kind="discussion",
+        provider_labels=provider_labels,
     )
     if rag_result is None or not rag_result.has_output:
         summary(f"#{number}: no confident docs answer or related posts; staying silent.")
@@ -494,6 +535,7 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
             "tier": rag_result.tier,
             "cited": [c.id for c in rag_result.cited_chunks],
             "related": [p.number for p in rag_result.related_posts],
+            "pinned": [p.number for p in rag_result.pinned_posts],
             "suppressed": rag_result.suppressed,
         },
     }
@@ -522,11 +564,14 @@ def cmd_discussion_append(gh: GitHubClient, token: str) -> int:
     if category in config.DISCUSSION_EXCLUDE_CATEGORIES:
         summary(f"discussion #{number}: excluded category '{category}'; not indexed.")
         return 0
+    title = disc.get("title") or _env("DISCUSSION_TITLE")
+    body = disc.get("body") or _env("DISCUSSION_BODY")
     post = {
         "kind": "discussion",
         "number": number,
-        "title": disc.get("title") or _env("DISCUSSION_TITLE"),
-        "body": disc.get("body") or _env("DISCUSSION_BODY"),
+        "title": title,
+        "body": body,
+        "providers": sorted(detect_reported_provider_labels(title, body)),
         "url": disc.get("url") or "",
         "state": "open",
         "updated_at": _now_iso(),

@@ -49,10 +49,12 @@ From the diagnostics file the bot derives, with no AI:
 - **safe mode** banner;
 - **providers in error** (with sanitized error text);
 - **top exception fingerprints** by count;
-- **provider/setup labels** — from the diagnostics census *and* provider names
-  mentioned in the form text (only labels that already exist are applied);
-- **community maintainer** ping (from each provider's `codeowners`, skipping the
-  core `@music-assistant` team; never triggered by heuristic log parsing);
+- **provider/setup labels** — provider labels come only from the provider reported
+  in the title/form text (never the full diagnostics census); title matches win
+  over incidental comparisons in the body;
+- the reported provider's authoritative **documentation link** and, for one
+  actionable provider, its community **codeowner** (from the current server
+  manifest on `dev`, skipping the core `@music-assistant` team);
 - low-disk and other resource hints.
 
 If only a **raw log file** is attached (older Music Assistant versions), the bot
@@ -85,10 +87,12 @@ adds a **retrieval-augmented** layer on top of the tiers above, modelled on
   judge call that returns `{answers_question, confidence, answer, cited_sections}`.
 - **Similar past reports.** The issue embedding is compared (dense cosine) to an
   index of past issues + discussions to surface likely duplicates / prior answers.
-  If the index is missing, this degrades to a plain GitHub issue search.
-  Translation-category discussions are excluded from this index (they aren't
-  docs-answerable and would only add noise). Live triage of discussions
-  themselves is out of scope for this phase.
+  When a provider is known, candidates must match that provider exactly; weak
+  matches stay collapsed, while only strong matches render expanded. Pinned
+  support notices that mention the provider are surfaced separately and Feature
+  Polls are ignored. Translation-category discussions are excluded from the
+  index. New/edited Discussions use the same RAG path when
+  `TRIAGE_DISCUSSIONS_ENABLED=true`.
 - **Confidence tiers.** `HIGH` (≥ `TRIAGE_ANSWER_HI`) posts a doc-grounded answer
   with cited links; `MEDIUM` (≥ `TRIAGE_ANSWER_LO`) posts doc links only;
   `LOW` stays silent (deterministic triage and duplicate links may still post).
@@ -133,6 +137,7 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 | `TRIAGE_SCAN_LOGS` | `true` | Scan an attached raw log (redacted) when no diagnostics report is present. |
 | `TRIAGE_AI_MODEL` | `openai/gpt-4o-mini` | Model id for Tier 1. |
 | `TRIAGE_RAG_ENABLED` | `true` | Sub-flag for the Phase-2 RAG layer (still requires `TRIAGE_AI_ENABLED`). |
+| `TRIAGE_DISCUSSIONS_ENABLED` | `false` | Enable docs-grounded triage on new/edited Discussions. |
 | `TRIAGE_EMBED_MODEL` | `openai/text-embedding-3-small` | Embeddings model (GitHub Models). |
 | `TRIAGE_EMBED_DIM` | `512` | Embedding dimensionality (keeps indexes small). |
 | `TRIAGE_ANSWER_MODEL` | `openai/gpt-4o` | Judge/answer chat model. |
@@ -141,6 +146,9 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 | `TRIAGE_DOCS_REPO` | `music-assistant/music-assistant.io` | Public docs source. |
 | `TRIAGE_INDEX_BRANCH` | `triage-index` | Orphan branch holding the JSON indexes. |
 | `TRIAGE_INDEX_MAX_POSTS` | `500` | Cap on posts embedded into the similar-posts index. |
+| `TRIAGE_RELATED_EXPAND_SCORE` | `0.80` | Similarity score required to expand related posts; weaker provider-matched results are collapsed. |
+| `TRIAGE_SERVER_REF` | `dev` | Server ref used for provider documentation/codeowner manifests. |
+| `TRIAGE_PINNED_EXCLUDE_CATEGORIES` | `feature polls` | Pinned Discussion categories excluded from support notices. |
 
 ### RAG indexes (`triage-index` branch)
 The `docs_embeddings.yml` workflow builds `docs.json` / `posts.json` and commits
@@ -164,8 +172,8 @@ and vice-versa. Both honour `TRIAGE_DRY_RUN` (dry-run previews the commit).
 
 ## Security model
 
-- Triggers are `issues`, `issue_comment`, `schedule`, `workflow_dispatch` and
-  `repository_dispatch` (the last two only for the RAG index build) — **no
+- Triggers are `issues`, `issue_comment`, `discussion`, `schedule`,
+  `workflow_dispatch` and `repository_dispatch` — **no
   `pull_request_target`**.
 - Issue content flows through `env:` → `os.environ`; it is never placed in a
   shell command line.

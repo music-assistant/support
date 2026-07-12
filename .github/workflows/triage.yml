@@ -40,6 +40,11 @@ jobs:
       ${{ (github.event_name == 'issues' && !github.event.issue.pull_request)
       || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      discussions: read # provider-matched pinned support notices
+      issues: write
+      models: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -69,8 +74,11 @@ jobs:
           TRIAGE_ANSWER_HI: ${{ vars.TRIAGE_ANSWER_HI }}
           TRIAGE_ANSWER_LO: ${{ vars.TRIAGE_ANSWER_LO }}
           TRIAGE_DOCS_REPO: ${{ vars.TRIAGE_DOCS_REPO }}
+          TRIAGE_SERVER_REF: ${{ vars.TRIAGE_SERVER_REF }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_RELATED_POSTS: ${{ vars.TRIAGE_RELATED_POSTS }}
+          TRIAGE_RELATED_EXPAND_SCORE: ${{ vars.TRIAGE_RELATED_EXPAND_SCORE }}
+          TRIAGE_PINNED_EXCLUDE_CATEGORIES: ${{ vars.TRIAGE_PINNED_EXCLUDE_CATEGORIES }}
           # Optional PAT for GitHub Models (used only when set); falls back to
           # the default token. Lets Models work when the org token can't.
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}

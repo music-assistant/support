@@ -175,6 +175,15 @@ class RelatedPost:
 
 
 @dataclass
+class ProviderDoc:
+    """Authoritative provider documentation resolved from its server manifest."""
+
+    label: str
+    name: str
+    url: str
+
+
+@dataclass
 class RagResult:
     """Everything the RAG layer decided for one post.
 
@@ -188,6 +197,7 @@ class RagResult:
     doc_answer: DocAnswer | None = None
     cited_chunks: list[DocChunk] = field(default_factory=list)
     doc_hits: list[DocHit] = field(default_factory=list)
+    pinned_posts: list[RelatedPost] = field(default_factory=list)
     related_posts: list[RelatedPost] = field(default_factory=list)
     suppressed: bool = False
 
@@ -199,7 +209,7 @@ class RagResult:
 
     @property
     def has_output(self) -> bool:
-        return self.has_docs_output or bool(self.related_posts)
+        return self.has_docs_output or bool(self.pinned_posts or self.related_posts)
 
 
 @dataclass
@@ -229,6 +239,8 @@ class TriageResult:
 
     findings: list[Finding] = field(default_factory=list)
     labels_to_add: set[str] = field(default_factory=set)
+    reported_providers: set[str] = field(default_factory=set)
+    provider_docs: list[ProviderDoc] = field(default_factory=list)
     maintainers_to_ping: set[str] = field(default_factory=set)
     ai: AIResult | None = None
     diagnostics: Diagnostics | None = None

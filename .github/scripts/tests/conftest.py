@@ -44,7 +44,7 @@ class FakeGH:
 
     def __init__(self, *, latest_tag="2.9.5", labels=None, manifests=None,
                  index_files=None, tree=None, issues=None, discussions=None,
-                 search_items=None, discussion=None):
+                 search_items=None, discussion=None, pinned_discussions=None):
         self.dry_run = False
         self.repo = "music-assistant/support"
         self._latest_tag = latest_tag
@@ -55,6 +55,7 @@ class FakeGH:
         self._tree = list(tree or [])
         self._issues = list(issues or [])
         self._discussions = list(discussions or [])
+        self._pinned_discussions = list(pinned_discussions or [])
         self._discussion_obj = discussion
         self._search_items = list(search_items or [])
         self.calls: list[tuple] = []
@@ -95,6 +96,9 @@ class FakeGH:
 
     def list_discussions(self, *, limit=500):
         return list(self._discussions)[:limit]
+
+    def list_pinned_discussions(self):
+        return list(self._pinned_discussions)
 
     def get_discussion(self, number):
         return self._discussion_obj
@@ -140,11 +144,16 @@ class FakeGH:
 @pytest.fixture
 def fake_gh():
     return FakeGH(
-        labels={"sonos", "snapcast", "spotify", "Chromecast", "airplay",
+        labels={"sonos", "snapcast", "spotify", "subsonic", "Chromecast", "airplay",
                 "needs-attention", "waiting-for-user", "triage/needs-diagnostics"},
         manifests={
             "sonos": {"codeowners": ["@music-assistant"]},
             "snapcast": {"codeowners": ["@SantiagoSotoC", "@music-assistant"]},
+            "opensubsonic": {
+                "name": "OpenSubsonic Media Server Library",
+                "codeowners": ["@khers"],
+                "documentation": "https://music-assistant.io/music-providers/subsonic/",
+            },
         },
     )
 
@@ -188,4 +197,3 @@ def ai_on(monkeypatch):
         lambda texts, *, token: [fake_embedding(t) for t in texts],
     )
     return fake_embedding
-

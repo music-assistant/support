@@ -248,6 +248,14 @@ def _post_record(post: dict[str, Any], embedding: list[float]) -> dict[str, Any]
         "url": str(post.get("url", "")),
         "state": post.get("state"),
         "updated_at": post.get("updated_at"),
+        "providers": sorted(
+            {
+                str(provider)
+                for provider in (post.get("providers") or [])
+                if str(provider).strip()
+            },
+            key=str.lower,
+        ),
         "sha": post_sha(str(post.get("title", "")), str(post.get("body", ""))),
         "embedding": embedding,
     }
@@ -284,12 +292,25 @@ def build_posts_index(
     records: list[dict[str, Any]] = []
     to_embed: list[dict[str, Any]] = []
     embed_targets: list[str] = []
+    metadata_changed = False
     for post in posts[: config.INDEX_MAX_POSTS]:
         key = (post.get("kind", "issue"), int(post.get("number", 0)))
         sha = post_sha(str(post.get("title", "")), str(post.get("body", "")))
         cached = prev_by_key.get(key)
         if cached and cached.get("sha") == sha and cached.get("embedding"):
-            records.append(cached)
+            record = dict(cached)
+            providers = sorted(
+                {
+                    str(provider)
+                    for provider in (post.get("providers") or [])
+                    if str(provider).strip()
+                },
+                key=str.lower,
+            )
+            if record.get("providers") != providers:
+                record["providers"] = providers
+                metadata_changed = True
+            records.append(record)
         else:
             to_embed.append(post)
             # Cap each target so a very long issue/discussion body can't exceed
@@ -307,7 +328,7 @@ def build_posts_index(
         for post, vector in zip(to_embed, vectors):
             records.append(_post_record(post, vector))
 
-    changed = bool(to_embed) or {
+    changed = bool(to_embed) or metadata_changed or {
         (r.get("kind", "issue"), int(r.get("number", 0))) for r in records
     } != set(prev_by_key)
 

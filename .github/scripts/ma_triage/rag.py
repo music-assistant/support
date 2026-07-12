@@ -81,16 +81,20 @@ def answer(
     number: int,
     token: str,
     kind: str = "issue",
+    provider_labels: set[str] | None = None,
 ) -> RagResult | None:
     """Run the RAG pipeline for one post. ``None`` when disabled or on failure."""
     if not (config.AI_ENABLED and config.RAG_ENABLED):
         return None
+    pinned = similar.find_pinned(gh, provider_labels)
     try:
         query_text = f"{title}\n\n{body}".strip()
         query_vec = embeddings.embed_text(query_text, token=token)
         if query_vec is None:
-            # Embeddings unavailable (e.g. rate limited) → skip the whole layer.
-            return None
+            # Pinned notices are deterministic and remain useful if Models is
+            # temporarily unavailable.
+            result = RagResult(pinned_posts=pinned)
+            return result if result.has_output else None
 
         chunks = embeddings.load_docs_chunks(gh)
         doc_hits = retrieve_docs(query_vec, query_text, chunks)
@@ -135,6 +139,7 @@ def answer(
             posts=posts,
             exclude_number=number,
             exclude_kind=kind,
+            provider_labels=provider_labels,
         )
 
         result = RagResult(
@@ -142,10 +147,12 @@ def answer(
             doc_answer=doc_answer,
             cited_chunks=cited_chunks,
             doc_hits=doc_hits,
+            pinned_posts=pinned,
             related_posts=related,
             suppressed=suppressed,
         )
         return result if result.has_output else None
     except Exception as exc:  # noqa: BLE001 — never let RAG break triage
         log(f"RAG layer skipped: {exc}")
-        return None
+        result = RagResult(pinned_posts=pinned)
+        return result if result.has_output else None

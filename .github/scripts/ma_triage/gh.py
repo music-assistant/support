@@ -306,6 +306,36 @@ class GitHubClient:
             cursor = page_info.get("endCursor")
         return out[:limit]
 
+    def list_pinned_discussions(self) -> list[dict[str, Any]]:
+        """Pinned support Discussions (empty list if unavailable)."""
+        owner, name = self.repo.split("/", 1)
+        query = """
+        query($o:String!,$n:String!){
+          repository(owner:$o,name:$n){
+            pinnedDiscussions(first:50){
+              nodes{
+                discussion{
+                  number title body url closed category { name }
+                }
+              }
+            }
+          }
+        }
+        """
+        try:
+            data = self.graphql(query, {"o": owner, "n": name})
+        except Exception as exc:  # noqa: BLE001
+            log(f"Pinned discussion listing failed: {exc}")
+            return []
+        repo = (data.get("data") or {}).get("repository") or {}
+        connection = repo.get("pinnedDiscussions") or {}
+        discussions: list[dict[str, Any]] = []
+        for node in connection.get("nodes") or []:
+            discussion = node.get("discussion") if isinstance(node, dict) else None
+            if isinstance(discussion, dict):
+                discussions.append(discussion)
+        return discussions
+
     def get_discussion(self, number: int) -> dict[str, Any] | None:
         """Fetch one discussion + all its comment ids/bodies via GraphQL.
 

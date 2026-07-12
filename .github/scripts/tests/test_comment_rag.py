@@ -7,6 +7,7 @@ from ma_triage.models import (
     DocAnswer,
     DocChunk,
     DocHit,
+    ProviderDoc,
     RagResult,
     RelatedPost,
     TriageResult,
@@ -77,8 +78,56 @@ def test_build_body_low_tier_shows_only_related():
     body = comment.build_body(result)
     assert config.DOCS_ANSWER_HEADING not in body
     assert config.DOCS_LINKS_HEADING not in body
-    assert config.RELATED_POSTS_HEADING in body
+    assert config.RELATED_POSTS_HEADING not in body
+    assert config.RELATED_POSTS_WEAK_SUMMARY in body
+    assert "<details>" in body
     assert "#12: similar q" in body
+
+
+def test_build_body_strong_related_stays_expanded():
+    rag = RagResult(
+        tier="low",
+        related_posts=[
+            RelatedPost("issue", 12, "strong match", "https://x/12", 0.9, "open")
+        ],
+    )
+    body = comment.build_body(
+        TriageResult(form_kind="main", missing_attachment=True, rag=rag)
+    )
+    assert config.RELATED_POSTS_HEADING in body
+    assert config.RELATED_POSTS_WEAK_SUMMARY not in body
+
+
+def test_build_body_renders_provider_docs_and_pinned_notice():
+    rag = RagResult(
+        pinned_posts=[
+            RelatedPost(
+                "discussion",
+                709,
+                "MA Status and Troubleshooting",
+                "https://github.com/orgs/music-assistant/discussions/709",
+                1.0,
+                "open",
+            )
+        ]
+    )
+    result = TriageResult(
+        form_kind="main",
+        missing_attachment=True,
+        provider_docs=[
+            ProviderDoc(
+                "spotify",
+                "Spotify",
+                "https://music-assistant.io/music-providers/spotify/",
+            )
+        ],
+        rag=rag,
+    )
+    body = comment.build_body(result)
+    assert config.PROVIDER_DOCS_HEADING in body
+    assert "](https://music-assistant.io/music-providers/spotify/)" in body
+    assert config.PINNED_POSTS_HEADING in body
+    assert "MA Status and Troubleshooting" in body
 
 
 def test_related_post_title_cannot_break_out_of_link_label():

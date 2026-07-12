@@ -48,6 +48,7 @@ _OUTPUT_SCHEMA: dict[str, Any] = {
             "likely_root_cause",
             "category",
             "confidence",
+            "possibly_fixed_in_version",
             "suggested_labels",
             "user_message",
         ],
@@ -168,7 +169,15 @@ def assess(
             return None
         content = resp.json()["choices"][0]["message"]["content"]
         data = json.loads(content)
-        return _coerce(data)
+        result = _coerce(data)
+        if candidate_labels is not None:
+            allowed = {label.lower(): label for label in candidate_labels}
+            result.suggested_labels = [
+                allowed[label.lower()]
+                for label in result.suggested_labels
+                if label.lower() in allowed
+            ]
+        return result
     except Exception as exc:  # noqa: BLE001 — never let AI break triage
         print(f"AI assessment skipped: {exc}")
         return None
