@@ -10,7 +10,6 @@ from __future__ import annotations
 from . import config
 from .gh import GitHubClient
 from .models import Diagnostics, Finding, Severity
-from .providers import domain_to_label
 from .sanitize import inline
 from .versioncheck import VersionVerdict, evaluate
 
@@ -22,7 +21,7 @@ def analyze(diag: Diagnostics, gh: GitHubClient) -> tuple[list[Finding], set[str
 
     _check_version(diag, gh, findings, labels)
     _check_safe_mode(diag, findings)
-    _check_providers(diag, findings, labels)
+    _check_providers(diag, findings)
     _check_players(diag, labels)
     _check_exceptions(diag, findings)
     _check_resources(diag, findings)
@@ -100,14 +99,7 @@ def _check_safe_mode(diag: Diagnostics, findings: list[Finding]) -> None:
         )
 
 
-def _check_providers(
-    diag: Diagnostics, findings: list[Finding], labels: set[str]
-) -> None:
-    # Label every configured provider domain (existing-label filtering happens
-    # later against the repo's real labels).
-    for provider in diag.providers:
-        labels.add(domain_to_label(provider.domain))
-
+def _check_providers(diag: Diagnostics, findings: list[Finding]) -> None:
     errored = diag.providers_in_error
     if not errored:
         return
@@ -126,12 +118,6 @@ def _check_providers(
 
 
 def _check_players(diag: Diagnostics, labels: set[str]) -> None:
-    by_provider = diag.players.get("by_provider")
-    if isinstance(by_provider, dict):
-        for domain in by_provider:
-            if isinstance(domain, str):
-                labels.add(domain_to_label(domain))
-
     if diag.system.hass_addon is True:
         # Install method is useful context; only applied if such a label exists.
         labels.add("hass")

@@ -77,6 +77,34 @@ def test_answer_none_on_embed_failure(ai_on, monkeypatch):
     assert rag.answer(gh, title="sonos mdns", body="", number=1, token="t") is None
 
 
+def test_answer_keeps_provider_matched_pinned_notice_on_embed_failure(
+    ai_on, monkeypatch
+):
+    monkeypatch.setattr(embeddings, "embed_text", lambda text, *, token: None)
+    gh = FakeGH(
+        pinned_discussions=[
+            {
+                "number": 709,
+                "title": "MA Status and Troubleshooting",
+                "body": "Spotify login outage",
+                "url": "u709",
+                "closed": False,
+                "category": {"name": "Show and tell"},
+            }
+        ]
+    )
+    result = rag.answer(
+        gh,
+        title="Spotify login fails",
+        body="403",
+        number=1,
+        token="t",
+        provider_labels={"spotify"},
+    )
+    assert result is not None
+    assert [post.number for post in result.pinned_posts] == [709]
+
+
 def test_answer_high_tier(ai_on, monkeypatch):
     gh = _gh_with_indexes()
     monkeypatch.setattr(

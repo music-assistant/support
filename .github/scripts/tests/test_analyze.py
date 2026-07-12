@@ -16,9 +16,11 @@ def test_analyze_sample(sample_raw, fake_gh):
     # critical findings sort first
     assert findings[0].severity == Severity.CRITICAL
 
-    # provider + player labels suggested (pre-filter)
-    assert "sonos" in labels
-    assert "Chromecast" in labels  # from by_provider chromecast
+    # The diagnostics census describes the whole installation and must not label
+    # every configured provider/player. Setup + version labels are still useful.
+    assert "sonos" not in labels
+    assert "Chromecast" not in labels
+    assert "hass" in labels
 
 
 def test_safe_mode_flagged(injection_raw, fake_gh):

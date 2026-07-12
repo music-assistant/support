@@ -100,12 +100,14 @@ PROVIDER_LABELS: dict[str, str] = {
     "plex": "plex",
     "jellyfin": "jellyfin",
     "subsonic": "subsonic",
+    "opensubsonic": "subsonic",
     "filesystem_local": "filesystem_local",
     "audiobookshelf": "audiobookshelf",
     "builtin": "builtin",
     "hass": "hass",
     # player providers
     "slimproto": "Squeezelite",
+    "squeezelite": "Squeezelite",
     "sonos": "sonos",
     "airplay": "airplay",
     "chromecast": "Chromecast",
@@ -115,6 +117,16 @@ PROVIDER_LABELS: dict[str, str] = {
     "fully_kiosk": "fully_kiosk",
     "musiccast": "MusicCast",
     "wiim": "WiiM",
+    "heos": "HEOS",
+    "sendspin": "sendspin",
+}
+
+# Provider labels occasionally differ from the current provider directory/domain
+# in the server repository. These overrides are authoritative for manifest
+# metadata (documentation + codeowners).
+PROVIDER_MANIFEST_DOMAINS: dict[str, str] = {
+    "subsonic": "opensubsonic",
+    "squeezelite": "squeezelite",
 }
 
 # codeowners entry for the core team; never pinged/assigned as a "maintainer".
@@ -146,6 +158,8 @@ PROVIDER_TEXT_ALIASES: dict[str, str] = {
     "plex": "plex",
     "jellyfin": "jellyfin",
     "subsonic": "subsonic",
+    "opensubsonic": "subsonic",
+    "funkwhale": "subsonic",
     "navidrome": "subsonic",
     "audiobookshelf": "audiobookshelf",
     "filesystem": "filesystem_local",
@@ -159,6 +173,8 @@ PROVIDER_TEXT_ALIASES: dict[str, str] = {
     "slimproto": "Squeezelite",
     "musiccast": "MusicCast",
     "wiim": "WiiM",
+    "heos": "HEOS",
+    "sendspin": "sendspin",
     "dlna": "dlna",
     "upnp": "dlna",
     "fully kiosk": "fully_kiosk",
@@ -182,6 +198,7 @@ MAX_JSON_DEPTH = 40  # reject absurdly nested JSON (billion-laughs style)
 MAX_STRING_ECHO = 500  # max chars of any diagnostics-derived string echoed back
 MAX_EXCEPTIONS_SHOWN = 5  # top-N exception fingerprints surfaced in the comment
 MAX_PROVIDERS_SHOWN = 20  # cap provider lists in the comment
+MAX_REPORTED_PROVIDERS = 5  # cap provider metadata lookups from untrusted text
 MAX_LOG_WALL_LINES = 30  # a pasted block longer than this counts as a "log wall"
 MAX_AI_INPUT_CHARS = 8000  # bound the text handed to the model
 
@@ -233,6 +250,7 @@ def _env_float(name: str, default: float) -> float:
 
 # Dry-run defaults to TRUE: the prototype logs intended actions and mutates
 # nothing until a maintainer explicitly opts in by setting TRIAGE_DRY_RUN=false.
+SERVER_REF = _env_str("TRIAGE_SERVER_REF", "dev")
 DRY_RUN = _flag("TRIAGE_DRY_RUN", True)
 AI_ENABLED = _flag("TRIAGE_AI_ENABLED", False)
 # Scan an attached raw log file when no diagnostics JSON is present (common on
@@ -304,6 +322,15 @@ ANSWER_LO = _env_float("TRIAGE_ANSWER_LO", 0.45)
 DOCS_TOP_K = _env_int("TRIAGE_DOCS_TOP_K", 6)
 RELATED_POSTS = _env_int("TRIAGE_RELATED_POSTS", 3)
 RELATED_MIN_SCORE = _env_float("TRIAGE_RELATED_MIN_SCORE", 0.35)
+# Keep weak semantic matches available without presenting them as likely
+# duplicates. Only scores at/above this threshold render expanded.
+RELATED_EXPAND_SCORE = _env_float("TRIAGE_RELATED_EXPAND_SCORE", 0.80)
+# Pinned Feature Polls mention providers but are not operational status notices.
+PINNED_EXCLUDE_CATEGORIES = tuple(
+    c.strip().lower()
+    for c in _env_str("TRIAGE_PINNED_EXCLUDE_CATEGORIES", "feature polls").split(",")
+    if c.strip()
+)
 # Minimum dense cosine for the top doc hit to show links when the judge call
 # itself failed (retrieval-only MEDIUM fallback).
 DOCS_MIN_DENSE = _env_float("TRIAGE_DOCS_MIN_DENSE", 0.30)
@@ -419,3 +446,13 @@ RELATED_POSTS_INTRO = (
     "These earlier issues or discussions look related and might already have an "
     "answer (or indicate a duplicate):"
 )
+RELATED_POSTS_WEAK_SUMMARY = "🔁 Possibly related past reports"
+RELATED_POSTS_WEAK_INTRO = (
+    "These reports have some overlap, but the automated match was not strong "
+    "enough to call them likely duplicates:"
+)
+PINNED_POSTS_HEADING = "### 📌 Current support notice"
+PINNED_POSTS_INTRO = (
+    "A pinned Music Assistant support post mentions the affected provider:"
+)
+PROVIDER_DOCS_HEADING = "### 📖 Provider documentation"

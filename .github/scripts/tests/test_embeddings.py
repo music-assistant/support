@@ -212,3 +212,32 @@ def test_append_post_skip_on_embed_failure(monkeypatch):
         gh, {"kind": "issue", "number": 5, "title": "x", "body": "y"}, token="t"
     )
     assert index is None and changed is False
+
+
+def test_build_posts_index_refreshes_provider_metadata_without_reembedding(
+    ai_on, monkeypatch
+):
+    gh = FakeGH()
+    posts = [
+        {
+            "kind": "issue",
+            "number": 1,
+            "title": "Subsonic error",
+            "body": "404",
+            "providers": [],
+        }
+    ]
+    previous, _ = embeddings.build_posts_index(gh, posts, token="t")
+    calls = []
+    monkeypatch.setattr(
+        embeddings,
+        "embed_texts",
+        lambda texts, *, token: calls.append(texts) or [],
+    )
+    posts[0]["providers"] = ["subsonic"]
+    updated, changed = embeddings.build_posts_index(
+        gh, posts, token="t", previous=previous
+    )
+    assert changed is True
+    assert calls == []
+    assert updated["posts"][0]["providers"] == ["subsonic"]

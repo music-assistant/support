@@ -43,6 +43,21 @@ def test_assess_happy_path(sample_raw, monkeypatch):
     assert result.suggested_labels == ["sonos"]
 
 
+def test_assess_filters_suggested_labels_to_candidates(sample_raw, monkeypatch):
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(ai.requests, "post", lambda *a, **k: _Resp(_ok_payload()))
+    diag = parse_diagnostics(sample_raw)
+    result = ai.assess(
+        diag, "title", "body", token="x", candidate_labels=["snapcast"]
+    )
+    assert result.suggested_labels == []
+
+
+def test_strict_schema_requires_every_property():
+    schema = ai._OUTPUT_SCHEMA["schema"]
+    assert set(schema["required"]) == set(schema["properties"])
+
+
 def test_assess_http_error_returns_none(sample_raw, monkeypatch):
     monkeypatch.setattr(config, "AI_ENABLED", True)
     monkeypatch.setattr(ai.requests, "post",

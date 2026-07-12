@@ -4,10 +4,11 @@ from conftest import FAKE_DIM, fake_embedding
 from ma_triage import config, similar
 
 
-def _post(number, text, kind="issue", state="open"):
+def _post(number, text, kind="issue", state="open", providers=None):
     return {
         "kind": kind, "number": number, "title": text, "url": f"https://x/{number}",
-        "state": state, "embedding": fake_embedding(text),
+        "state": state, "providers": providers or [],
+        "embedding": fake_embedding(text),
     }
 
 
@@ -34,6 +35,18 @@ def test_related_from_index_respects_k(monkeypatch):
     posts = [_post(i, "alpha beta") for i in range(1, 6)]
     hits = similar.related_from_index(query, posts, exclude_number=99, k=2)
     assert len(hits) == 2
+
+
+def test_related_from_index_requires_exact_provider_overlap():
+    query = fake_embedding("flow playback error")
+    posts = [
+        _post(1, "flow playback error", providers=["Chromecast"]),
+        _post(2, "deezer playback error", providers=["deezer"]),
+    ]
+    hits = similar.related_from_index(
+        query, posts, exclude_number=99, provider_labels={"deezer"}, min_score=0.0
+    )
+    assert [hit.number for hit in hits] == [2]
 
 
 def test_related_from_search_filters_prs_and_self(fake_gh, monkeypatch):
@@ -70,6 +83,21 @@ def test_find_related_falls_back_to_search_when_no_index_hits(fake_gh, monkeypat
     assert [h.number for h in hits] == [42]
 
 
+def test_find_related_does_not_use_unscoped_fallback_for_provider(fake_gh):
+    fake_gh._search_items = [
+        {"number": 42, "title": "wrong provider", "html_url": "u42", "state": "open"}
+    ]
+    hits = similar.find_related(
+        fake_gh,
+        query_vec=fake_embedding("deezer flow"),
+        title="deezer flow",
+        posts=[_post(1, "chromecast flow", providers=["Chromecast"])],
+        exclude_number=99,
+        provider_labels={"deezer"},
+    )
+    assert hits == []
+
+
 def test_find_related_uses_index_when_available(fake_gh):
     query = fake_embedding("sonos speaker grouping")
     posts = [{"kind": "issue", "number": 3, "title": "sonos speaker grouping",
@@ -80,3 +108,29 @@ def test_find_related_uses_index_when_available(fake_gh):
         exclude_number=99,
     )
     assert [h.number for h in hits] == [3]
+
+
+def test_find_pinned_matches_provider_and_skips_feature_polls():
+    from conftest import FakeGH
+
+    gh = FakeGH(
+        pinned_discussions=[
+            {
+                "number": 709,
+                "title": "MA Status and Troubleshooting",
+                "body": "Spotify users may see 403 errors.",
+                "url": "https://x/709",
+                "closed": False,
+                "category": {"name": "Show and tell"},
+            },
+            {
+                "number": 4755,
+                "title": "Provider poll",
+                "body": "Spotify",
+                "url": "https://x/4755",
+                "closed": False,
+                "category": {"name": "Feature Polls"},
+            },
+        ]
+    )
+    assert [post.number for post in similar.find_pinned(gh, {"spotify"})] == [709]

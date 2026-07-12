@@ -12,11 +12,39 @@ MAIN_BODY_FULL = (
 def test_build_result_actionable(sample_raw, fake_gh, monkeypatch):
     monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
     monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
-    result = main.build_result(fake_gh, "title", "body", token="t")
+    result = main.build_result(fake_gh, "snapcast timeout", "body", token="t")
     assert result.is_actionable
     assert result.findings
-    # snapcast community maintainer surfaced (sonos is core-team only)
+    # A single explicitly-reported provider routes to its community codeowner.
     assert "SantiagoSotoC" in result.maintainers_to_ping
+
+
+def test_build_result_uses_reported_provider_not_diagnostics_census(
+    sample_raw, fake_gh, monkeypatch
+):
+    monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
+    monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
+    body = (
+        "### What happened?\n\nFunkwhale via Subsonic returns 404; Sonos is fine.\n\n"
+        "### How to reproduce\n\nOpen a Subsonic album.\n\n"
+        "### Music Assistant version\n\n2.9.7\n\n"
+        "### How do you run Music Assistant?\n\nHome Assistant add-on"
+    )
+    result = main.build_result(
+        fake_gh,
+        "Subsonic getLyrics returns 404",
+        body,
+        token="t",
+        labels=["triage"],
+    )
+    assert result.reported_providers == {"subsonic"}
+    assert "subsonic" in result.labels_to_add
+    assert "sonos" not in result.labels_to_add
+    assert "Chromecast" not in result.labels_to_add
+    assert result.maintainers_to_ping == {"khers"}
+    assert [doc.url for doc in result.provider_docs] == [
+        "https://music-assistant.io/music-providers/subsonic/"
+    ]
 
 
 def test_build_result_no_diagnostics(fake_gh, monkeypatch):

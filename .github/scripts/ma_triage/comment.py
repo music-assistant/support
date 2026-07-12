@@ -17,7 +17,7 @@ from typing import Any
 
 from . import config
 from .gh import GitHubClient
-from .models import RagResult, Severity, TriageResult
+from .models import RagResult, RelatedPost, Severity, TriageResult
 from .sanitize import inline, link_label, markdown_safe
 
 _SEVERITY_ICON = {
@@ -185,6 +185,21 @@ def _doc_link(label: str, url: str) -> str:
     return f"- [{link_label(label, max_len=160) or url}]({url})"
 
 
+def _post_link(post: RelatedPost) -> str:
+    closed = " _(closed)_" if post.state == "closed" else ""
+    title = link_label(post.title, max_len=140)
+    return f"- [#{post.number}: {title}]({post.url}){closed}"
+
+
+def _provider_docs_section(result: TriageResult) -> str:
+    if not result.provider_docs:
+        return ""
+    parts = [config.PROVIDER_DOCS_HEADING]
+    for doc in result.provider_docs:
+        parts.append(_doc_link(doc.name, doc.url))
+    return "\n".join(parts)
+
+
 def _render_rag(rag: RagResult | None) -> str:
     """Render the optional docs-answer + related-posts sections.
 
@@ -217,13 +232,27 @@ def _render_rag(rag: RagResult | None) -> str:
             parts.append(_doc_link(hit.chunk.label, hit.chunk.url))
         parts.append("\n" + config.DOCS_ANSWER_DISCLAIMER)
 
+    if rag.pinned_posts:
+        parts.append("\n" + config.PINNED_POSTS_HEADING)
+        parts.append(config.PINNED_POSTS_INTRO)
+        parts.extend(_post_link(post) for post in rag.pinned_posts)
+
     if rag.related_posts:
-        parts.append("\n" + config.RELATED_POSTS_HEADING)
-        parts.append(config.RELATED_POSTS_INTRO)
-        for post in rag.related_posts:
-            closed = " _(closed)_" if post.state == "closed" else ""
-            title = link_label(post.title, max_len=140)
-            parts.append(f"- [#{post.number}: {title}]({post.url}){closed}")
+        if max(post.score for post in rag.related_posts) >= config.RELATED_EXPAND_SCORE:
+            parts.append("\n" + config.RELATED_POSTS_HEADING)
+            parts.append(config.RELATED_POSTS_INTRO)
+            parts.extend(_post_link(post) for post in rag.related_posts)
+        else:
+            weak = [
+                "<details>",
+                f"<summary>{config.RELATED_POSTS_WEAK_SUMMARY}</summary>",
+                "",
+                config.RELATED_POSTS_WEAK_INTRO,
+                "",
+            ]
+            weak.extend(_post_link(post) for post in rag.related_posts)
+            weak.extend(["", "</details>"])
+            parts.append("\n" + "\n".join(weak))
 
     return "\n".join(parts)
 
@@ -307,6 +336,11 @@ def build_body(result: TriageResult) -> str:
             "A diagnostics report (or a log attached as a file) is much easier for "
             "us to work with than inline logs."
         )
+
+    provider_docs = _provider_docs_section(result)
+    if provider_docs:
+        parts.append("")
+        parts.append(provider_docs)
 
     rag_section = _rag_section(result)
     if rag_section:

@@ -65,6 +65,8 @@ jobs:
           TRIAGE_DOCS_REPO: ${{ vars.TRIAGE_DOCS_REPO }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_RELATED_POSTS: ${{ vars.TRIAGE_RELATED_POSTS }}
+          TRIAGE_RELATED_EXPAND_SCORE: ${{ vars.TRIAGE_RELATED_EXPAND_SCORE }}
+          TRIAGE_PINNED_EXCLUDE_CATEGORIES: ${{ vars.TRIAGE_PINNED_EXCLUDE_CATEGORIES }}
           TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES: ${{ vars.TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES }}
           # Optional PAT for GitHub Models (used only when set); falls back to
           # the default token. Lets Models work when the org token can't.

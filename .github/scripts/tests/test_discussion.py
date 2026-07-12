@@ -25,7 +25,7 @@ def _high_rag():
         tier="high",
         doc_answer=DocAnswer(True, 0.9, "Enable multicast on your switch.", ["faq/net#mdns"]),
         cited_chunks=[_chunk()],
-        related_posts=[RelatedPost("discussion", 12, "similar q", "https://x/12", 0.6, "open")],
+        related_posts=[RelatedPost("discussion", 12, "similar q", "https://x/12", 0.9, "open")],
     )
 
 
@@ -57,7 +57,8 @@ def test_cmd_discussion_posts_answer(discussions_on, monkeypatch):
     monkeypatch.setenv("DISCUSSION_NUMBER", "7")
     gh = FakeGH(discussion=_disc())
     monkeypatch.setattr(
-        main.rag, "answer", lambda gh, *, title, body, number, token, kind="issue": _high_rag()
+        main.rag, "answer", lambda gh, *, title, body, number, token,
+        kind="issue", provider_labels=None: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
 
@@ -81,7 +82,8 @@ def test_cmd_discussion_updates_existing_sticky(discussions_on, monkeypatch):
     ]
     gh = FakeGH(discussion=_disc(comments=existing))
     monkeypatch.setattr(
-        main.rag, "answer", lambda gh, *, title, body, number, token, kind="issue": _high_rag()
+        main.rag, "answer", lambda gh, *, title, body, number, token,
+        kind="issue", provider_labels=None: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
 
@@ -101,7 +103,8 @@ def test_cmd_discussion_ignores_forged_sticky_marker(discussions_on, monkeypatch
     ]
     gh = FakeGH(discussion=_disc(comments=forged))
     monkeypatch.setattr(
-        main.rag, "answer", lambda gh, *, title, body, number, token, kind="issue": _high_rag()
+        main.rag, "answer", lambda gh, *, title, body, number, token,
+        kind="issue", provider_labels=None: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert [c for c in gh.calls if c[0] == "add_discussion_comment"]
@@ -133,7 +136,8 @@ def test_cmd_discussion_silent_when_no_output(discussions_on, monkeypatch):
     monkeypatch.setenv("DISCUSSION_NUMBER", "7")
     gh = FakeGH(discussion=_disc())
     monkeypatch.setattr(
-        main.rag, "answer", lambda gh, *, title, body, number, token, kind="issue": None
+        main.rag, "answer", lambda gh, *, title, body, number, token,
+        kind="issue", provider_labels=None: None
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert not [c for c in gh.calls if "discussion_comment" in c[0]]
@@ -155,7 +159,12 @@ def test_cmd_discussion_sanitizes_related_title(discussions_on, monkeypatch):
             RelatedPost("issue", 50, "pwn](https://evil.example)", "https://x/50", 0.9, "open")
         ],
     )
-    monkeypatch.setattr(main.rag, "answer", lambda gh, *, title, body, number, token, kind="issue": rag)
+    monkeypatch.setattr(
+        main.rag,
+        "answer",
+        lambda gh, *, title, body, number, token, kind="issue",
+        provider_labels=None: rag,
+    )
     assert main.cmd_discussion(gh, "t") == 0
     body = [c for c in gh.calls if c[0] == "add_discussion_comment"][0][2]
     assert r"pwn\](https://evil.example)" in body
@@ -238,6 +247,37 @@ def test_get_discussion_missing_returns_none(monkeypatch):
         lambda q, v=None, *, features=None: {"data": {"repository": {"discussion": None}}},
     )
     assert client.get_discussion(999) is None
+
+
+def test_list_pinned_discussions_unwraps_nodes(monkeypatch):
+    client = GitHubClient("tok")
+    payload = {
+        "data": {
+            "repository": {
+                "pinnedDiscussions": {
+                    "nodes": [
+                        {
+                            "discussion": {
+                                "number": 709,
+                                "title": "MA Status and Troubleshooting",
+                                "body": "Spotify outage",
+                                "url": "u709",
+                                "closed": False,
+                                "category": {"name": "Show and tell"},
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    monkeypatch.setattr(
+        client,
+        "graphql",
+        lambda q, v=None, *, features=None: payload,
+    )
+    pinned = client.list_pinned_discussions()
+    assert [post["number"] for post in pinned] == [709]
 
 
 def test_discussion_comment_mutations_respect_dry_run(monkeypatch):
