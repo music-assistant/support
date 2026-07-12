@@ -1,18 +1,21 @@
-# Music Assistant issue triage bot (experimental)
+# Music Assistant triage bot
 
-Autonomous, AI-assisted triage for issues in `music-assistant/support`.
+Autonomous, AI-assisted triage for issues and Discussions in
+`music-assistant/support`.
 
 The bot reads the **diagnostics file** that reporters attach (produced by
 _Settings → Download diagnostics_ in Music Assistant), or falls back to scanning
 an attached **raw log file** (for older versions without the diagnostics
 feature), posts a single sticky summary comment, applies setup/provider labels,
 involves community provider maintainers, surfaces docs-grounded answers and
-similar past issues, and manages the issue's response state.
+similar past reports, and manages the issue's response state. New/edited
+Discussions receive the same docs-grounded help without issue-specific
+diagnostics or label handling.
 
-> ⚠️ **Experimental & dry-run by default.** With `TRIAGE_DRY_RUN` unset or
-> `true`, the bot makes **no changes** — it only writes what it _would_ do to
-> the Actions job summary. Set the repo variable `TRIAGE_DRY_RUN=false` to go
-> live.
+> **Live configuration in this repository:** deterministic triage, AI assessment,
+> RAG and Discussion triage are all enabled; dry-run is off. The code retains
+> safe defaults (`TRIAGE_DRY_RUN=true`, AI/Discussions off) for a fresh install.
+> User-visible mutations are made by the `musicassistant-bot` GitHub App.
 
 ## How it works
 
@@ -24,8 +27,10 @@ never interpolated into a shell command.
 .github/
 ├── workflows/
 │   ├── triage.yml            # issues opened/edited/reopened + new comments
+│   ├── discussions.yml       # new/edited Discussions
 │   ├── triage_scheduled.yml  # daily reminder / auto-close sweep
-│   └── docs_embeddings.yml   # nightly RAG index build (docs + posts)
+│   ├── docs_embeddings.yml   # nightly RAG index build (docs + posts)
+│   └── lock_threads.yml      # lock old closed threads
 └── scripts/
     ├── ma_triage/            # the bot (see module docstrings)
     ├── requirements.txt      # just `requests`
@@ -38,12 +43,11 @@ The bot branches on the issue form (detected from labels):
 - **frontend bug** (`triage`, `frontend`): checks a screenshot/recording is
   attached and required fields are filled — stays silent when the report is
   complete;
-- **translation**: translation contributions are moving to a GitHub **Discussion**
-  (via a contact link in the issue chooser) rather than an issue form, so no
-  issue carries a `translation` label anymore. The label-based skip guard is kept
-  as a harmless safety net.
+- **translation**: translation contributions use a GitHub **Discussion** contact
+  link rather than an issue form. The legacy label-based skip remains as a safety
+  net.
 
-### Tier 0 — deterministic (always on)
+### Deterministic analysis
 From the diagnostics file the bot derives, with no AI:
 - **version check** vs the latest server release (outdated / pre-release);
 - **safe mode** banner;
@@ -66,8 +70,8 @@ redacted snippets are ever echoed. Controlled by `TRIAGE_SCAN_LOGS` (default on)
 If no usable attachment is present, or required template sections are empty, the
 bot posts a friendly request explaining how to download the diagnostics report.
 
-### Tier 1 — GitHub Models (optional)
-When `TRIAGE_AI_ENABLED=true`, the bot first gathers a bounded evidence pack:
+### Evidence-grounded AI assessment
+The live bot first gathers a bounded evidence pack:
 diagnostics, the exact provider documentation page + retrieved doc sections,
 provider-matched pinned/related reports, and lexically relevant excerpts from
 the official server source at the reported release tag (falling back to `dev`).
@@ -76,13 +80,11 @@ confidence, likely cause, concrete evidence and a maintainer verification step.
 The prompt explicitly distinguishes official Docker/HA add-on packaging from
 manual installations, so managed dependencies are never pushed back onto those
 users. Any retrieval/model failure degrades gracefully to the available
-evidence/Tier-0 result. Uses `GH_MODELS_TOKEN` when set and renders as a collapsed
-`<details>` block for maintainers.
+evidence/deterministic result. Models calls use `GH_MODELS_TOKEN`; the assessment
+renders as a collapsed `<details>` block for maintainers.
 
-### Docs-grounded answers & similar reports (Phase 2, optional)
-When `TRIAGE_AI_ENABLED=true` (and `TRIAGE_RAG_ENABLED` is not `false`), the bot
-adds a **retrieval-augmented** layer on top of the tiers above, modelled on
-`zwave-js-bot`:
+### Docs-grounded answers & similar reports
+The live bot adds a **retrieval-augmented** layer on top of the analysis:
 
 - **Docs Q&A.** The incoming issue is embedded once and matched against an index
   of the public docs (`music-assistant/music-assistant.io`, chunked by heading).
@@ -106,15 +108,19 @@ adds a **retrieval-augmented** layer on top of the tiers above, modelled on
   `LOW` stays silent (deterministic triage and duplicate links may still post).
   An answer matching a previously down-voted (`suppress.json`) fingerprint is
   demoted a tier.
-- **Cost.** Per issue: **1 embedding + ≤1 judge chat**, only when AI is enabled.
-  Indexing runs nightly, cached by content SHA (unchanged chunks are never
-  re-embedded) and skips on rate-limit. All output is rendered as extra sections
-  in the same sticky comment, and everything echoed is sanitized.
+- **Cost.** Per actionable issue: **1 embedding + up to 2 chat calls** (docs
+  judge + evidence-grounded assessment). Discussions use 1 embedding + up to
+  1 docs judge. Indexing runs nightly, cached by content SHA (unchanged chunks
+  are never re-embedded) and skips on rate-limit. All output is rendered in the
+  same sticky comment, and everything echoed is sanitized.
 
-The two indexes (`docs.json`, `posts.json`) and the down-vote fingerprints
-(`suppress.json`) are stored as JSON on an orphan **`triage-index`** branch
-(keeping `main` clean) and read at runtime. When they are absent the whole layer
-degrades gracefully and Tier-0/Tier-1 behaviour is unchanged.
+The two indexes (`docs.json`, `posts.json`) and suppression fingerprints (when
+present, `suppress.json`) are stored as JSON on an orphan **`triage-index`** branch
+(keeping `main` clean) and read at runtime. The posts index retains bounded body
+excerpts and provider identity for evidence-grounded assessment. Automatic
+👍/👎 reaction harvesting is **not implemented yet**; suppression data is
+currently read-only/manual. Missing indexes degrade gracefully without breaking
+deterministic triage.
 
 ## Response-state lifecycle
 
@@ -138,25 +144,26 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 ## Configuration
 
 ### Repo variables (Settings → Secrets and variables → Actions → Variables)
-| Variable | Default | Purpose |
-|---|---|---|
-| `TRIAGE_DRY_RUN` | `true` | Kill switch. `false` to make real changes. |
-| `TRIAGE_AI_ENABLED` | `false` | Enable Tier-1 GitHub Models assessment. |
-| `TRIAGE_SCAN_LOGS` | `true` | Scan an attached raw log (redacted) when no diagnostics report is present. |
-| `TRIAGE_AI_MODEL` | `openai/gpt-4o-mini` | Model id for Tier 1. |
-| `TRIAGE_RAG_ENABLED` | `true` | Sub-flag for the Phase-2 RAG layer (still requires `TRIAGE_AI_ENABLED`). |
-| `TRIAGE_DISCUSSIONS_ENABLED` | `false` | Enable docs-grounded triage on new/edited Discussions. |
-| `TRIAGE_EMBED_MODEL` | `openai/text-embedding-3-small` | Embeddings model (GitHub Models). |
-| `TRIAGE_EMBED_DIM` | `512` | Embedding dimensionality (keeps indexes small). |
-| `TRIAGE_ANSWER_MODEL` | `openai/gpt-4o` | Judge/answer chat model. |
-| `TRIAGE_ANSWER_HI` | `0.75` | Min confidence for a full doc-grounded answer. |
-| `TRIAGE_ANSWER_LO` | `0.45` | Min confidence for doc links only. |
-| `TRIAGE_DOCS_REPO` | `music-assistant/music-assistant.io` | Public docs source. |
-| `TRIAGE_INDEX_BRANCH` | `triage-index` | Orphan branch holding the JSON indexes. |
-| `TRIAGE_INDEX_MAX_POSTS` | `500` | Cap on posts embedded into the similar-posts index. |
-| `TRIAGE_RELATED_EXPAND_SCORE` | `0.80` | Similarity score required to expand related posts; weaker provider-matched results are collapsed. |
-| `TRIAGE_SERVER_REF` | `dev` | Server ref used for provider documentation/codeowner manifests. |
-| `TRIAGE_PINNED_EXCLUDE_CATEGORIES` | `feature polls` | Pinned Discussion categories excluded from support notices. |
+| Variable | Safe default | Live value | Purpose |
+|---|---|---|---|
+| `TRIAGE_DRY_RUN` | `true` | `false` | Kill switch; `true` logs without mutating. |
+| `TRIAGE_AI_ENABLED` | `false` | `true` | Evidence-grounded GitHub Models assessment. |
+| `TRIAGE_RAG_ENABLED` | `true` | `true` (default) | Docs answers, pinned notices and related reports. |
+| `TRIAGE_DISCUSSIONS_ENABLED` | `false` | `true` | Docs-grounded triage on new/edited Discussions. |
+| `TRIAGE_SCAN_LOGS` | `true` | `true` (default) | Redact and scan a raw log when diagnostics are absent. |
+| `TRIAGE_AI_MODEL` | `openai/gpt-4o-mini` | default | Evidence assessment model. |
+| `TRIAGE_ANSWER_MODEL` | `openai/gpt-4o` | default | Docs judge/answer model. |
+| `TRIAGE_EMBED_MODEL` | `openai/text-embedding-3-small` | default | Docs/posts embedding model. |
+| `TRIAGE_EMBED_DIM` | `512` | default | Reduced embedding dimensionality. |
+| `TRIAGE_ANSWER_HI` / `LO` | `0.75` / `0.45` | default | Full-answer / links-only thresholds. |
+| `TRIAGE_INDEX_BRANCH` | `triage-index` | default | Orphan branch holding JSON indexes. |
+| `TRIAGE_INDEX_MAX_POSTS` | `500` | default | Similar-report index cap. |
+| `TRIAGE_RELATED_EXPAND_SCORE` | `0.80` | default | Expand only strong related-report matches. |
+| `TRIAGE_SERVER_REF` | `dev` | default | Current server fallback for manifests/code evidence. |
+| `TRIAGE_PINNED_EXCLUDE_CATEGORIES` | `feature polls` | default | Pinned categories not treated as support notices. |
+
+Additional retrieval/model tuning variables are documented inline in
+`ma_triage/config.py`; unset/empty Actions variables use those safe defaults.
 
 ### RAG indexes (`triage-index` branch)
 The `docs_embeddings.yml` workflow builds `docs.json` / `posts.json` and commits
@@ -168,22 +175,22 @@ can send. Build them on demand with:
 python -m ma_triage index all     # or: docs | posts
 ```
 
-The index-build workflow (and the small `index-append` job in `triage.yml` that
-appends each new issue) has `contents: write` + `models: read` but **no**
-`issues:` permission — the job that can write repo contents can never comment,
-and vice-versa. Both honour `TRIAGE_DRY_RUN` (dry-run previews the commit).
+The index-build workflow and the separate issue/Discussion `index-append` jobs
+have `contents: write` + `models: read` but no issue/Discussion write permission:
+jobs that write index content can never comment, and vice versa. They honour
+`TRIAGE_DRY_RUN` (dry-run previews the commit).
 
 ### Repo secrets
 | Secret | Needed for | Notes |
 |---|---|---|
-| `GH_MODELS_TOKEN` | Tier 1 / RAG (optional) | PAT with the **Models** permission. Used for GitHub Models calls (embeddings + judge/assessment) when the org hasn't enabled Models for the default Actions token. Falls back to `GITHUB_TOKEN` when unset. |
+| `GH_MODELS_TOKEN` | Models calls | Personal PAT with the **Models** permission. Required by the live App-based setup because the installation token has no Models entitlement. |
 | `TRIAGE_APP_ID` | Bot identity | Numeric ID of the GitHub App installed on this repository. |
 | `TRIAGE_APP_PRIVATE_KEY` | Bot identity | Complete PEM private key for the GitHub App. `actions/create-github-app-token` exchanges it for a repository-scoped, one-hour installation token in mutation jobs. |
 
 Issue/discussion comments, labels and lifecycle mutations use the GitHub App
 identity. Index commits remain on the built-in `GITHUB_TOKEN`, while Models calls
 remain on `GH_MODELS_TOKEN`. Existing `github-actions` sticky comments are left
-unchanged during the rollout; new stickies are owned and updated by the App.
+intact; new stickies are owned and updated by the App.
 
 ## Security model
 
@@ -208,9 +215,10 @@ unchanged during the rollout; new stickies are owned and updated by the App.
 - Everything echoed back from a diagnostics file (or a doc / model answer) is
   escaped: `@mentions` and `#refs` are neutralised, HTML/markers are escaped,
   code spans/fences can't be broken out of, and strings are length-capped.
-- Least-privilege permissions **per job**: the commenting jobs get `issues:
-  write` but never `contents: write`; the index-writing jobs get `contents:
-  write` + `models: read` but never `issues:` access. One concurrent run per issue.
+- Least-privilege permissions **per job**: short-lived App tokens perform
+  issue/Discussion mutations but never index writes; index jobs get
+  `contents: write` but no issue/Discussion mutation access. Runs are serialized
+  per issue/Discussion, and index writes share one global concurrency group.
 
 ## Local development / testing
 
@@ -231,12 +239,18 @@ ISSUE_BODY="$(gh issue view 123 --json body -q .body)" \
 python -m ma_triage triage
 ```
 
-## Rollout
+## Live operation
 
-1. Land with `TRIAGE_DRY_RUN=true`; review job summaries on real issues.
-2. Set `TRIAGE_DRY_RUN=false` to enable Tier-0/1 actions.
-3. Enable `TRIAGE_AI_ENABLED=true` (optionally provide `GH_MODELS_TOKEN`) and run
-   the RAG index build once for docs-grounded answers + similar issues.
+- Issue triage runs on opened/edited/reopened issues; a manual
+  `workflow_dispatch` accepts an issue number for controlled re-triage.
+- Discussion triage runs on newly created/edited Discussions, excluding
+  configured translation categories.
+- The posts index is appended on new issues/Discussions and rebuilt nightly with
+  the docs index; maintainers can manually dispatch `docs_embeddings.yml`.
+- Set `TRIAGE_DRY_RUN=true` for an immediate non-mutating kill switch. Set
+  `TRIAGE_AI_ENABLED=false` to retain deterministic triage without Models.
+- `triage/hold` pauses automation on an issue; `triage/skip` excludes it.
+- The bot does **not** dispatch coding agents or create fix PRs automatically.
 
 > Note: the per-form required-section lists in `ma_triage/template.py` and the
 > provider→label maps in `ma_triage/config.py` (`PROVIDER_LABELS` and the free-
