@@ -67,11 +67,16 @@ If no usable attachment is present, or required template sections are empty, the
 bot posts a friendly request explaining how to download the diagnostics report.
 
 ### Tier 1 — GitHub Models (optional)
-When `TRIAGE_AI_ENABLED=true`, a bounded, sanitized summary is sent to the
-GitHub Models API for a short, strictly-typed assessment (category, confidence,
-likely cause, possibly-fixed-in version). Any failure degrades gracefully to the
-Tier-0 result. Uses the default `GITHUB_TOKEN` with `models: read`, or a
-`GH_MODELS_TOKEN` PAT when set. The assessment renders as a collapsed
+When `TRIAGE_AI_ENABLED=true`, the bot first gathers a bounded evidence pack:
+diagnostics, the exact provider documentation page + retrieved doc sections,
+provider-matched pinned/related reports, and lexically relevant excerpts from
+the official server source at the reported release tag (falling back to `dev`).
+Only then does GitHub Models produce a strictly-typed assessment: category,
+confidence, likely cause, concrete evidence and a maintainer verification step.
+The prompt explicitly distinguishes official Docker/HA add-on packaging from
+manual installations, so managed dependencies are never pushed back onto those
+users. Any retrieval/model failure degrades gracefully to the available
+evidence/Tier-0 result. Uses `GH_MODELS_TOKEN` when set and renders as a collapsed
 `<details>` block for maintainers.
 
 ### Docs-grounded answers & similar reports (Phase 2, optional)
@@ -93,6 +98,9 @@ adds a **retrieval-augmented** layer on top of the tiers above, modelled on
   Polls are ignored. Translation-category discussions are excluded from the
   index. New/edited Discussions use the same RAG path when
   `TRIAGE_DISCUSSIONS_ENABLED=true`.
+- **Provider-aware docs.** The provider manifest's authoritative documentation
+  page is promoted into the retrieved doc set instead of relying on semantic
+  ranking alone.
 - **Confidence tiers.** `HIGH` (≥ `TRIAGE_ANSWER_HI`) posts a doc-grounded answer
   with cited links; `MEDIUM` (≥ `TRIAGE_ANSWER_LO`) posts doc links only;
   `LOW` stays silent (deterministic triage and duplicate links may still post).
@@ -193,6 +201,10 @@ unchanged during the rollout; new stickies are owned and updated by the App.
 - The docs corpus comes from the **public** docs repo (read with the default
   token, no secret); doc text is comparatively trusted but is still sanitized
   before it is echoed into a comment.
+- Tier-1 code evidence comes only from fixed candidate paths in the public
+  `music-assistant/server` repository at a validated release/dev ref. Relevant
+  line windows, file count and total characters are capped; issue-controlled
+  paths or refs are never fetched.
 - Everything echoed back from a diagnostics file (or a doc / model answer) is
   escaped: `@mentions` and `#refs` are neutralised, HTML/markers are escaped,
   code spans/fences can't be broken out of, and strings are length-capped.

@@ -18,10 +18,11 @@ Pipeline (≤ 1 embedding + ≤ 1 judge chat per post):
 from __future__ import annotations
 
 import hashlib
+from urllib.parse import urlparse
 
 from . import ai, config, embeddings, similar
 from .gh import GitHubClient, log
-from .models import DocAnswer, DocChunk, DocHit, RagResult
+from .models import DocAnswer, DocChunk, DocHit, ProviderDoc, RagResult
 from .retrieval import cosine, retrieve_docs
 
 
@@ -73,6 +74,42 @@ def _best_dense(query_vec: list[float], doc_hits: list[DocHit]) -> float:
     return max(cosine(query_vec, hit.chunk.embedding) for hit in doc_hits)
 
 
+def _promote_provider_docs(
+    query_vec: list[float],
+    chunks: list[DocChunk],
+    hits: list[DocHit],
+    provider_docs: list[ProviderDoc],
+) -> list[DocHit]:
+    """Ensure authoritative provider pages reach the judge/model evidence."""
+    preferred_paths = {
+        urlparse(doc.url).path.strip("/")
+        for doc in provider_docs
+        if urlparse(doc.url).path.strip("/")
+    }
+    if not preferred_paths:
+        return hits
+    preferred = [
+        chunk
+        for chunk in chunks
+        if any(
+            chunk.path.strip("/") == path
+            or chunk.path.strip("/").startswith(path + "/")
+            for path in preferred_paths
+        )
+    ]
+    preferred.sort(
+        key=lambda chunk: cosine(query_vec, chunk.embedding),
+        reverse=True,
+    )
+    promoted = [
+        DocHit(chunk=chunk, score=cosine(query_vec, chunk.embedding))
+        for chunk in preferred[:2]
+    ]
+    seen = {hit.chunk.id for hit in promoted}
+    promoted.extend(hit for hit in hits if hit.chunk.id not in seen)
+    return promoted[: config.DOCS_TOP_K]
+
+
 def answer(
     gh: GitHubClient,
     *,
@@ -82,6 +119,7 @@ def answer(
     token: str,
     kind: str = "issue",
     provider_labels: set[str] | None = None,
+    provider_docs: list[ProviderDoc] | None = None,
 ) -> RagResult | None:
     """Run the RAG pipeline for one post. ``None`` when disabled or on failure."""
     if not (config.AI_ENABLED and config.RAG_ENABLED):
@@ -98,6 +136,12 @@ def answer(
 
         chunks = embeddings.load_docs_chunks(gh)
         doc_hits = retrieve_docs(query_vec, query_text, chunks)
+        doc_hits = _promote_provider_docs(
+            query_vec,
+            chunks,
+            doc_hits,
+            provider_docs or [],
+        )
 
         judge: DocAnswer | None = None
         if doc_hits:

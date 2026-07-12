@@ -119,9 +119,23 @@ def _ai_section(result: TriageResult) -> str:
         return ""
     inner: list[str] = []
     if ai.summary:
-        inner.append(inline(ai.summary, max_len=1000))
+        inner.append(markdown_safe(ai.summary, max_len=1000))
     if ai.likely_root_cause:
-        inner.append(f"\n**Likely cause:** {inline(ai.likely_root_cause, max_len=1000)}")
+        inner.append(
+            "\n**Likely cause:** "
+            + markdown_safe(ai.likely_root_cause, max_len=1000)
+        )
+    if ai.evidence:
+        inner.append("\n**Evidence considered:**")
+        inner.extend(
+            f"- {markdown_safe(item, max_len=500)}"
+            for item in ai.evidence[:5]
+        )
+    if ai.maintainer_next_step:
+        inner.append(
+            "\n**Maintainer next step:** "
+            + markdown_safe(ai.maintainer_next_step, max_len=800)
+        )
     meta = []
     if ai.category:
         meta.append(f"category: `{inline(ai.category, max_len=40)}`")

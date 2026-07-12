@@ -26,9 +26,14 @@ def domain_to_label(domain: str) -> str:
 
 @lru_cache(maxsize=1)
 def _alias_patterns() -> list[tuple[re.Pattern[str], str]]:
-    """Compile the provider alias map into word-boundary regexes (once)."""
+    """Compile aliases longest-first so specific plugin names win."""
     patterns: list[tuple[re.Pattern[str], str]] = []
-    for alias, label in config.PROVIDER_TEXT_ALIASES.items():
+    aliases = sorted(
+        config.PROVIDER_TEXT_ALIASES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+    for alias, label in aliases:
         # Word boundaries around the alias; tolerate spaces/underscores between
         # words ("youtube music" also matches "youtube_music").
         escaped = re.escape(alias).replace(r"\ ", r"[\s_]+")
@@ -46,9 +51,14 @@ def detect_provider_labels_from_text(text: str | None) -> set[str]:
     if not text:
         return set()
     found: set[str] = set()
+    claimed_spans: list[tuple[int, int]] = []
     for pattern, label in _alias_patterns():
-        if pattern.search(text):
+        for match in pattern.finditer(text):
+            span = match.span()
+            if any(span[0] < end and start < span[1] for start, end in claimed_spans):
+                continue
             found.add(label)
+            claimed_spans.append(span)
     return found
 
 

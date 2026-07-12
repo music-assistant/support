@@ -256,6 +256,7 @@ def _post_record(post: dict[str, Any], embedding: list[float]) -> dict[str, Any]
             },
             key=str.lower,
         ),
+        "excerpt": str(post.get("body", ""))[: config.RELATED_EXCERPT_CHARS],
         "sha": post_sha(str(post.get("title", "")), str(post.get("body", ""))),
         "embedding": embedding,
     }
@@ -307,8 +308,12 @@ def build_posts_index(
                 },
                 key=str.lower,
             )
+            excerpt = str(post.get("body", ""))[: config.RELATED_EXCERPT_CHARS]
             if record.get("providers") != providers:
                 record["providers"] = providers
+                metadata_changed = True
+            if record.get("excerpt") != excerpt:
+                record["excerpt"] = excerpt
                 metadata_changed = True
             records.append(record)
         else:

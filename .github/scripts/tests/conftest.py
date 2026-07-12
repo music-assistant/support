@@ -44,7 +44,8 @@ class FakeGH:
 
     def __init__(self, *, latest_tag="2.9.5", labels=None, manifests=None,
                  index_files=None, tree=None, issues=None, discussions=None,
-                 search_items=None, discussion=None, pinned_discussions=None):
+                 search_items=None, discussion=None, pinned_discussions=None,
+                 raw_files=None):
         self.dry_run = False
         self.repo = "music-assistant/support"
         self._latest_tag = latest_tag
@@ -52,6 +53,7 @@ class FakeGH:
         self._manifests = manifests or {}
         self._comments: list[dict] = []
         self._index_files: dict[str, str] = dict(index_files or {})
+        self._raw_files: dict[str, str] = dict(raw_files or {})
         self._tree = list(tree or [])
         self._issues = list(issues or [])
         self._discussions = list(discussions or [])
@@ -67,6 +69,8 @@ class FakeGH:
     def get_raw_file(self, repo, path, ref="main"):
         if path in self._index_files:
             return self._index_files[path]
+        if path in self._raw_files:
+            return self._raw_files[path]
         for domain, content in self._manifests.items():
             if f"/{domain}/" in path:
                 return json.dumps(content)
@@ -144,11 +148,17 @@ class FakeGH:
 @pytest.fixture
 def fake_gh():
     return FakeGH(
-        labels={"sonos", "snapcast", "spotify", "subsonic", "Chromecast", "airplay",
+        labels={"sonos", "snapcast", "spotify", "Spotify Connect", "subsonic",
+                "Chromecast", "airplay",
                 "needs-attention", "waiting-for-user", "triage/needs-diagnostics"},
         manifests={
             "sonos": {"codeowners": ["@music-assistant"]},
             "snapcast": {"codeowners": ["@SantiagoSotoC", "@music-assistant"]},
+            "spotify_connect": {
+                "name": "Spotify Connect",
+                "codeowners": ["@music-assistant"],
+                "documentation": "https://music-assistant.io/plugins/spotify-connect/",
+            },
             "opensubsonic": {
                 "name": "OpenSubsonic Media Server Library",
                 "codeowners": ["@khers"],

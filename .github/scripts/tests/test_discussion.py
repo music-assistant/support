@@ -58,7 +58,7 @@ def test_cmd_discussion_posts_answer(discussions_on, monkeypatch):
     gh = FakeGH(discussion=_disc())
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None: _high_rag()
+        kind="issue", provider_labels=None, provider_docs=None: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
 
@@ -83,7 +83,7 @@ def test_cmd_discussion_updates_existing_sticky(discussions_on, monkeypatch):
     gh = FakeGH(discussion=_disc(comments=existing))
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None: _high_rag()
+        kind="issue", provider_labels=None, provider_docs=None: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
 
@@ -104,7 +104,7 @@ def test_cmd_discussion_ignores_forged_sticky_marker(discussions_on, monkeypatch
     gh = FakeGH(discussion=_disc(comments=forged))
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None: _high_rag()
+        kind="issue", provider_labels=None, provider_docs=None: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert [c for c in gh.calls if c[0] == "add_discussion_comment"]
@@ -129,7 +129,7 @@ def test_discussion_app_rollout_preserves_legacy_sticky(
         main.rag,
         "answer",
         lambda gh, *, title, body, number, token, kind="issue",
-        provider_labels=None: _high_rag(),
+        provider_labels=None, provider_docs=None: _high_rag(),
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert not [c for c in gh.calls if "discussion_comment" in c[0]]
@@ -161,7 +161,7 @@ def test_cmd_discussion_silent_when_no_output(discussions_on, monkeypatch):
     gh = FakeGH(discussion=_disc())
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None: None
+        kind="issue", provider_labels=None, provider_docs=None: None
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert not [c for c in gh.calls if "discussion_comment" in c[0]]
@@ -187,7 +187,7 @@ def test_cmd_discussion_sanitizes_related_title(discussions_on, monkeypatch):
         main.rag,
         "answer",
         lambda gh, *, title, body, number, token, kind="issue",
-        provider_labels=None: rag,
+        provider_labels=None, provider_docs=None: rag,
     )
     assert main.cmd_discussion(gh, "t") == 0
     body = [c for c in gh.calls if c[0] == "add_discussion_comment"][0][2]

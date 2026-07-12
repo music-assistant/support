@@ -1,5 +1,6 @@
 from ma_triage import __main__ as main
 from ma_triage import config
+from ma_triage.models import AIResult, RagResult
 
 MAIN_BODY_FULL = (
     "### What happened?\n\nIt crashes on startup\n\n"
@@ -45,6 +46,44 @@ def test_build_result_uses_reported_provider_not_diagnostics_census(
     assert [doc.url for doc in result.provider_docs] == [
         "https://music-assistant.io/music-providers/subsonic/"
     ]
+
+
+def test_build_result_assesses_after_retrieving_rag_and_code(
+    sample_raw, fake_gh, monkeypatch
+):
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
+    monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
+    rag_result = RagResult(tier="low")
+    monkeypatch.setattr(main.rag, "answer", lambda *args, **kwargs: rag_result)
+    monkeypatch.setattr(
+        main.code_context,
+        "build",
+        lambda *args, **kwargs: "SOURCE: helpers.py @ 2.9.7\nbundled binary",
+    )
+    captured = {}
+
+    def assess(*args, **kwargs):
+        captured.update(kwargs)
+        return AIResult(
+            summary="Packaging regression",
+            likely_root_cause="Bundled binary missing",
+            category="bug",
+            confidence=0.9,
+        )
+
+    monkeypatch.setattr(main.ai, "assess", assess)
+    result = main.build_result(
+        fake_gh,
+        "snapcast binary missing",
+        MAIN_BODY_FULL,
+        token="t",
+        labels=["triage"],
+    )
+    assert captured["rag_result"] is rag_result
+    assert "bundled binary" in captured["code_context"]
+    assert result.ai is not None
+    assert result.ai.category == "bug"
 
 
 def test_build_result_no_diagnostics(fake_gh, monkeypatch):
