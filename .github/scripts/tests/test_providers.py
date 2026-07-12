@@ -1,5 +1,6 @@
 from ma_triage import config
 from ma_triage.providers import (
+    detect_provider_labels_from_text,
     detect_reported_provider_labels,
     domain_to_label,
     filter_existing_labels,
@@ -26,6 +27,19 @@ def test_reported_provider_title_wins_over_incidental_body_mention():
     assert detect_reported_provider_labels(
         "Old filesystem albums marked as new", body
     ) == {"filesystem_local"}
+
+
+def test_specific_spotify_connect_alias_wins_over_generic_spotify():
+    assert detect_provider_labels_from_text(
+        "Spotify Connect go-librespot error"
+    ) == {"Spotify Connect"}
+    assert provider_manifest_domain("Spotify Connect") == "spotify_connect"
+
+
+def test_separate_spotify_and_spotify_connect_mentions_are_both_kept():
+    assert detect_provider_labels_from_text(
+        "Spotify playback works but Spotify Connect fails"
+    ) == {"spotify", "Spotify Connect"}
 
 
 def test_reported_provider_falls_back_to_form_body():
@@ -60,6 +74,13 @@ def test_subsonic_resolves_current_manifest_metadata(fake_gh):
     assert doc is not None
     assert doc.name == "OpenSubsonic Media Server Library"
     assert doc.url == "https://music-assistant.io/music-providers/subsonic/"
+
+
+def test_spotify_connect_resolves_plugin_documentation(fake_gh):
+    doc = resolve_provider_doc(fake_gh, "Spotify Connect")
+    assert doc is not None
+    assert doc.label == "Spotify Connect"
+    assert doc.url == "https://music-assistant.io/plugins/spotify-connect/"
 
 
 def test_provider_doc_rejects_external_url(fake_gh):

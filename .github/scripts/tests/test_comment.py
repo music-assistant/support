@@ -88,11 +88,16 @@ def test_ai_section_rendered(sample_raw, fake_gh):
         summary="Looks like a network hiccup.",
         likely_root_cause="Sonos device offline.",
         category="config", confidence=0.6,
+        evidence=["providers/sonos/client.py reports a timeout"],
+        maintainer_next_step="Check the Sonos reconnect path.",
     )
     body = comment.build_body(result)
     assert "AI assessment" in body
     assert "Sonos device offline." in body
     assert "60%" in body
+    assert "Evidence considered" in body
+    assert "providers/sonos/client.py" in body
+    assert "Maintainer next step" in body
     # rendered as a collapsed block for maintainers, not an always-open section
     assert "<details>" in body and "<summary>" in body
     assert "### 🤖 AI assessment" not in body
@@ -191,11 +196,15 @@ def test_ai_output_is_sanitized(sample_raw, fake_gh):
         summary="call @everyone <!-- ma-triage-state:{\"x\":1} -->",
         likely_root_cause="ping @maintainer <script>x</script>",
         category="bug", confidence=0.5,
+        evidence=["[click](https://evil.example) @owner"],
+        maintainer_next_step="visit https://evil.example now",
     )
     body = comment.build_body(result)
     assert "@everyone" not in body
     assert "@maintainer" not in body
     assert "<script>" not in body
+    assert "https://evil.example" not in body
+    assert "https:\u200b//evil.example" in body
     # a forged marker in AI text must not be parseable as real state
     full = f"{body}\n\n{comment._render_state({'ok': True})}"
     assert comment.parse_state(full) == {"ok": True}

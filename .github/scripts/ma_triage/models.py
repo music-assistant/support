@@ -118,6 +118,8 @@ class AIResult:
     possibly_fixed_in_version: str | None = None
     suggested_labels: list[str] = field(default_factory=list)
     user_message: str | None = None
+    evidence: list[str] = field(default_factory=list)
+    maintainer_next_step: str = ""
 
 
 # --------------------------------------------------------------------------- #
@@ -172,6 +174,7 @@ class RelatedPost:
     url: str
     score: float = 0.0
     state: str | None = None  # "open" | "closed"
+    excerpt: str = ""
 
 
 @dataclass

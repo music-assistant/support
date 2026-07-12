@@ -85,6 +85,7 @@ def related_from_index(
                 url=str(post.get("url", "")),
                 score=round(score, 4),
                 state=post.get("state"),
+                excerpt=str(post.get("excerpt", "")),
             )
         )
     return results
@@ -131,6 +132,7 @@ def related_from_search(
                 url=str(item.get("html_url", "")),
                 score=0.0,
                 state=item.get("state"),
+                excerpt=str(item.get("body", ""))[: config.RELATED_EXCERPT_CHARS],
             )
         )
         if len(results) >= top_k:
@@ -197,6 +199,9 @@ def find_pinned(
                 url=str(discussion.get("url", "")),
                 score=1.0,
                 state="closed" if discussion.get("closed") else "open",
+                excerpt=str(discussion.get("body", ""))[
+                    : config.RELATED_EXCERPT_CHARS
+                ],
             )
         )
     return matches

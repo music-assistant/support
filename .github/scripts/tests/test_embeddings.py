@@ -241,3 +241,4 @@ def test_build_posts_index_refreshes_provider_metadata_without_reembedding(
     assert changed is True
     assert calls == []
     assert updated["posts"][0]["providers"] == ["subsonic"]
+    assert updated["posts"][0]["excerpt"] == "404"

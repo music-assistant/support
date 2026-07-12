@@ -92,6 +92,7 @@ CONTROL_LABELS = frozenset(
 # back to the domain string itself (which is applied only if such a label exists).
 PROVIDER_LABELS: dict[str, str] = {
     "spotify": "spotify",
+    "spotify_connect": "Spotify Connect",
     "tidal": "tidal",
     "qobuz": "qobuz",
     "youtube_music": "youtube_music",
@@ -128,6 +129,7 @@ PROVIDER_LABELS: dict[str, str] = {
 # in the server repository. These overrides are authoritative for manifest
 # metadata (documentation + codeowners).
 PROVIDER_MANIFEST_DOMAINS: dict[str, str] = {
+    "spotify connect": "spotify_connect",
     "subsonic": "opensubsonic",
     "squeezelite": "squeezelite",
 }
@@ -145,6 +147,7 @@ CORE_TEAM_HANDLE = "music-assistant"
 # only labels that already exist in the repo are ever applied. Keep aliases
 # specific to avoid false positives.
 PROVIDER_TEXT_ALIASES: dict[str, str] = {
+    "spotify connect": "Spotify Connect",
     "spotify": "spotify",
     "tidal": "tidal",
     "qobuz": "qobuz",
@@ -203,7 +206,10 @@ MAX_EXCEPTIONS_SHOWN = 5  # top-N exception fingerprints surfaced in the comment
 MAX_PROVIDERS_SHOWN = 20  # cap provider lists in the comment
 MAX_REPORTED_PROVIDERS = 5  # cap provider metadata lookups from untrusted text
 MAX_LOG_WALL_LINES = 30  # a pasted block longer than this counts as a "log wall"
-MAX_AI_INPUT_CHARS = 8000  # bound the text handed to the model
+MAX_AI_INPUT_CHARS = 16000  # bound the evidence-rich text handed to the model
+MAX_CODE_CONTEXT_CHARS = 5000  # official server-code excerpts per assessment
+MAX_CODE_CONTEXT_FILES = 5
+RELATED_EXCERPT_CHARS = 1200  # post body retained for assessment evidence
 
 # GitHub issue forms render an empty optional field as this literal string.
 NO_RESPONSE_SENTINEL = "_No response_"

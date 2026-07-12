@@ -4,7 +4,7 @@ import json
 
 from conftest import FakeGH
 from ma_triage import config, embeddings, rag
-from ma_triage.models import DocAnswer, DocChunk
+from ma_triage.models import DocAnswer, DocChunk, ProviderDoc
 
 
 def _chunk(cid, text):
@@ -120,6 +120,43 @@ def test_answer_high_tier(ai_on, monkeypatch):
     assert res.cited_chunks and res.cited_chunks[0].id == "faq/net#mdns"
     assert [p.number for p in res.related_posts] == [50]
     assert res.has_docs_output is True
+
+
+def test_answer_promotes_authoritative_provider_docs(ai_on, monkeypatch):
+    gh = FakeGH()
+    chunks = [
+        _chunk("faq/general#start", "generic troubleshooting update restart"),
+        _chunk(
+            "plugins/spotify-connect#configuration",
+            "go-librespot binary configuration and Spotify Connect",
+        ),
+    ]
+    chunks[1].path = "plugins/spotify-connect"
+    idx, _ = embeddings.build_docs_index(gh, token="t", chunks=chunks)
+    embeddings.save_index(gh, config.DOCS_INDEX_PATH, idx, message="d")
+    captured = {}
+
+    def judge(title, body, hits, *, token):
+        captured["hits"] = hits
+        return DocAnswer(False, 0.1, "", [])
+
+    monkeypatch.setattr(rag.ai, "judge_answer", judge)
+    rag.answer(
+        gh,
+        title="Spotify Connect go-librespot missing",
+        body="binary missing after update",
+        number=99,
+        token="t",
+        provider_labels={"Spotify Connect"},
+        provider_docs=[
+            ProviderDoc(
+                "Spotify Connect",
+                "Spotify Connect",
+                "https://music-assistant.io/plugins/spotify-connect/",
+            )
+        ],
+    )
+    assert captured["hits"][0].chunk.path == "plugins/spotify-connect"
 
 
 def test_answer_medium_tier_links_only(ai_on, monkeypatch):

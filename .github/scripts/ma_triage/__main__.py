@@ -21,7 +21,18 @@ import sys
 from datetime import datetime, timezone
 from typing import Any
 
-from . import ai, analyze, comment, config, embeddings, lifecycle, logscan, rag, template
+from . import (
+    ai,
+    analyze,
+    code_context,
+    comment,
+    config,
+    embeddings,
+    lifecycle,
+    logscan,
+    rag,
+    template,
+)
 from .attachments import (
     download_capped,
     download_log_windowed,
@@ -143,25 +154,14 @@ def build_result(
             provider = next(iter(reported_providers))
             maintainers.update(resolve_maintainers(gh, provider))
 
-        ai_result = ai.assess(
-            diag, title, body, token=token, candidate_labels=sorted(labels_to_add)
-        )
-        if ai_result is not None:
-            result.ai = ai_result
-            labels_to_add.update(ai_result.suggested_labels)
     elif result.reported_version:
         # No attachment we could parse — still nudge on an outdated version.
         v_findings, v_labels = analyze.version_findings(result.reported_version, gh)
         findings.extend(v_findings)
         labels_to_add |= v_labels
 
-    findings.sort(key=lambda f: f.sort_key)
-    result.findings = findings
-    result.labels_to_add = labels_to_add
-    result.maintainers_to_ping = maintainers
-
-    # Phase 2 RAG layer (docs-grounded answer + related posts). Returns None when
-    # disabled or on any failure, so Tier-0/Tier-1 output is unchanged.
+    # Retrieve docs, pinned notices and provider-matched reports *before* Tier-1
+    # so the root-cause assessment sees the same evidence rendered to the user.
     result.rag = rag.answer(
         gh,
         title=title,
@@ -169,7 +169,44 @@ def build_result(
         number=number,
         token=token,
         provider_labels=reported_providers,
+        provider_docs=result.provider_docs,
     )
+
+    if result.is_actionable and result.diagnostics is not None:
+        context = ""
+        if config.AI_ENABLED:
+            try:
+                context = code_context.build(
+                    gh,
+                    title=title,
+                    body=body,
+                    diagnostics=result.diagnostics,
+                    provider_labels=reported_providers,
+                    version=(
+                        result.diagnostics.system.version
+                        or result.reported_version
+                    ),
+                )
+            except Exception as exc:  # noqa: BLE001 — optional evidence only
+                log(f"Server-code evidence skipped: {exc}")
+        ai_result = ai.assess(
+            result.diagnostics,
+            title,
+            body,
+            token=token,
+            candidate_labels=sorted(labels_to_add),
+            rag_result=result.rag,
+            provider_docs=result.provider_docs,
+            code_context=context,
+        )
+        if ai_result is not None:
+            result.ai = ai_result
+            labels_to_add.update(ai_result.suggested_labels)
+
+    findings.sort(key=lambda f: f.sort_key)
+    result.findings = findings
+    result.labels_to_add = labels_to_add
+    result.maintainers_to_ping = maintainers
     return result
 
 
@@ -508,6 +545,11 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
             key=str.lower,
         )[: config.MAX_REPORTED_PROVIDERS]
     )
+    provider_docs = [
+        doc
+        for provider in sorted(provider_labels, key=str.lower)
+        if (doc := resolve_provider_doc(gh, provider)) is not None
+    ]
     summary(f"## Triage of discussion #{number}\n")
 
     rag_result = rag.answer(
@@ -518,6 +560,7 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
         token=token,
         kind="discussion",
         provider_labels=provider_labels,
+        provider_docs=provider_docs,
     )
     if rag_result is None or not rag_result.has_output:
         summary(f"#{number}: no confident docs answer or related posts; staying silent.")
