@@ -22,6 +22,9 @@ MANIFEST_PATH = "music_assistant/providers/{domain}/manifest.json"
 # --------------------------------------------------------------------------- #
 # Hidden HTML comment used to find (and update in place) the single bot comment.
 STICKY_MARKER = "<!-- ma-triage-bot -->"
+# Existing sticky comments were created before the GitHub App rollout. Keep
+# those comments intact instead of replacing them and losing their history.
+LEGACY_BOT_LOGINS = frozenset({"github-actions", "github-actions[bot]"})
 # Hidden machine-readable state is stored between these fences inside the comment.
 STATE_BEGIN = "<!-- ma-triage-state:"
 STATE_END = "-->"
@@ -251,6 +254,9 @@ def _env_float(name: str, default: float) -> float:
 # Dry-run defaults to TRUE: the prototype logs intended actions and mutates
 # nothing until a maintainer explicitly opts in by setting TRIAGE_DRY_RUN=false.
 SERVER_REF = _env_str("TRIAGE_SERVER_REF", "dev")
+# Login of the current GitHub App bot (set from create-github-app-token's
+# ``app-slug`` output). Empty preserves the legacy single-token behaviour.
+BOT_LOGIN = _env_str("TRIAGE_BOT_LOGIN", "")
 DRY_RUN = _flag("TRIAGE_DRY_RUN", True)
 AI_ENABLED = _flag("TRIAGE_AI_ENABLED", False)
 # Scan an attached raw log file when no diagnostics JSON is present (common on

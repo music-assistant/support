@@ -16,7 +16,7 @@ import json
 from typing import Any
 
 from . import config
-from .gh import GitHubClient
+from .gh import GitHubClient, summary
 from .models import RagResult, RelatedPost, Severity, TriageResult
 from .sanitize import inline, link_label, markdown_safe
 
@@ -65,6 +65,26 @@ def find_sticky(comments: list[dict[str, Any]]) -> dict[str, Any] | None:
         if config.STICKY_MARKER in (comment.get("body") or ""):
             return comment
     return None
+
+
+def _author_login(comment: dict[str, Any]) -> str:
+    actor = comment.get("user") or comment.get("author") or {}
+    return str(actor.get("login") or "").lower() if isinstance(actor, dict) else ""
+
+
+def _owned_sticky(comments: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Sticky authored by the current App (or legacy behaviour when unset)."""
+    if not config.BOT_LOGIN:
+        return find_sticky(comments)
+    login = config.BOT_LOGIN.lower()
+    return find_sticky([comment for comment in comments if _author_login(comment) == login])
+
+
+def _legacy_sticky(comments: list[dict[str, Any]]) -> dict[str, Any] | None:
+    logins = {login.lower() for login in config.LEGACY_BOT_LOGINS}
+    return find_sticky(
+        [comment for comment in comments if _author_login(comment) in logins]
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -370,9 +390,14 @@ def upsert(
     full = f"{body}\n\n{_render_state(state)}"
     if comments is None:
         comments = gh.list_comments(number)
-    existing = find_sticky(comments)
+    existing = _owned_sticky(comments)
     if existing:
         gh.update_comment(existing["id"], full)
+    elif config.BOT_LOGIN and _legacy_sticky(comments):
+        summary(
+            f"#{number}: existing github-actions sticky left unchanged during "
+            "GitHub App rollout."
+        )
     else:
         gh.create_comment(number, full)
 
@@ -387,15 +412,27 @@ def upsert_discussion(
 ) -> None:
     """Create or update the single sticky comment on a Discussion (GraphQL).
 
-    ``comments`` are the discussion's existing comments (``{id, body,
-    viewerDidAuthor}`` nodes). Only comments the bot itself authored
-    (``viewerDidAuthor``) are considered when locating the sticky, so a user
-    can't hijack the update by planting the marker text in their own comment.
+    ``comments`` are the discussion's existing comment nodes. Only comments the
+    current App authored are updated; a legacy github-actions sticky is preserved,
+    while a user-forged marker is ignored and cannot block the App's own sticky.
     """
     full = f"{body}\n\n{_render_state(state)}"
-    owned = [c for c in comments if c.get("viewerDidAuthor")]
+    owned = [
+        c
+        for c in comments
+        if c.get("viewerDidAuthor")
+        or (
+            config.BOT_LOGIN
+            and _author_login(c) == config.BOT_LOGIN.lower()
+        )
+    ]
     existing = find_sticky(owned)
     if existing:
         gh.update_discussion_comment(existing["id"], full)
+    elif config.BOT_LOGIN and _legacy_sticky(comments):
+        summary(
+            "Existing github-actions discussion sticky left unchanged during "
+            "GitHub App rollout."
+        )
     else:
         gh.add_discussion_comment(discussion_id, full)
