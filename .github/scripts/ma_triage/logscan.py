@@ -113,7 +113,7 @@ _RE_VERSION_ALT = re.compile(
 )
 _RE_SAFE_MODE = re.compile(
     r"safe[\s_]?mode\b[^\n]*\b(?:enabled|active|on|true)\b"
-    r"|\b(?:starting|running|started)\b[^\n]*\bsafe[\s_]?mode",
+    r"|\b(?:starting|running|started)\b[^\n]*\bsafe[\s_]?mode(?!\s*[:=]\s*false)",
     re.IGNORECASE,
 )
 # Provider setup failures. Captures the provider domain/name token.
