@@ -165,16 +165,26 @@ appends each new issue) has `contents: write` + `models: read` but **no**
 `issues:` permission — the job that can write repo contents can never comment,
 and vice-versa. Both honour `TRIAGE_DRY_RUN` (dry-run previews the commit).
 
-### Repo secret
+### Repo secrets
 | Secret | Needed for | Notes |
 |---|---|---|
 | `GH_MODELS_TOKEN` | Tier 1 / RAG (optional) | PAT with the **Models** permission. Used for GitHub Models calls (embeddings + judge/assessment) when the org hasn't enabled Models for the default Actions token. Falls back to `GITHUB_TOKEN` when unset. |
+| `TRIAGE_APP_ID` | Bot identity | Numeric ID of the GitHub App installed on this repository. |
+| `TRIAGE_APP_PRIVATE_KEY` | Bot identity | Complete PEM private key for the GitHub App. `actions/create-github-app-token` exchanges it for a repository-scoped, one-hour installation token in mutation jobs. |
+
+Issue/discussion comments, labels and lifecycle mutations use the GitHub App
+identity. Index commits remain on the built-in `GITHUB_TOKEN`, while Models calls
+remain on `GH_MODELS_TOKEN`. Existing `github-actions` sticky comments are left
+unchanged during the rollout; new stickies are owned and updated by the App.
 
 ## Security model
 
 - Triggers are `issues`, `issue_comment`, `discussion`, `schedule`,
   `workflow_dispatch` and `repository_dispatch` — **no
   `pull_request_target`**.
+- Mutation jobs mint short-lived tokens from a narrowly scoped GitHub App; jobs
+  that only manage issue lifecycle further restrict their token to Issues write.
+  The built-in workflow token no longer has issue/discussion write access.
 - Issue content flows through `env:` → `os.environ`; it is never placed in a
   shell command line.
 - Attachment downloads are **host-allowlisted** (`user-attachments` / repo

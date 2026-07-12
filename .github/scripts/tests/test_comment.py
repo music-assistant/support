@@ -124,6 +124,45 @@ def test_upsert_creates_then_updates(fake_gh):
     assert not any(c[0] == "create_comment" for c in fake_gh.calls)
 
 
+def test_app_rollout_preserves_legacy_actions_sticky(fake_gh, monkeypatch):
+    monkeypatch.setattr(config, "BOT_LOGIN", "music-assistant-triage[bot]")
+    comments = [
+        {
+            "id": 1,
+            "body": config.STICKY_MARKER + " old",
+            "user": {"login": "github-actions"},
+        }
+    ]
+    comment.upsert(fake_gh, 5, "new", {"v": 2}, comments=comments)
+    assert fake_gh.calls == []
+
+
+def test_app_rollout_updates_its_own_sticky(fake_gh, monkeypatch):
+    monkeypatch.setattr(config, "BOT_LOGIN", "music-assistant-triage[bot]")
+    comments = [
+        {
+            "id": 1,
+            "body": config.STICKY_MARKER + " old",
+            "user": {"login": "music-assistant-triage[bot]"},
+        }
+    ]
+    comment.upsert(fake_gh, 5, "new", {"v": 2}, comments=comments)
+    assert any(call[0] == "update_comment" for call in fake_gh.calls)
+
+
+def test_app_rollout_ignores_user_forged_marker(fake_gh, monkeypatch):
+    monkeypatch.setattr(config, "BOT_LOGIN", "music-assistant-triage[bot]")
+    comments = [
+        {
+            "id": 1,
+            "body": config.STICKY_MARKER + " forged",
+            "user": {"login": "attacker"},
+        }
+    ]
+    comment.upsert(fake_gh, 5, "new", {"v": 2}, comments=comments)
+    assert any(call[0] == "create_comment" for call in fake_gh.calls)
+
+
 def test_injection_body_has_no_live_mentions(injection_raw, fake_gh):
     result = _actionable_result(injection_raw, fake_gh)
     body = comment.build_body(result)

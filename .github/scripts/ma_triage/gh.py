@@ -341,8 +341,9 @@ class GitHubClient:
 
         Discussions are GraphQL-only (no REST). Returns a normalized dict
         ``{id, number, title, body, url, category, comments}`` where each comment
-        is ``{id, body}`` (the node id is needed to update the sticky comment in
-        place). Returns ``None`` when the discussion can't be read (Discussions
+        carries its node id, body and author (the id is needed to update the
+        sticky comment in place). Returns ``None`` when the discussion can't be
+        read (Discussions
         disabled, not found, or an API error) so callers degrade to a no-op.
         """
         owner, name = self.repo.split("/", 1)
@@ -354,7 +355,7 @@ class GitHubClient:
               category { name }
               comments(first:100, after:$c){
                 pageInfo{ hasNextPage endCursor }
-                nodes{ id body viewerDidAuthor }
+                nodes{ id body viewerDidAuthor author { login } }
               }
             }
           }

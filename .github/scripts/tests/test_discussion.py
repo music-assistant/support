@@ -111,6 +111,30 @@ def test_cmd_discussion_ignores_forged_sticky_marker(discussions_on, monkeypatch
     assert not [c for c in gh.calls if c[0] == "update_discussion_comment"]
 
 
+def test_discussion_app_rollout_preserves_legacy_sticky(
+    discussions_on, monkeypatch
+):
+    monkeypatch.setenv("DISCUSSION_NUMBER", "7")
+    monkeypatch.setattr(config, "BOT_LOGIN", "music-assistant-triage[bot]")
+    legacy = [
+        {
+            "id": "DC_legacy",
+            "body": config.STICKY_MARKER + " old answer",
+            "viewerDidAuthor": False,
+            "author": {"login": "github-actions"},
+        }
+    ]
+    gh = FakeGH(discussion=_disc(comments=legacy))
+    monkeypatch.setattr(
+        main.rag,
+        "answer",
+        lambda gh, *, title, body, number, token, kind="issue",
+        provider_labels=None: _high_rag(),
+    )
+    assert main.cmd_discussion(gh, "t") == 0
+    assert not [c for c in gh.calls if "discussion_comment" in c[0]]
+
+
 def test_cmd_discussion_skips_excluded_category(discussions_on, monkeypatch):
     monkeypatch.setenv("DISCUSSION_NUMBER", "7")
     gh = FakeGH(discussion=_disc(category="Translations"))
