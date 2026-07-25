@@ -42,14 +42,18 @@ jobs:
       contents: read
       models: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create triage App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ secrets.TRIAGE_APP_ID }}
-          private-key: ${{ secrets.TRIAGE_APP_PRIVATE_KEY }}
-      - uses: actions/setup-python@v5
+          client-id: ${{ vars.MUSIC_ASSISTANT_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MUSIC_ASSISTANT_BOT_PRIVATE_KEY }}
+          permission-contents: read
+          permission-discussions: read
+          permission-issues: write
+          permission-metadata: read
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -97,15 +101,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create triage App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ secrets.TRIAGE_APP_ID }}
-          private-key: ${{ secrets.TRIAGE_APP_PRIVATE_KEY }}
+          client-id: ${{ vars.MUSIC_ASSISTANT_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.MUSIC_ASSISTANT_BOT_PRIVATE_KEY }}
           permission-issues: write
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -146,8 +150,8 @@ jobs:
       contents: write # commit the posts index to the triage-index branch
       models: read # embeddings
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
       - name: Install dependencies

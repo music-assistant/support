@@ -180,12 +180,39 @@ have `contents: write` + `models: read` but no issue/Discussion write permission
 jobs that write index content can never comment, and vice versa. They honour
 `TRIAGE_DRY_RUN` (dry-run previews the commit).
 
+### Organization GitHub App credentials
+
+The shared `musicassistant-bot` App credentials are configured at organization
+level and made available to this repository:
+
+| Type | Name | Notes |
+|---|---|---|
+| Variable | `MUSIC_ASSISTANT_BOT_CLIENT_ID` | GitHub App Client ID used by `actions/create-github-app-token`. |
+| Secret | `MUSIC_ASSISTANT_BOT_PRIVATE_KEY` | Complete PEM private key for the GitHub App. |
+
+Every App-token support job requests a current-repository installation token
+with an explicit permission allowlist. Tokens expire after one hour and the token
+Action revokes them when the job finishes. The App installation needs the
+support permissions **Contents: read**, **Discussions: write**, and **Issues:
+write**; **Metadata: read** is mandatory for GitHub Apps. The broader
+installation permissions used by release automation are not inherited by these
+tokens.
+
+| Workflow job | App-token permissions | Traced use |
+|---|---|---|
+| `triage.yml` / `analyze` | `contents: read`, `discussions: read`, `issues: write`, `metadata: read` | Read releases, manifests and RAG indexes; read pinned Discussions; search issues; read/update issues, labels, assignees and sticky comments. |
+| `triage.yml` / `respond` | `issues: write` | Read the issue and update response-state labels. |
+| `triage_scheduled.yml` / `sweep` | `issues: write` | List issues/comments, post reminders, update labels and close stale issues. |
+| `discussions.yml` / `answer` | `contents: read`, `discussions: write`, `metadata: read` | Read manifests and RAG indexes; search issue fallbacks; read and create/update Discussion comments. |
+
+No support App token receives Administration, Contents write, or Pull requests
+write. Index jobs continue to use the built-in `GITHUB_TOKEN`, not the App token.
+
 ### Repo secrets
+
 | Secret | Needed for | Notes |
 |---|---|---|
 | `GH_MODELS_TOKEN` | Models calls | Personal PAT with the **Models** permission. Required by the live App-based setup because the installation token has no Models entitlement. |
-| `TRIAGE_APP_ID` | Bot identity | Numeric ID of the GitHub App installed on this repository. |
-| `TRIAGE_APP_PRIVATE_KEY` | Bot identity | Complete PEM private key for the GitHub App. `actions/create-github-app-token` exchanges it for a repository-scoped, one-hour installation token in mutation jobs. |
 
 Issue/discussion comments, labels and lifecycle mutations use the GitHub App
 identity. Index commits remain on the built-in `GITHUB_TOKEN`, while Models calls
@@ -197,9 +224,10 @@ intact; new stickies are owned and updated by the App.
 - Triggers are `issues`, `issue_comment`, `discussion`, `schedule`,
   `workflow_dispatch` and `repository_dispatch` — **no
   `pull_request_target`**.
-- Mutation jobs mint short-lived tokens from a narrowly scoped GitHub App; jobs
-  that only manage issue lifecycle further restrict their token to Issues write.
-  The built-in workflow token no longer has issue/discussion write access.
+- Mutation jobs mint short-lived, current-repository App tokens with explicit
+  per-job permission allowlists. Expanded installation permissions for release
+  automation cannot flow into support jobs. The built-in workflow token has no
+  issue/discussion write access.
 - Issue content flows through `env:` → `os.environ`; it is never placed in a
   shell command line.
 - Attachment downloads are **host-allowlisted** (`user-attachments` / repo
