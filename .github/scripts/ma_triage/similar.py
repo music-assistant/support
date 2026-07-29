@@ -190,6 +190,10 @@ def find_pinned(
             continue
         text = f"{discussion.get('title', '')}\n{discussion.get('body', '')}"
         mentioned = _provider_keys(detect_provider_labels_from_text(text))
+        if len(mentioned) >= config.PINNED_MAX_PROVIDERS:
+            # A general status/index notice listing many providers, not a notice
+            # about the specific provider this report is about.
+            continue
         if not (required & mentioned):
             continue
         matches.append(

@@ -150,3 +150,23 @@ def test_find_pinned_matches_provider_and_skips_feature_polls():
         ]
     )
     assert [post.number for post in similar.find_pinned(gh, {"spotify"})] == [709]
+
+
+def test_find_pinned_skips_catch_all_status_notice():
+    from conftest import FakeGH
+
+    # A general status page naming many providers matches almost every report,
+    # so it must not be treated as a notice about any one of them.
+    gh = FakeGH(
+        pinned_discussions=[
+            {
+                "number": 709,
+                "title": "MA Status and Troubleshooting",
+                "body": "Spotify, Sonos, Chromecast, Plex and Jellyfin notes.",
+                "url": "https://x/709",
+                "closed": False,
+                "category": {"name": "Show and tell"},
+            },
+        ]
+    )
+    assert similar.find_pinned(gh, {"spotify"}) == []

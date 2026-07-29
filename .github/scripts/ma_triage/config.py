@@ -347,6 +347,10 @@ PINNED_EXCLUDE_CATEGORIES = tuple(
     for c in _env_str("TRIAGE_PINNED_EXCLUDE_CATEGORIES", "feature polls").split(",")
     if c.strip()
 )
+# A pinned notice naming this many providers or more is a general status/index
+# post, not a notice about a specific provider — matching on a bare provider
+# mention would attach it to almost every report.
+PINNED_MAX_PROVIDERS = _env_int("TRIAGE_PINNED_MAX_PROVIDERS", 4)
 # Minimum dense cosine for the top doc hit to show links when the judge call
 # itself failed (retrieval-only MEDIUM fallback).
 DOCS_MIN_DENSE = _env_float("TRIAGE_DOCS_MIN_DENSE", 0.30)
