@@ -120,8 +120,14 @@ def answer(
     kind: str = "issue",
     provider_labels: set[str] | None = None,
     provider_docs: list[ProviderDoc] | None = None,
+    duplicates_only: bool = False,
 ) -> RagResult | None:
-    """Run the RAG pipeline for one post. ``None`` when disabled or on failure."""
+    """Run the RAG pipeline for one post. ``None`` when disabled or on failure.
+
+    With ``duplicates_only`` the docs judge is skipped entirely (saving the chat
+    call) and only likely-duplicate related posts are kept — used for categories
+    where a docs answer is never appropriate but a duplicate still is.
+    """
     if not (config.AI_ENABLED and config.RAG_ENABLED):
         return None
     pinned = similar.find_pinned(gh, provider_labels)
@@ -144,11 +150,16 @@ def answer(
         )
 
         judge: DocAnswer | None = None
-        if doc_hits:
+        if doc_hits and not duplicates_only:
             judge = ai.judge_answer(title, body, doc_hits, token=token)
 
         # Decide the confidence tier.
-        if judge is not None:
+        if duplicates_only:
+            # No docs section at all — not even the links-only fallback below,
+            # which would otherwise fire purely on retrieval strength.
+            doc_hits = []
+            tier = "low"
+        elif judge is not None:
             tier = tier_for(judge.confidence) if judge.answers_question else "low"
         elif doc_hits and _best_dense(query_vec, doc_hits) >= config.DOCS_MIN_DENSE:
             # Judge call failed but retrieval is strong → links-only MEDIUM.
@@ -185,6 +196,14 @@ def answer(
             exclude_kind=kind,
             provider_labels=provider_labels,
         )
+        if duplicates_only:
+            # Only likely duplicates justify commenting on these categories, so
+            # apply the same bar the comment uses to render a match expanded.
+            related = [
+                post
+                for post in related
+                if post.score >= config.RELATED_EXPAND_SCORE
+            ]
 
         result = RagResult(
             tier=tier,

@@ -2,6 +2,7 @@
 
 import json
 
+import pytest
 from conftest import FakeGH
 from ma_triage import config, embeddings, rag
 from ma_triage.models import DocAnswer, DocChunk, ProviderDoc
@@ -184,6 +185,35 @@ def test_answer_low_tier_still_shows_related(ai_on, monkeypatch):
     # Duplicate/related detection is independent of the docs tier.
     assert res.related_posts
     assert res.has_output is True
+
+
+def test_answer_duplicates_only_skips_judge_and_docs(ai_on, monkeypatch):
+    gh = _gh_with_indexes()
+    monkeypatch.setattr(
+        rag.ai, "judge_answer",
+        lambda *a, **k: pytest.fail("judge must not run in duplicates-only mode"),
+    )
+    res = rag.answer(
+        gh, title="sonos mdns", body="multicast", number=99, token="t",
+        duplicates_only=True,
+    )
+    # The strong related post survives; no docs section is produced at all, not
+    # even the retrieval-only MEDIUM fallback.
+    assert res is not None and res.tier == "low"
+    assert res.doc_hits == []
+    assert res.has_docs_output is False
+    assert [p.number for p in res.related_posts] == [50]
+
+
+def test_answer_duplicates_only_drops_weak_related(ai_on, monkeypatch):
+    gh = _gh_with_indexes()
+    # Same corpus, but nothing clears the duplicate bar -> stay silent.
+    monkeypatch.setattr(config, "RELATED_EXPAND_SCORE", 0.999)
+    res = rag.answer(
+        gh, title="sonos mdns", body="multicast", number=99, token="t",
+        duplicates_only=True,
+    )
+    assert res is None
 
 
 def test_answer_judge_failure_falls_back_to_medium(ai_on, monkeypatch):

@@ -540,6 +540,10 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
         summary(f"discussion #{number}: skipped (excluded category '{category}').")
         return 0
 
+    # Feature requests and polls get duplicate detection only — no docs answer,
+    # and no weak "possibly related" links.
+    duplicates_only = category in config.DISCUSSION_NO_ANSWER_CATEGORIES
+
     title = _env("DISCUSSION_TITLE") or disc.get("title") or ""
     body = _env("DISCUSSION_BODY") or disc.get("body") or ""
     provider_labels = set(
@@ -564,6 +568,7 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
         kind="discussion",
         provider_labels=provider_labels,
         provider_docs=provider_docs,
+        duplicates_only=duplicates_only,
     )
     if rag_result is None or not rag_result.has_output:
         summary(f"#{number}: no confident docs answer or related posts; staying silent.")

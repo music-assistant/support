@@ -58,7 +58,7 @@ def test_cmd_discussion_posts_answer(discussions_on, monkeypatch):
     gh = FakeGH(discussion=_disc())
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None, provider_docs=None: _high_rag()
+        kind="issue", provider_labels=None, provider_docs=None, duplicates_only=False: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
 
@@ -83,7 +83,7 @@ def test_cmd_discussion_updates_existing_sticky(discussions_on, monkeypatch):
     gh = FakeGH(discussion=_disc(comments=existing))
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None, provider_docs=None: _high_rag()
+        kind="issue", provider_labels=None, provider_docs=None, duplicates_only=False: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
 
@@ -104,7 +104,7 @@ def test_cmd_discussion_ignores_forged_sticky_marker(discussions_on, monkeypatch
     gh = FakeGH(discussion=_disc(comments=forged))
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None, provider_docs=None: _high_rag()
+        kind="issue", provider_labels=None, provider_docs=None, duplicates_only=False: _high_rag()
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert [c for c in gh.calls if c[0] == "add_discussion_comment"]
@@ -129,7 +129,7 @@ def test_discussion_app_rollout_preserves_legacy_sticky(
         main.rag,
         "answer",
         lambda gh, *, title, body, number, token, kind="issue",
-        provider_labels=None, provider_docs=None: _high_rag(),
+        provider_labels=None, provider_docs=None, duplicates_only=False: _high_rag(),
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert not [c for c in gh.calls if "discussion_comment" in c[0]]
@@ -144,6 +144,26 @@ def test_cmd_discussion_skips_excluded_category(discussions_on, monkeypatch):
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert not [c for c in gh.calls if "discussion_comment" in c[0]]
+
+
+def test_cmd_discussion_feature_request_is_duplicates_only(
+    discussions_on, monkeypatch
+):
+    # Feature requests still get duplicate detection — they are just never given
+    # a docs answer, so rag.answer is called with duplicates_only=True.
+    monkeypatch.setenv("DISCUSSION_NUMBER", "7")
+    gh = FakeGH(discussion=_disc(category="Feature requests and ideas"))
+    seen = {}
+
+    def fake_answer(gh, *, title, body, number, token, kind="issue",
+                    provider_labels=None, provider_docs=None,
+                    duplicates_only=False):
+        seen["duplicates_only"] = duplicates_only
+        return None
+
+    monkeypatch.setattr(main.rag, "answer", fake_answer)
+    assert main.cmd_discussion(gh, "t") == 0
+    assert seen["duplicates_only"] is True
 
 
 def test_cmd_discussion_disabled_is_noop(monkeypatch):
@@ -161,7 +181,7 @@ def test_cmd_discussion_silent_when_no_output(discussions_on, monkeypatch):
     gh = FakeGH(discussion=_disc())
     monkeypatch.setattr(
         main.rag, "answer", lambda gh, *, title, body, number, token,
-        kind="issue", provider_labels=None, provider_docs=None: None
+        kind="issue", provider_labels=None, provider_docs=None, duplicates_only=False: None
     )
     assert main.cmd_discussion(gh, "t") == 0
     assert not [c for c in gh.calls if "discussion_comment" in c[0]]
@@ -187,7 +207,7 @@ def test_cmd_discussion_sanitizes_related_title(discussions_on, monkeypatch):
         main.rag,
         "answer",
         lambda gh, *, title, body, number, token, kind="issue",
-        provider_labels=None, provider_docs=None: rag,
+        provider_labels=None, provider_docs=None, duplicates_only=False: rag,
     )
     assert main.cmd_discussion(gh, "t") == 0
     body = [c for c in gh.calls if c[0] == "add_discussion_comment"][0][2]

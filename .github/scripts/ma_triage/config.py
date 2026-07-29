@@ -309,6 +309,20 @@ DISCUSSION_EXCLUDE_CATEGORIES = tuple(
     for c in _env_str("TRIAGE_DISCUSSION_EXCLUDE_CATEGORIES", "translations,translation").split(",")
     if c.strip()
 )
+# Discussion categories handled in "duplicates only" mode. They are still
+# indexed (they make good "similar report" hits) and still checked for likely
+# duplicates, but the docs judge is skipped: a docs-grounded answer has nothing
+# to offer a feature request, so posting one is noise however good the retrieval
+# is. Duplicate detection stays on because duplicate feature requests are
+# exactly what clutters the backlog.
+DISCUSSION_NO_ANSWER_CATEGORIES = tuple(
+    c.strip().lower()
+    for c in _env_str(
+        "TRIAGE_DISCUSSION_NO_ANSWER_CATEGORIES",
+        "feature requests and ideas,feature polls",
+    ).split(",")
+    if c.strip()
+)
 
 # Orphan branch in THIS repo that stores the JSON indexes (keeps ``main`` clean).
 INDEX_BRANCH = _env_str("TRIAGE_INDEX_BRANCH", "triage-index")
