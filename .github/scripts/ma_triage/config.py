@@ -333,10 +333,14 @@ ANSWER_LO = _env_float("TRIAGE_ANSWER_LO", 0.45)
 # Retrieval knobs.
 DOCS_TOP_K = _env_int("TRIAGE_DOCS_TOP_K", 6)
 RELATED_POSTS = _env_int("TRIAGE_RELATED_POSTS", 3)
-RELATED_MIN_SCORE = _env_float("TRIAGE_RELATED_MIN_SCORE", 0.35)
+# Two posts from the same project share a lot of vocabulary (players, providers,
+# playback, Home Assistant), so cosine between any two of them rarely drops below
+# ~0.35 — a floor set there filters nothing. Measured over live discussion
+# triage, the useful matches sit at ~0.65+ and the noise below ~0.55.
+RELATED_MIN_SCORE = _env_float("TRIAGE_RELATED_MIN_SCORE", 0.60)
 # Keep weak semantic matches available without presenting them as likely
 # duplicates. Only scores at/above this threshold render expanded.
-RELATED_EXPAND_SCORE = _env_float("TRIAGE_RELATED_EXPAND_SCORE", 0.80)
+RELATED_EXPAND_SCORE = _env_float("TRIAGE_RELATED_EXPAND_SCORE", 0.70)
 # Pinned Feature Polls mention providers but are not operational status notices.
 PINNED_EXCLUDE_CATEGORIES = tuple(
     c.strip().lower()
