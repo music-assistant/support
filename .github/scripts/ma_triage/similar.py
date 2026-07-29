@@ -152,15 +152,16 @@ def find_related(
 ) -> list[RelatedPost]:
     """Related posts from the index when available, else the search fallback."""
     if posts and query_vec:
-        hits = related_from_index(
+        # The index is usable, so its verdict stands — including a verdict of
+        # "nothing scored highly enough". Falling through to the keyword search
+        # here would re-add unscored matches the score floor just rejected.
+        return related_from_index(
             query_vec,
             posts,
             exclude_number=exclude_number,
             exclude_kind=exclude_kind,
             provider_labels=provider_labels,
         )
-        if hits:
-            return hits
     # If the report names a provider, an unscoped text-search fallback can only
     # reintroduce the noisy cross-provider matches this filter is meant to stop.
     if provider_labels:

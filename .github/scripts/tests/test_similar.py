@@ -66,21 +66,37 @@ def test_related_from_search_filters_prs_and_self(fake_gh, monkeypatch):
     assert 7 not in numbers  # self excluded
 
 
-def test_find_related_falls_back_to_search_when_no_index_hits(fake_gh, monkeypatch):
+def test_find_related_falls_back_to_search_when_index_missing(fake_gh, monkeypatch):
     monkeypatch.setattr(
         fake_gh, "_search_items",
         [{"number": 42, "title": "fallback hit", "html_url": "u42", "state": "open"}],
         raising=False,
     )
-    # Posts present but none similar -> index yields nothing -> search fallback.
-    query = fake_embedding("sonos grouping")
+    # No index at all -> degrade gracefully to GitHub's own issue search.
+    hits = similar.find_related(
+        fake_gh, query_vec=fake_embedding("sonos grouping"),
+        title="sonos grouping", posts=[], exclude_number=99,
+    )
+    assert [h.number for h in hits] == [42]
+
+
+def test_find_related_no_search_fallback_when_index_rejects_everything(
+    fake_gh, monkeypatch
+):
+    monkeypatch.setattr(
+        fake_gh, "_search_items",
+        [{"number": 42, "title": "fallback hit", "html_url": "u42", "state": "open"}],
+        raising=False,
+    )
+    # A usable index that scored nothing above the floor is a decision, not a
+    # failure: the unscored keyword search must not re-add what it rejected.
     posts = [{"kind": "issue", "number": 1, "title": "x", "url": "u",
               "state": "open", "embedding": [0.0] * FAKE_DIM}]
     hits = similar.find_related(
-        fake_gh, query_vec=query, title="sonos grouping", posts=posts,
-        exclude_number=99,
+        fake_gh, query_vec=fake_embedding("sonos grouping"),
+        title="sonos grouping", posts=posts, exclude_number=99,
     )
-    assert [h.number for h in hits] == [42]
+    assert hits == []
 
 
 def test_find_related_does_not_use_unscoped_fallback_for_provider(fake_gh):
