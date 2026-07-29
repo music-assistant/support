@@ -203,6 +203,12 @@ class RagResult:
     pinned_posts: list[RelatedPost] = field(default_factory=list)
     related_posts: list[RelatedPost] = field(default_factory=list)
     suppressed: bool = False
+    # The judge's raw verdict, kept even when the tier ends up ``low``. Without
+    # it a declined answer and a low-confidence one are indistinguishable after
+    # the fact, so the docs-answer rate can't be diagnosed from the state block.
+    # ``None`` means the judge never ran (no doc hits) or the call failed.
+    judge_confidence: float | None = None
+    judge_answered: bool | None = None
 
     @property
     def has_docs_output(self) -> bool:

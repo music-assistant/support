@@ -312,6 +312,9 @@ def apply_triage(
                 "pinned": [p.number for p in result.rag.pinned_posts],
                 "related": [p.number for p in result.rag.related_posts],
                 "suppressed": result.rag.suppressed,
+                "judge_conf": result.rag.judge_confidence,
+                "judge_answered": result.rag.judge_answered,
+                "scores": [p.score for p in result.rag.related_posts],
             }
         body = comment.build_body(result)
         comment.upsert(gh, number, body, state)
@@ -580,6 +583,9 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
             "related": [p.number for p in rag_result.related_posts],
             "pinned": [p.number for p in rag_result.pinned_posts],
             "suppressed": rag_result.suppressed,
+            "judge_conf": rag_result.judge_confidence,
+            "judge_answered": rag_result.judge_answered,
+            "scores": [p.score for p in rag_result.related_posts],
         },
     }
     comment.upsert_discussion(

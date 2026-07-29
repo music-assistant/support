@@ -194,6 +194,8 @@ def answer(
             pinned_posts=pinned,
             related_posts=related,
             suppressed=suppressed,
+            judge_confidence=judge.confidence if judge else None,
+            judge_answered=judge.answers_question if judge else None,
         )
         return result if result.has_output else None
     except Exception as exc:  # noqa: BLE001 — never let RAG break triage
