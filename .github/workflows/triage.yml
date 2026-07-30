@@ -84,8 +84,10 @@ jobs:
           TRIAGE_SERVER_REF: ${{ vars.TRIAGE_SERVER_REF }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_RELATED_POSTS: ${{ vars.TRIAGE_RELATED_POSTS }}
+          TRIAGE_RELATED_MIN_SCORE: ${{ vars.TRIAGE_RELATED_MIN_SCORE }}
           TRIAGE_RELATED_EXPAND_SCORE: ${{ vars.TRIAGE_RELATED_EXPAND_SCORE }}
           TRIAGE_PINNED_EXCLUDE_CATEGORIES: ${{ vars.TRIAGE_PINNED_EXCLUDE_CATEGORIES }}
+          TRIAGE_PINNED_MAX_PROVIDERS: ${{ vars.TRIAGE_PINNED_MAX_PROVIDERS }}
           # Optional PAT for GitHub Models (used only when set); falls back to
           # the default token. Lets Models work when the org token can't.
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}

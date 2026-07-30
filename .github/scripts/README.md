@@ -158,9 +158,12 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 | `TRIAGE_ANSWER_HI` / `LO` | `0.75` / `0.45` | default | Full-answer / links-only thresholds. |
 | `TRIAGE_INDEX_BRANCH` | `triage-index` | default | Orphan branch holding JSON indexes. |
 | `TRIAGE_INDEX_MAX_POSTS` | `500` | default | Similar-report index cap. |
-| `TRIAGE_RELATED_EXPAND_SCORE` | `0.80` | default | Expand only strong related-report matches. |
+| `TRIAGE_RELATED_MIN_SCORE` | `0.60` | default | Minimum cosine for a related report to be shown at all. |
+| `TRIAGE_RELATED_EXPAND_SCORE` | `0.70` | default | Expand only strong related-report matches. |
 | `TRIAGE_SERVER_REF` | `dev` | default | Current server fallback for manifests/code evidence. |
 | `TRIAGE_PINNED_EXCLUDE_CATEGORIES` | `feature polls` | default | Pinned categories not treated as support notices. |
+| `TRIAGE_PINNED_MAX_PROVIDERS` | `4` | default | Skip pinned notices naming this many providers (catch-all pages). |
+| `TRIAGE_DISCUSSION_NO_ANSWER_CATEGORIES` | `feature requests and ideas,feature polls` | default | Discussion categories given duplicate detection only, no docs answer. |
 
 Additional retrieval/model tuning variables are documented inline in
 `ma_triage/config.py`; unset/empty Actions variables use those safe defaults.
