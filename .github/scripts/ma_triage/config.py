@@ -485,6 +485,39 @@ RELATED_POSTS_WEAK_INTRO = (
     "These reports have some overlap, but the automated match was not strong "
     "enough to call them likely duplicates:"
 )
+
+# --------------------------------------------------------------------------- #
+# Duplicates-only copy (feature-request categories)
+# --------------------------------------------------------------------------- #
+# The generic related-posts copy above is written for bug reports ("might
+# already have an answer") and asks the reader to do nothing. On a feature
+# request the useful outcome is consolidation, so the ask has to be explicit.
+# Kept short: the section heading below already states the finding, so repeating
+# it here just reads as the bot saying the same thing twice.
+DISCUSSION_DUPE_GREETING = "👋 Thanks for the suggestion!"
+# Matched request is still OPEN — consolidating votes onto it is worthwhile.
+DUPE_OPEN_HEADING = "### 🔁 This may already have been requested"
+DUPE_OPEN_INTRO = "If that's the same idea, the most useful thing you can do is:"
+DUPE_OPEN_ACTIONS = (
+    "1. **👍 the existing request** — upvotes are how we gauge demand, and they "
+    "only count when they're all on one request.\n"
+    "2. **Close this one** (use _Close discussion_ on this page) so the interest "
+    "stays in one place.\n\n"
+    "If it's actually different, reply here explaining what this adds and we'll "
+    "leave it open."
+)
+# Every match is CLOSED — never send someone to upvote a closed request. Ask
+# them to decide instead, and to spell out the gap if they keep this open.
+DUPE_CLOSED_HEADING = "### 🔁 This may have been requested before"
+DUPE_CLOSED_INTRO = "That earlier request has since been closed."
+DUPE_CLOSED_ACTIONS = (
+    "You can close this one if that already addressed what you needed. "
+    "Otherwise please keep it open and help us by being as clear as you can "
+    "about what the linked request **didn't** cover — that detail is what tells "
+    "us this is genuinely something new."
+)
+# Mixed case: shown after the open-request ask above.
+DUPE_ALSO_CLOSED_INTRO = "Also previously requested, now closed:"
 PINNED_POSTS_HEADING = "### 📌 Current support notice"
 PINNED_POSTS_INTRO = (
     "A pinned Music Assistant support post mentions the affected provider:"

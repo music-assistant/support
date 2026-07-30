@@ -166,6 +166,69 @@ def test_cmd_discussion_feature_request_is_duplicates_only(
     assert seen["duplicates_only"] is True
 
 
+def _dupe_rag(*states):
+    return RagResult(
+        tier="low",
+        duplicates_only=True,
+        related_posts=[
+            RelatedPost("discussion", 400 + i, f"earlier request {i}",
+                        f"https://x/{400 + i}", 0.9, state)
+            for i, state in enumerate(states)
+        ],
+    )
+
+
+def test_duplicates_only_open_match_asks_for_upvote_and_close():
+    body = main.comment.build_discussion_body(_dupe_rag("open"), title="t")
+    assert config.DUPE_OPEN_HEADING in body
+    assert "👍 the existing request" in body
+    assert "Close this one" in body
+    # Must not use the closed-original wording.
+    assert config.DUPE_CLOSED_HEADING not in body
+
+
+def test_duplicates_only_closed_match_never_asks_for_an_upvote():
+    # Sending someone to upvote a closed request wastes the signal, so the ask
+    # changes to "decide, and tell us what was missing".
+    body = main.comment.build_discussion_body(_dupe_rag("closed"), title="t")
+    assert config.DUPE_CLOSED_HEADING in body
+    assert "didn't** cover" in body
+    assert "👍" not in body
+    assert "Close this one" not in body
+    assert config.DUPE_OPEN_HEADING not in body
+
+
+def test_duplicates_only_mixed_match_asks_against_the_open_one():
+    body = main.comment.build_discussion_body(
+        _dupe_rag("closed", "open"), title="t"
+    )
+    assert config.DUPE_OPEN_HEADING in body
+    assert "👍 the existing request" in body
+    # The closed one is still surfaced, but below the ask and clearly separated.
+    assert config.DUPE_ALSO_CLOSED_INTRO in body
+    assert body.index(config.DUPE_OPEN_HEADING) < body.index(
+        config.DUPE_ALSO_CLOSED_INTRO
+    )
+
+
+def test_duplicates_only_uses_its_own_greeting():
+    body = main.comment.build_discussion_body(_dupe_rag("open"), title="t")
+    assert config.DISCUSSION_DUPE_GREETING in body
+    assert config.DISCUSSION_GREETING not in body
+
+
+def test_non_duplicate_discussion_keeps_the_generic_copy():
+    rag = RagResult(
+        tier="low",
+        related_posts=[
+            RelatedPost("issue", 50, "similar", "https://x/50", 0.9, "open")
+        ],
+    )
+    body = main.comment.build_discussion_body(rag, title="t")
+    assert config.DISCUSSION_GREETING in body
+    assert config.DUPE_OPEN_HEADING not in body
+
+
 def test_cmd_discussion_disabled_is_noop(monkeypatch):
     monkeypatch.setenv("DISCUSSION_NUMBER", "7")
     monkeypatch.setattr(config, "AI_ENABLED", True)

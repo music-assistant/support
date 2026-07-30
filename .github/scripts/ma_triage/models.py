@@ -209,6 +209,10 @@ class RagResult:
     # ``None`` means the judge never ran (no doc hits) or the call failed.
     judge_confidence: float | None = None
     judge_answered: bool | None = None
+    # True when this post was handled in duplicates-only mode, which changes the
+    # rendered copy from "here are related reports" to an explicit consolidation
+    # ask. Carried on the result so the renderer does not need the category.
+    duplicates_only: bool = False
 
     @property
     def has_docs_output(self) -> bool:

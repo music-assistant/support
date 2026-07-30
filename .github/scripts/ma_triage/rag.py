@@ -215,6 +215,7 @@ def answer(
             suppressed=suppressed,
             judge_confidence=judge.confidence if judge else None,
             judge_answered=judge.answers_question if judge else None,
+            duplicates_only=duplicates_only,
         )
         return result if result.has_output else None
     except Exception as exc:  # noqa: BLE001 — never let RAG break triage

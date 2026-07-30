@@ -234,6 +234,43 @@ def _provider_docs_section(result: TriageResult) -> str:
     return "\n".join(parts)
 
 
+def _render_duplicates(posts: list[RelatedPost]) -> list[str]:
+    """Render the consolidation ask for a duplicates-only post.
+
+    Splits the matches by state: a *closed* request is never a place to send
+    someone's upvote, so the ask changes to "decide, and tell us what was
+    missing" rather than "vote on it and close yours".
+    """
+    open_posts = [post for post in posts if post.state != "closed"]
+    closed_posts = [post for post in posts if post.state == "closed"]
+    parts: list[str] = []
+
+    # Link first, then the ask: the reader needs to see what it matched before
+    # being told what to do about it.
+    if open_posts:
+        parts.append("\n" + config.DUPE_OPEN_HEADING)
+        parts.append("")
+        parts.extend(_post_link(post) for post in open_posts)
+        parts.append("")
+        parts.append(config.DUPE_OPEN_INTRO)
+        parts.append("")
+        parts.append(config.DUPE_OPEN_ACTIONS)
+        if closed_posts:
+            parts.append("")
+            parts.append(config.DUPE_ALSO_CLOSED_INTRO)
+            parts.extend(_post_link(post) for post in closed_posts)
+        return parts
+
+    parts.append("\n" + config.DUPE_CLOSED_HEADING)
+    parts.append("")
+    parts.extend(_post_link(post) for post in closed_posts)
+    parts.append("")
+    parts.append(config.DUPE_CLOSED_INTRO)
+    parts.append("")
+    parts.append(config.DUPE_CLOSED_ACTIONS)
+    return parts
+
+
 def _render_rag(rag: RagResult | None) -> str:
     """Render the optional docs-answer + related-posts sections.
 
@@ -271,7 +308,9 @@ def _render_rag(rag: RagResult | None) -> str:
         parts.append(config.PINNED_POSTS_INTRO)
         parts.extend(_post_link(post) for post in rag.pinned_posts)
 
-    if rag.related_posts:
+    if rag.related_posts and rag.duplicates_only:
+        parts.extend(_render_duplicates(rag.related_posts))
+    elif rag.related_posts:
         if max(post.score for post in rag.related_posts) >= config.RELATED_EXPAND_SCORE:
             parts.append("\n" + config.RELATED_POSTS_HEADING)
             parts.append(config.RELATED_POSTS_INTRO)
@@ -303,7 +342,12 @@ def build_discussion_body(rag: RagResult, *, title: str = "") -> str:
     standard greeting + disclosure footer. Callers only invoke this when
     ``rag.has_output`` is true.
     """
-    parts = [config.STICKY_MARKER, "", config.DISCUSSION_GREETING, ""]
+    greeting = (
+        config.DISCUSSION_DUPE_GREETING
+        if rag.duplicates_only
+        else config.DISCUSSION_GREETING
+    )
+    parts = [config.STICKY_MARKER, "", greeting, ""]
     section = _render_rag(rag)
     if section:
         parts.append(section)
