@@ -158,6 +158,7 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 | `TRIAGE_ANSWER_HI` / `LO` | `0.75` / `0.45` | default | Full-answer / links-only thresholds. |
 | `TRIAGE_INDEX_BRANCH` | `triage-index` | default | Orphan branch holding JSON indexes. |
 | `TRIAGE_INDEX_MAX_POSTS` | `500` | default | Similar-report index cap. |
+| `TRIAGE_DOCS_MAX_PER_PAGE` | `1` | default | Max chunks from one doc page per retrieval (keeps top-K diverse). |
 | `TRIAGE_RELATED_MIN_SCORE` | `0.60` | default | Minimum cosine for a related report to be shown at all. |
 | `TRIAGE_RELATED_EXPAND_SCORE` | `0.70` | default | Expand only strong related-report matches. |
 | `TRIAGE_SERVER_REF` | `dev` | default | Current server fallback for manifests/code evidence. |

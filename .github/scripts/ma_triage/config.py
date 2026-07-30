@@ -346,6 +346,10 @@ ANSWER_LO = _env_float("TRIAGE_ANSWER_LO", 0.45)
 
 # Retrieval knobs.
 DOCS_TOP_K = _env_int("TRIAGE_DOCS_TOP_K", 6)
+# Max chunks from any one documentation page in a single retrieval. Sections of
+# the same page rank together, so without a cap the top-K is spent on one page.
+# The authoritative provider-doc promotion in rag.py deliberately overrides this.
+DOCS_MAX_PER_PAGE = _env_int("TRIAGE_DOCS_MAX_PER_PAGE", 1)
 RELATED_POSTS = _env_int("TRIAGE_RELATED_POSTS", 3)
 # Two posts from the same project share a lot of vocabulary (players, providers,
 # playback, Home Assistant), so cosine between any two of them rarely drops below

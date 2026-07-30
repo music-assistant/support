@@ -2,7 +2,7 @@
 
 import math
 
-from ma_triage import retrieval
+from ma_triage import config, retrieval
 from ma_triage.models import DocChunk
 
 
@@ -65,6 +65,52 @@ def test_retrieve_docs_hybrid(monkeypatch):
     hits = retrieval.retrieve_docs([0.9, 0.1, 0.0], "sonos grouping issue", chunks, k=2)
     assert hits[0].chunk.id == "a"
     assert len(hits) == 2
+
+
+def _page_chunk(cid, path, text, embedding):
+    return DocChunk(
+        id=cid, path=path, url=f"https://x/{cid}", title=path, heading=cid,
+        text=text, breadcrumbs=[path], embedding=embedding,
+    )
+
+
+def _multi_section_corpus():
+    # Three sections of one page all match the query; a second page matches
+    # slightly less well. Without a cap the whole budget goes to page one.
+    return [
+        _page_chunk("net#a", "faq/net", "sonos multicast mdns discovery", [1.0, 0.0]),
+        _page_chunk("net#b", "faq/net", "sonos multicast mdns settings", [0.99, 0.0]),
+        _page_chunk("net#c", "faq/net", "sonos multicast mdns router", [0.98, 0.0]),
+        _page_chunk("players#a", "settings/players", "sonos player options", [0.9, 0.1]),
+    ]
+
+
+def test_retrieve_docs_caps_chunks_per_page(monkeypatch):
+    monkeypatch.setattr(config, "DOCS_MAX_PER_PAGE", 1)
+    hits = retrieval.retrieve_docs(
+        [1.0, 0.0], "sonos multicast mdns", _multi_section_corpus(), k=2
+    )
+    paths = [h.chunk.path for h in hits]
+    assert len(paths) == len(set(paths)), "one page must not fill the budget"
+    assert "settings/players" in paths
+
+
+def test_retrieve_docs_per_page_cap_is_configurable(monkeypatch):
+    monkeypatch.setattr(config, "DOCS_MAX_PER_PAGE", 2)
+    hits = retrieval.retrieve_docs(
+        [1.0, 0.0], "sonos multicast mdns", _multi_section_corpus(), k=3
+    )
+    paths = [h.chunk.path for h in hits]
+    assert paths.count("faq/net") == 2
+    assert paths.count("settings/players") == 1
+
+
+def test_retrieve_docs_cap_never_returns_fewer_than_available(monkeypatch):
+    # A cap must not starve the result when only one page is relevant at all.
+    monkeypatch.setattr(config, "DOCS_MAX_PER_PAGE", 1)
+    only_one_page = _multi_section_corpus()[:3]
+    hits = retrieval.retrieve_docs([1.0, 0.0], "sonos multicast", only_one_page, k=6)
+    assert len(hits) == 1
 
 
 def test_retrieve_docs_empty():
