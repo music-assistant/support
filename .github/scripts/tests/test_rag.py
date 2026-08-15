@@ -73,9 +73,27 @@ def test_answer_returns_none_when_nothing_to_show(ai_on):
 
 
 def test_answer_none_on_embed_failure(ai_on, monkeypatch):
+    # No search items either, so the fallback finds nothing and the result
+    # stays None — see the test below for the case where it does find one.
     monkeypatch.setattr(embeddings, "embed_text", lambda text, *, token: None)
     gh = _gh_with_indexes()
     assert rag.answer(gh, title="sonos mdns", body="", number=1, token="t") is None
+
+
+def test_answer_still_finds_related_posts_on_embed_failure(ai_on, monkeypatch):
+    # The search fallback exists for exactly this outage, so it has to be
+    # reachable when the embeddings call is the thing that failed: pinned
+    # notices alone are not the expected output here.
+    monkeypatch.setattr(embeddings, "embed_text", lambda text, *, token: None)
+    gh = FakeGH(
+        search_items=[
+            {"number": 42, "title": "sonos mdns discovery", "html_url": "u42",
+             "state": "open"}
+        ]
+    )
+    result = rag.answer(gh, title="sonos mdns", body="", number=1, token="t")
+    assert result is not None
+    assert [post.number for post in result.related_posts] == [42]
 
 
 def test_answer_keeps_provider_matched_pinned_notice_on_embed_failure(

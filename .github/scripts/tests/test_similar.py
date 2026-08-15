@@ -115,6 +115,28 @@ def test_find_related_does_not_use_unscoped_fallback_for_provider(fake_gh):
     assert hits == []
 
 
+def test_find_related_search_branch_is_gated_by_provider(fake_gh):
+    # Exercises the gate itself. `test_find_related_does_not_use_unscoped_
+    # fallback_for_provider` reaches `[]` through the index provider filter and
+    # never gets this far; here there is no index and no vector, so GitHub
+    # search is the only candidate source and it cannot be scoped to a provider.
+    fake_gh._search_items = [
+        {"number": 42, "title": "chromecast dropouts", "html_url": "u42",
+         "state": "open"}
+    ]
+    assert (
+        similar.find_related(
+            fake_gh, query_vec=None, title="deezer flow", posts=[],
+            exclude_number=99, provider_labels={"deezer"},
+        )
+        == []
+    )
+    hits = similar.find_related(
+        fake_gh, query_vec=None, title="deezer flow", posts=[], exclude_number=99,
+    )
+    assert [hit.number for hit in hits] == [42]
+
+
 def test_find_related_uses_index_when_available(fake_gh):
     query = fake_embedding("sonos speaker grouping")
     posts = [{"kind": "issue", "number": 3, "title": "sonos speaker grouping",
