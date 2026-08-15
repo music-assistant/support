@@ -6,8 +6,9 @@ duplicate. Two paths:
 
 * **primary** — dense cosine over the ``posts.json`` embeddings index (semantic,
   free, catches rewordings),
-* **fallback** — when the index is absent/empty, degrade gracefully to GitHub's
-  own issue search over the report's title keywords.
+* **fallback** — when the index is absent/empty *or the query embedding is
+  unavailable*, degrade gracefully to GitHub's own issue search over the
+  report's title keywords.
 
 The incoming post's own number is always excluded, and results are de-duplicated
 and thresholded so the comment only ever shows genuinely-relevant links.
@@ -162,8 +163,11 @@ def find_related(
             exclude_kind=exclude_kind,
             provider_labels=provider_labels,
         )
-    # If the report names a provider, an unscoped text-search fallback can only
-    # reintroduce the noisy cross-provider matches this filter is meant to stop.
+    # Below here the only candidate source is GitHub's issue search, which
+    # cannot be scoped to a provider. A report that names one would therefore
+    # get back exactly the cross-provider matches `related_from_index` filters
+    # out, so it gets nothing instead (the index path applies the same filter
+    # and keeps its results).
     if provider_labels:
         return []
     return related_from_search(

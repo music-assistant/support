@@ -8,7 +8,7 @@ the deterministic Tier-0/Tier-1 triage completely untouched.
 Pipeline (≤ 1 embedding + ≤ 1 judge chat per post):
 
 1. embed the post once,
-2. hybrid-retrieve doc chunks (dense + BM25 + RRF),
+2. hybrid-retrieve doc chunks (dense + BM25 + RRF; skipped without a vector),
 3. ask the judge whether the docs answer it,
 4. route to a confidence tier (HIGH / MEDIUM / LOW),
 5. find related past posts (dense, or search fallback),
@@ -68,7 +68,7 @@ def _resolve_cited(answer: DocAnswer, doc_hits: list[DocHit]) -> list[DocChunk]:
     return [hit.chunk for hit in doc_hits[: config.DOCS_LINKS_SHOWN]]
 
 
-def _best_dense(query_vec: list[float], doc_hits: list[DocHit]) -> float:
+def _best_dense(query_vec: list[float] | None, doc_hits: list[DocHit]) -> float:
     if not query_vec or not doc_hits:
         return 0.0
     return max(cosine(query_vec, hit.chunk.embedding) for hit in doc_hits)
@@ -134,20 +134,23 @@ def answer(
     try:
         query_text = f"{title}\n\n{body}".strip()
         query_vec = embeddings.embed_text(query_text, token=token)
-        if query_vec is None:
-            # Pinned notices are deterministic and remain useful if Models is
-            # temporarily unavailable.
-            result = RagResult(pinned_posts=pinned)
-            return result if result.has_output else None
 
-        chunks = embeddings.load_docs_chunks(gh)
-        doc_hits = retrieve_docs(query_vec, query_text, chunks)
-        doc_hits = _promote_provider_docs(
-            query_vec,
-            chunks,
-            doc_hits,
-            provider_docs or [],
-        )
+        # A docs answer needs the query vector. Without one `retrieve_docs`
+        # ranks on its BM25 leg alone, and the judge would then be paid to
+        # grade candidates nothing dense ever scored. Related posts carry no
+        # such requirement, so they are still resolved below: pinned notices
+        # and duplicate detection both stay useful while the embeddings
+        # provider is unavailable.
+        doc_hits: list[DocHit] = []
+        if query_vec is not None:
+            chunks = embeddings.load_docs_chunks(gh)
+            doc_hits = retrieve_docs(query_vec, query_text, chunks)
+            doc_hits = _promote_provider_docs(
+                query_vec,
+                chunks,
+                doc_hits,
+                provider_docs or [],
+            )
 
         judge: DocAnswer | None = None
         if doc_hits and not duplicates_only:
