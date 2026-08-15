@@ -45,6 +45,63 @@ def test_cmd_index_unknown_target():
     assert main.cmd_index(FakeGH(), "t", "bogus") == 2
 
 
+# --- the provider is unreachable -------------------------------------------- #
+#
+# GitHub Models was retired on 2026-07-30. Every nightly build for the sixteen
+# days that followed reported success while writing nothing, because an
+# unavailable embedder was treated as an acceptable outcome. Producing an index
+# is this command's only job, so it must now say when it did not.
+def _no_embeddings(monkeypatch):
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+
+
+def test_cmd_index_fails_when_embeddings_are_unavailable(ai_on, monkeypatch):
+    monkeypatch.setattr(embeddings.docs, "build_chunks", lambda gh: [_chunk("a#x", "t")])
+    _no_embeddings(monkeypatch)
+    gh = FakeGH()
+    assert main.cmd_index(gh, "t", "docs") == 1
+    assert config.DOCS_INDEX_PATH not in gh._index_files
+
+
+def test_cmd_index_posts_fails_when_embeddings_are_unavailable(ai_on, monkeypatch):
+    _no_embeddings(monkeypatch)
+    gh = FakeGH(
+        issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
+                 "state": "open", "updated_at": "2024-01-01"}],
+    )
+    assert main.cmd_index(gh, "t", "posts") == 1
+    assert config.POSTS_INDEX_PATH not in gh._index_files
+
+
+def test_cmd_index_all_fails_if_either_target_fails(ai_on, monkeypatch):
+    monkeypatch.setattr(embeddings.docs, "build_chunks", lambda gh: [_chunk("a#x", "t")])
+    _no_embeddings(monkeypatch)
+    assert main.cmd_index(FakeGH(), "t", "all") == 1
+
+
+def test_cmd_index_annotates_the_failure(ai_on, monkeypatch, capsys):
+    monkeypatch.setattr(embeddings.docs, "build_chunks", lambda gh: [_chunk("a#x", "t")])
+    _no_embeddings(monkeypatch)
+    main.cmd_index(FakeGH(), "t", "docs")
+    assert "::error::" in capsys.readouterr().err
+
+
+def test_cmd_index_append_annotates_but_does_not_fail_triage(ai_on, monkeypatch, capsys):
+    """A provider outage must not mark every incoming issue's workflow red."""
+    monkeypatch.setenv("ISSUE_NUMBER", "123")
+    _no_embeddings(monkeypatch)
+    gh = FakeGH()
+    monkeypatch.setattr(
+        gh, "get_issue",
+        lambda n: {"number": n, "title": "t", "body": "b", "html_url": "u",
+                   "state": "open"},
+        raising=False,
+    )
+    assert main.cmd_index_append(gh, "t") == 0
+    assert "::error::" in capsys.readouterr().err
+    assert config.POSTS_INDEX_PATH not in gh._index_files
+
+
 def test_cmd_index_append(ai_on, monkeypatch):
     monkeypatch.setenv("ISSUE_NUMBER", "123")
     monkeypatch.setenv("ISSUE_TITLE", "sonos grouping bug")

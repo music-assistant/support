@@ -40,6 +40,17 @@ def summary(msg: str) -> None:
     log(msg)
 
 
+def error(msg: str) -> None:
+    """
+    Surface a failure as a GitHub Actions error annotation.
+
+    Annotations show against the run in the UI, so a degraded step is visible
+    without anyone opening the log. Outside Actions the ``::error::`` prefix is
+    inert and this is an ordinary summary line.
+    """
+    summary(f"::error::{msg}")
+
+
 class GitHubClient:
     """Minimal GitHub API wrapper with retries and dry-run support."""
 
