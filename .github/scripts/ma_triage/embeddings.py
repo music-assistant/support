@@ -26,8 +26,13 @@ import requests
 from . import config, docs
 from .gh import GitHubClient, log
 from .models import DocChunk
+from .retrieval import decode_vec, encode_vec
 
-_SCHEMA = 1
+# Bumped to 2 when embeddings moved from JSON float arrays to base64 int8
+# (`retrieval.encode_vec`). An index written by an older schema is discarded and
+# rebuilt rather than read: the loaders below treat schema the same way they
+# already treat a model or dimension change.
+_SCHEMA = 2
 
 
 def _now_iso() -> str:
@@ -122,8 +127,12 @@ def load_docs_chunks(gh: GitHubClient) -> list[DocChunk]:
     index = load_index(gh, config.DOCS_INDEX_PATH)
     if not index:
         return []
-    if index.get("model") != config.EMBED_MODEL or index.get("dim") != config.EMBED_DIM:
-        log("Docs index model/dim mismatch; ignoring index")
+    if (
+        index.get("schema") != _SCHEMA
+        or index.get("model") != config.EMBED_MODEL
+        or index.get("dim") != config.EMBED_DIM
+    ):
+        log("Docs index schema/model/dim mismatch; ignoring index")
         return []
     chunks: list[DocChunk] = []
     for raw in index.get("chunks", []) or []:
@@ -139,7 +148,7 @@ def load_docs_chunks(gh: GitHubClient) -> list[DocChunk]:
                 text=str(raw.get("text", "")),
                 breadcrumbs=list(raw.get("breadcrumbs", []) or []),
                 sha=str(raw.get("sha", "")),
-                embedding=[float(x) for x in raw.get("embedding", [])],
+                embedding=decode_vec(raw.get("embedding")),
             )
         )
     return chunks
@@ -150,7 +159,12 @@ def load_posts(gh: GitHubClient) -> list[dict[str, Any]]:
     index = load_index(gh, config.POSTS_INDEX_PATH)
     if not index:
         return []
-    if index.get("model") != config.EMBED_MODEL or index.get("dim") != config.EMBED_DIM:
+    if (
+        index.get("schema") != _SCHEMA
+        or index.get("model") != config.EMBED_MODEL
+        or index.get("dim") != config.EMBED_DIM
+    ):
+        log("Posts index schema/model/dim mismatch; ignoring index")
         return []
     posts = index.get("posts")
     return [p for p in posts if isinstance(p, dict) and p.get("embedding")] if isinstance(posts, list) else []
@@ -175,7 +189,7 @@ def _chunk_to_dict(chunk: DocChunk) -> dict[str, Any]:
         "text": chunk.text,
         "breadcrumbs": chunk.breadcrumbs,
         "sha": chunk.sha,
-        "embedding": chunk.embedding,
+        "embedding": encode_vec(chunk.embedding),
     }
 
 
@@ -203,6 +217,7 @@ def build_docs_index(
     prev_by_id: dict[str, dict[str, Any]] = {}
     if (
         previous
+        and previous.get("schema") == _SCHEMA
         and previous.get("model") == config.EMBED_MODEL
         and previous.get("dim") == config.EMBED_DIM
     ):
@@ -214,7 +229,7 @@ def build_docs_index(
     for i, chunk in enumerate(chunks):
         cached = prev_by_id.get(chunk.id)
         if cached and cached.get("sha") == chunk.sha and cached.get("embedding"):
-            chunk.embedding = [float(x) for x in cached["embedding"]]
+            chunk.embedding = decode_vec(cached["embedding"])
         else:
             to_embed.append(i)
 
@@ -258,8 +273,33 @@ def _post_record(post: dict[str, Any], embedding: list[float]) -> dict[str, Any]
         ),
         "excerpt": str(post.get("body", ""))[: config.RELATED_EXCERPT_CHARS],
         "sha": post_sha(str(post.get("title", "")), str(post.get("body", ""))),
-        "embedding": embedding,
+        "embedding": encode_vec(embedding),
     }
+
+
+def trim_by_kind(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Keep the newest records per kind, up to each kind's own cap.
+
+    Trimming the combined list by a single cap lets whichever kind is busier
+    evict the other; issues and discussions are retained independently so
+    duplicate detection's issue history does not depend on discussion volume.
+    Input order is preserved, so callers control what "newest" means.
+    """
+    caps = {
+        "issue": config.INDEX_MAX_ISSUES,
+        "discussion": config.INDEX_MAX_DISCUSSIONS,
+    }
+    seen: dict[str, int] = {}
+    kept: list[dict[str, Any]] = []
+    for record in records:
+        kind = str(record.get("kind", "issue"))
+        cap = caps.get(kind, config.INDEX_MAX_ISSUES)
+        if seen.get(kind, 0) >= cap:
+            continue
+        seen[kind] = seen.get(kind, 0) + 1
+        kept.append(record)
+    return kept
 
 
 def _empty_posts_index() -> dict[str, Any]:
@@ -283,6 +323,7 @@ def build_posts_index(
     prev_by_key: dict[tuple[str, int], dict[str, Any]] = {}
     if (
         previous
+        and previous.get("schema") == _SCHEMA
         and previous.get("model") == config.EMBED_MODEL
         and previous.get("dim") == config.EMBED_DIM
     ):
@@ -294,7 +335,7 @@ def build_posts_index(
     to_embed: list[dict[str, Any]] = []
     embed_targets: list[str] = []
     metadata_changed = False
-    for post in posts[: config.INDEX_MAX_POSTS]:
+    for post in trim_by_kind(posts):
         key = (post.get("kind", "issue"), int(post.get("number", 0)))
         sha = post_sha(str(post.get("title", "")), str(post.get("body", "")))
         cached = prev_by_key.get(key)
@@ -363,7 +404,7 @@ def append_post(
     ]
     kept.append(record)
     kept.sort(key=lambda r: int(r.get("number", 0)), reverse=True)
-    kept = kept[: config.INDEX_MAX_POSTS]
+    kept = trim_by_kind(kept)
     index = _empty_posts_index()
     index["posts"] = kept
     return index, True

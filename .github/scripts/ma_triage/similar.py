@@ -21,7 +21,7 @@ from . import config
 from .gh import GitHubClient, log
 from .models import RelatedPost
 from .providers import detect_provider_labels_from_text
-from .retrieval import cosine
+from .retrieval import cosine, decode_vec
 
 _RE_WORD = re.compile(r"[A-Za-z0-9]+")
 
@@ -70,7 +70,7 @@ def related_from_index(
         if key in seen:
             continue
         seen.add(key)
-        score = cosine(query_vec, [float(x) for x in post.get("embedding", [])])
+        score = cosine(query_vec, decode_vec(post.get("embedding")))
         if score >= threshold:
             scored.append((score, post))
 
