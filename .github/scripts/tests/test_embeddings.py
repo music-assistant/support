@@ -6,6 +6,7 @@ import pytest
 
 from conftest import FAKE_DIM, FakeGH, fake_embedding
 from ma_triage import config, embeddings
+from ma_triage.retrieval import encode_vec
 from ma_triage.models import DocChunk
 
 
@@ -145,7 +146,7 @@ def test_load_index_absent_and_malformed():
 def test_load_docs_chunks_model_mismatch_ignored(monkeypatch):
     monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
     bad = {"model": "other/model", "dim": FAKE_DIM, "chunks": [
-        {"id": "a", "embedding": [1.0] * FAKE_DIM}]}
+        {"id": "a", "embedding": encode_vec([1.0] * FAKE_DIM)}]}
     gh = FakeGH(index_files={config.DOCS_INDEX_PATH: json.dumps(bad)})
     assert embeddings.load_docs_chunks(gh) == []
 

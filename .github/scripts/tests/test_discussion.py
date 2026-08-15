@@ -7,6 +7,7 @@ import pytest
 from conftest import FakeGH, fake_embedding
 
 from ma_triage import __main__ as main
+from ma_triage.retrieval import encode_vec
 from ma_triage import config, similar
 from ma_triage.gh import GitHubClient
 from ma_triage.models import DocAnswer, DocChunk, RagResult, RelatedPost
@@ -411,9 +412,9 @@ def test_related_index_excludes_self_discussion_keeps_same_number_issue():
     vec = fake_embedding("group sonos speakers")
     posts = [
         {"kind": "discussion", "number": 7, "title": "group sonos speakers",
-         "url": "d7", "state": "open", "embedding": fake_embedding("group sonos speakers")},
+         "url": "d7", "state": "open", "embedding": encode_vec(fake_embedding("group sonos speakers"))},
         {"kind": "issue", "number": 7, "title": "group sonos speakers",
-         "url": "i7", "state": "open", "embedding": fake_embedding("group sonos speakers")},
+         "url": "i7", "state": "open", "embedding": encode_vec(fake_embedding("group sonos speakers"))},
     ]
     out = similar.related_from_index(
         vec, posts, exclude_number=7, exclude_kind="discussion", min_score=0.0

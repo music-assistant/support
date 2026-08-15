@@ -381,7 +381,22 @@ BM25_K1 = 1.5
 BM25_B = 0.75
 
 # Indexing caps / cost guards.
-INDEX_MAX_POSTS = _env_int("TRIAGE_INDEX_MAX_POSTS", 500)
+#
+# Issues and discussions are capped separately. Under one shared cap the two
+# compete for slots by recency, so a busy stretch of discussions evicts the older
+# issues duplicate detection depends on.
+#
+# The ceiling that matters is on-disk size rather than post count: the index is
+# committed to git and rewritten whole on every new post. At ~0.7 KB per
+# quantised vector (see `retrieval.encode_vec`) these caps cost ~2 MB; under the
+# previous JSON-float encoding the same would have been ~30 MB.
+INDEX_MAX_ISSUES = _env_int("TRIAGE_INDEX_MAX_ISSUES", 2500)
+INDEX_MAX_DISCUSSIONS = _env_int("TRIAGE_INDEX_MAX_DISCUSSIONS", 500)
+# Bounds how much is *fetched* before trimming; the per-kind caps above decide
+# what is kept.
+INDEX_MAX_POSTS = _env_int(
+    "TRIAGE_INDEX_MAX_POSTS", INDEX_MAX_ISSUES + INDEX_MAX_DISCUSSIONS
+)
 DOCS_CHUNK_MAX_CHARS = _env_int("TRIAGE_DOCS_CHUNK_MAX_CHARS", 2000)
 MAX_POST_EMBED_CHARS = 6000  # bound the text embedded per post / query
 MAX_DOC_ANSWER_CHARS = 1200  # cap the judge's answer echoed into the comment

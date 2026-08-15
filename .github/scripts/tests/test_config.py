@@ -51,7 +51,10 @@ def test_empty_env_vars_fall_back_to_defaults(monkeypatch):
     assert config.ANSWER_HI == 0.75
     assert config.ANSWER_LO == 0.45
     assert config.RELATED_POSTS == 3
-    assert config.INDEX_MAX_POSTS == 500
+    assert config.INDEX_MAX_ISSUES == 2500
+    assert config.INDEX_MAX_DISCUSSIONS == 500
+    # The fetch bound defaults to the sum of the two per-kind caps.
+    assert config.INDEX_MAX_POSTS == 3000
     assert config.EMBED_MODEL == "openai/text-embedding-3-small"
     assert config.ANSWER_MODEL == "openai/gpt-4o"
     assert config.INDEX_BRANCH == "triage-index"

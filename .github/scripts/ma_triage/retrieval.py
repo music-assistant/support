@@ -13,6 +13,7 @@ plain lists are fast enough and keep the dependency footprint at zero).
 
 from __future__ import annotations
 
+import base64
 import math
 import re
 from collections import Counter
@@ -37,6 +38,63 @@ def tokenize(text: str | None) -> list[str]:
         if "_" in raw:
             tokens.extend(part for part in raw.split("_") if part)
     return tokens
+
+
+class VectorFormatError(ValueError):
+    """A stored embedding could not be decoded."""
+
+
+def encode_vec(vec: list[float]) -> str:
+    """
+    Pack an embedding into base64 int8 for storage in the index.
+
+    The index is committed to git and rewritten in full on every new post, so its
+    on-disk size decides how many posts can be indexed at all. JSON float arrays
+    cost ~9.7 KB per vector; this costs ~0.7 KB.
+
+    Each component is scaled by the vector's own maximum magnitude before being
+    rounded to a signed byte, and **that scale is not stored**. Decoded vectors
+    are therefore only valid for direction-based comparison — :func:`cosine`
+    normalises both operands, so the per-vector constant cancels. They are *not*
+    valid for anything reading magnitude: dot-product scoring, Euclidean
+    distance, or an absolute-distance threshold will all be wrong. Store the
+    scale alongside if that is ever needed.
+
+    Round-trip error measured on the live index is ~0.001 cosine, against a
+    ~0.03 gap between the weakest confirmed duplicate and the strongest noise.
+    """
+    if not vec:
+        return ""
+    scale = max(abs(float(x)) for x in vec) or 1.0
+    packed = bytes(
+        max(-127, min(127, round(float(x) / scale * 127))) & 0xFF for x in vec
+    )
+    return base64.b64encode(packed).decode("ascii")
+
+
+def decode_vec(raw: str | None) -> list[float]:
+    """
+    Unpack an embedding written by :func:`encode_vec`.
+
+    Raises :class:`VectorFormatError` on anything unreadable rather than
+    returning an empty vector. An empty vector scores 0.0 against every
+    candidate, so swallowing the error would silently drop that post out of
+    duplicate detection — the exact failure this encoding exists to fix, made
+    invisible. Callers that must not fail hard already degrade at a higher
+    level (see :func:`rag.answer`).
+
+    Indexes written by an older schema are rejected wholesale at load time
+    (``embeddings._SCHEMA``), so this never has to interpret a legacy format.
+    """
+    if raw is None or raw == "":
+        return []
+    if not isinstance(raw, str):
+        raise VectorFormatError(f"expected a base64 string, got {type(raw).__name__}")
+    try:
+        data = base64.b64decode(raw, validate=True)
+    except (ValueError, TypeError) as exc:
+        raise VectorFormatError("embedding is not valid base64") from exc
+    return [float(byte - 256 if byte > 127 else byte) for byte in data]
 
 
 def cosine(a: list[float], b: list[float]) -> float:

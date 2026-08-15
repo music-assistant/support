@@ -2,13 +2,14 @@
 
 from conftest import FAKE_DIM, fake_embedding
 from ma_triage import config, similar
+from ma_triage.retrieval import encode_vec
 
 
 def _post(number, text, kind="issue", state="open", providers=None):
     return {
         "kind": kind, "number": number, "title": text, "url": f"https://x/{number}",
         "state": state, "providers": providers or [],
-        "embedding": fake_embedding(text),
+        "embedding": encode_vec(fake_embedding(text)),
     }
 
 
@@ -17,7 +18,7 @@ def test_related_from_index_ranks_and_thresholds():
     posts = [
         _post(1, "sonos speaker grouping problem"),
         {"kind": "issue", "number": 2, "title": "unrelated", "url": "https://x/2",
-         "state": "open", "embedding": [0.0] * FAKE_DIM},
+         "state": "open", "embedding": encode_vec([0.0] * FAKE_DIM)},
     ]
     hits = similar.related_from_index(query, posts, exclude_number=99)
     assert [h.number for h in hits] == [1]  # #2 (zero vector) below the threshold
@@ -91,7 +92,7 @@ def test_find_related_no_search_fallback_when_index_rejects_everything(
     # A usable index that scored nothing above the floor is a decision, not a
     # failure: the unscored keyword search must not re-add what it rejected.
     posts = [{"kind": "issue", "number": 1, "title": "x", "url": "u",
-              "state": "open", "embedding": [0.0] * FAKE_DIM}]
+              "state": "open", "embedding": encode_vec([0.0] * FAKE_DIM)}]
     hits = similar.find_related(
         fake_gh, query_vec=fake_embedding("sonos grouping"),
         title="sonos grouping", posts=posts, exclude_number=99,
@@ -118,7 +119,7 @@ def test_find_related_uses_index_when_available(fake_gh):
     query = fake_embedding("sonos speaker grouping")
     posts = [{"kind": "issue", "number": 3, "title": "sonos speaker grouping",
               "url": "u3", "state": "open",
-              "embedding": fake_embedding("sonos speaker grouping")}]
+              "embedding": encode_vec(fake_embedding("sonos speaker grouping"))}]
     hits = similar.find_related(
         fake_gh, query_vec=query, title="sonos speaker grouping", posts=posts,
         exclude_number=99,
