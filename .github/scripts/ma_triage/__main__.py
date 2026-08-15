@@ -41,7 +41,7 @@ from .attachments import (
     has_media_attachment,
 )
 from .diagnostics import try_parse
-from .gh import GitHubClient, log, summary
+from .gh import GitHubClient, error, log, summary
 from .models import TriageResult
 from .providers import (
     detect_reported_provider_labels,
@@ -393,20 +393,25 @@ def cmd_sweep(gh: GitHubClient) -> int:
 # --------------------------------------------------------------------------- #
 # RAG index build (Phase 2)
 # --------------------------------------------------------------------------- #
-def _build_docs_index(gh: GitHubClient, token: str) -> None:
+def _build_docs_index(gh: GitHubClient, token: str) -> bool:
+    """Build and persist the docs index. False when it could not be built."""
     prev = embeddings.load_index(gh, config.DOCS_INDEX_PATH)
     index, changed = embeddings.build_docs_index(gh, token=token, previous=prev)
     if index is None:
-        summary("- docs: build skipped (embeddings unavailable / rate limited)")
-        return
+        error(
+            "docs: build FAILED — the embeddings provider returned no vectors. "
+            "The committed index is now stale and retrieval is degraded."
+        )
+        return False
     count = len(index.get("chunks", []))
     if not changed:
         summary(f"- docs: unchanged ({count} chunks); no commit")
-        return
+        return True
     embeddings.save_index(
         gh, config.DOCS_INDEX_PATH, index, message=f"Update docs index ({count} chunks)"
     )
     summary(f"- docs: {count} chunks indexed")
+    return True
 
 
 def _collect_posts(gh: GitHubClient) -> list[dict[str, Any]]:
@@ -449,34 +454,52 @@ def _collect_posts(gh: GitHubClient) -> list[dict[str, Any]]:
     return posts
 
 
-def _build_posts_index(gh: GitHubClient, token: str) -> None:
+def _build_posts_index(gh: GitHubClient, token: str) -> bool:
+    """Build and persist the posts index. False when it could not be built."""
     prev = embeddings.load_index(gh, config.POSTS_INDEX_PATH)
     posts = _collect_posts(gh)
     index, changed = embeddings.build_posts_index(
         gh, posts, token=token, previous=prev
     )
     if index is None:
-        summary("- posts: build skipped (embeddings unavailable / rate limited)")
-        return
+        error(
+            "posts: build FAILED — the embeddings provider returned no vectors. "
+            "Duplicate detection is running against a stale index."
+        )
+        return False
     count = len(index.get("posts", []))
     if not changed:
         summary(f"- posts: unchanged ({count} posts); no commit")
-        return
+        return True
     embeddings.save_index(
         gh, config.POSTS_INDEX_PATH, index, message=f"Update posts index ({count} posts)"
     )
     summary(f"- posts: {count} posts indexed")
+    return True
 
 
 def cmd_index(gh: GitHubClient, token: str, target: str = "all") -> int:
+    """
+    Build the requested indexes. Non-zero when any of them could not be built.
+
+    Unlike triage — which deliberately degrades so an unreachable model never
+    leaves an issue unlabelled — producing the index *is* this command's only
+    job, so failing to produce one is a failure. Returning 0 here hid a dead
+    embeddings provider behind a green nightly build for sixteen days while the
+    committed index silently went stale.
+    """
     summary(f"## RAG index build ({target})\n")
     if target not in ("docs", "posts", "all"):
         log(f"unknown index target: {target} (use docs|posts|all)")
         return 2
+    built = True
     if target in ("docs", "all"):
-        _build_docs_index(gh, token)
+        built &= _build_docs_index(gh, token)
     if target in ("posts", "all"):
-        _build_posts_index(gh, token)
+        built &= _build_posts_index(gh, token)
+    if not built:
+        error(f"RAG index build ({target}) did not produce an index.")
+        return 1
     return 0
 
 
@@ -502,7 +525,13 @@ def cmd_index_append(gh: GitHubClient, token: str) -> int:
     }
     index, _changed = embeddings.append_post(gh, post, token=token)
     if index is None:
-        summary(f"#{number}: append skipped (embeddings unavailable).")
+        # Annotate but exit 0 on purpose: this runs inside per-issue triage, and
+        # failing here would mark every incoming issue's workflow red for a
+        # provider outage the scheduled build already reports as a failure.
+        error(
+            f"#{number}: not appended — the embeddings provider returned no "
+            "vectors. The posts index is no longer keeping up with new posts."
+        )
         return 0
     embeddings.save_index(
         gh,
@@ -632,7 +661,13 @@ def cmd_discussion_append(gh: GitHubClient, token: str) -> int:
     }
     index, _changed = embeddings.append_post(gh, post, token=token)
     if index is None:
-        summary(f"#{number}: append skipped (embeddings unavailable).")
+        # Annotate but exit 0 on purpose: this runs inside per-issue triage, and
+        # failing here would mark every incoming issue's workflow red for a
+        # provider outage the scheduled build already reports as a failure.
+        error(
+            f"#{number}: not appended — the embeddings provider returned no "
+            "vectors. The posts index is no longer keeping up with new posts."
+        )
         return 0
     embeddings.save_index(
         gh,
