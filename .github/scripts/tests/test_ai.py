@@ -158,3 +158,31 @@ def test_coerce_clamps_category(sample_raw, monkeypatch):
     assert result.category == "unknown"        # unknown enum → clamped
     assert result.confidence == 1.0            # clamped into [0,1]
     assert result.suggested_labels == []       # non-list → empty
+
+
+# --- chat transport --------------------------------------------------------- #
+def test_strip_fence_unwraps_a_fenced_json_block():
+    """A backend without `response_format` tends to fence its answer."""
+    assert ai._strip_fence('```json\n{"a": 1}\n```') == '{"a": 1}'
+    assert ai._strip_fence('```\n{"a": 1}\n```') == '{"a": 1}'
+    assert ai._strip_fence('{"a": 1}') == '{"a": 1}'
+    assert ai._strip_fence('  {"a": 1}  ') == '{"a": 1}'
+
+
+def test_chat_returns_none_and_names_the_caller_on_failure(monkeypatch, capsys):
+    """A silent or mislabelled skip is what hid a dead provider for 16 days."""
+    monkeypatch.setattr(
+        ai.requests, "post", lambda *a, **k: _Resp({"error": "nope"}, status=503)
+    )
+    assert ai._chat({}, token="t", what="Doc-answer judge") is None
+    assert "Doc-answer judge skipped: HTTP 503" in capsys.readouterr().out
+
+
+def test_chat_rejects_a_non_object_response(monkeypatch):
+    """Callers index the result like a mapping; a bare list must not reach them."""
+    monkeypatch.setattr(
+        ai.requests,
+        "post",
+        lambda *a, **k: _Resp({"choices": [{"message": {"content": "[1, 2]"}}]}),
+    )
+    assert ai._chat({}, token="t", what="AI assessment") is None
