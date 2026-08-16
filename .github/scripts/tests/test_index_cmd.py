@@ -1,5 +1,7 @@
 """Tests for the `index` and `index-append` subcommands."""
 
+import json
+
 from conftest import FakeGH
 from ma_triage import __main__ as main
 from ma_triage import config, embeddings
@@ -63,14 +65,42 @@ def test_cmd_index_fails_when_embeddings_are_unavailable(ai_on, monkeypatch):
     assert config.DOCS_INDEX_PATH not in gh._index_files
 
 
-def test_cmd_index_posts_fails_when_embeddings_are_unavailable(ai_on, monkeypatch):
+def test_cmd_index_posts_fails_but_still_commits_the_text(ai_on, monkeypatch):
+    """The exit code and the artifact answer different questions.
+
+    The run must go red so a dead provider cannot hide behind a green build
+    (the contract this command exists to keep), *and* must still commit the
+    text it has, so retrieval that does not rank on vectors survives the
+    outage. Withholding the artifact is what left the fallback with nothing.
+    """
     _no_embeddings(monkeypatch)
     gh = FakeGH(
         issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
                  "state": "open", "updated_at": "2024-01-01"}],
     )
     assert main.cmd_index(gh, "t", "posts") == 1
-    assert config.POSTS_INDEX_PATH not in gh._index_files
+    written = json.loads(gh._index_files[config.POSTS_INDEX_PATH])
+    assert written["vectors"] == 0
+    assert [p["number"] for p in written["posts"]] == [1]
+    assert "embedding" not in written["posts"][0]
+
+
+def test_cmd_index_posts_committed_text_is_invisible_to_dense_retrieval(
+    ai_on, monkeypatch
+):
+    """2a must not change what retrieval sees — only what gets written.
+
+    `load_posts` filters vectorless records, so `related_from_index` never
+    ranks them and no weak lexical result can shadow the search fallback until
+    a reader is taught to use them.
+    """
+    _no_embeddings(monkeypatch)
+    gh = FakeGH(
+        issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
+                 "state": "open", "updated_at": "2024-01-01"}],
+    )
+    main.cmd_index(gh, "t", "posts")
+    assert embeddings.load_posts(gh) == []
 
 
 def test_cmd_index_all_fails_if_either_target_fails(ai_on, monkeypatch):
@@ -99,7 +129,11 @@ def test_cmd_index_append_annotates_but_does_not_fail_triage(ai_on, monkeypatch,
     )
     assert main.cmd_index_append(gh, "t") == 0
     assert "::error::" in capsys.readouterr().err
-    assert config.POSTS_INDEX_PATH not in gh._index_files
+    # Appended anyway: between nightlies this is the only path that admits new
+    # posts, so skipping it would freeze the index for the whole outage.
+    written = json.loads(gh._index_files[config.POSTS_INDEX_PATH])
+    assert [p["number"] for p in written["posts"]] == [123]
+    assert written["vectors"] == 0
 
 
 def test_cmd_index_append(ai_on, monkeypatch):
@@ -150,3 +184,22 @@ def test_collect_posts_excludes_translation_discussions():
     assert ("issue", 1) in keys
     assert ("discussion", 2) in keys
     assert ("discussion", 3) not in keys  # translation category excluded
+
+
+def test_cmd_index_posts_does_not_recommit_an_unchanged_outage_index(
+    ai_on, monkeypatch
+):
+    """A long outage must not commit a new timestamp over identical records.
+
+    A vectorless post is never satisfied by the sha cache, so every night of an
+    outage re-enters it into `to_embed` and would otherwise look like a change.
+    """
+    _no_embeddings(monkeypatch)
+    gh = FakeGH(
+        issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
+                 "state": "open", "updated_at": "2024-01-01"}],
+    )
+    assert main.cmd_index(gh, "t", "posts") == 1
+    assert _commit_count(gh, config.POSTS_INDEX_PATH) == 1
+    assert main.cmd_index(gh, "t", "posts") == 1
+    assert _commit_count(gh, config.POSTS_INDEX_PATH) == 1

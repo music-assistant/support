@@ -205,14 +205,52 @@ def test_build_posts_index_truncates_long_body(monkeypatch):
     assert all(len(t) <= config.MAX_POST_EMBED_CHARS for t in captured["texts"])
 
 
-def test_append_post_skip_on_embed_failure(monkeypatch):
+def test_append_post_writes_the_text_when_embedding_fails(monkeypatch):
     monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
     monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
     gh = FakeGH()
-    index, changed = embeddings.append_post(
+    index, embedded = embeddings.append_post(
         gh, {"kind": "issue", "number": 5, "title": "x", "body": "y"}, token="t"
     )
-    assert index is None and changed is False
+    assert embedded is False
+    record = index["posts"][0]
+    assert record["number"] == 5 and record["excerpt"] == "y"
+    # Absent, never empty: `encode_vec([])` is also "", so an empty string would
+    # merge "the encoder produced nothing" with "we never asked".
+    assert "embedding" not in record
+    assert index["vectors"] == 0
+
+
+def test_append_post_keeps_an_existing_vector_when_embedding_fails(
+    ai_on, monkeypatch
+):
+    """An edit during an outage must not cost a post the vector it already had."""
+    gh = FakeGH()
+    post = {"kind": "issue", "number": 5, "title": "x", "body": "y"}
+    index, embedded = embeddings.append_post(gh, post, token="t")
+    assert embedded is True
+    embeddings.save_index(gh, config.POSTS_INDEX_PATH, index, message="seed")
+
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    index, embedded = embeddings.append_post(gh, post, token="t")
+    assert embedded is True  # carried forward, not re-embedded
+    assert index["posts"][0]["embedding"]
+
+
+def test_append_post_drops_a_stale_vector_when_the_text_changed(ai_on, monkeypatch):
+    """A vector may only travel with the text it was computed from."""
+    gh = FakeGH()
+    index, _ = embeddings.append_post(
+        gh, {"kind": "issue", "number": 5, "title": "x", "body": "y"}, token="t"
+    )
+    embeddings.save_index(gh, config.POSTS_INDEX_PATH, index, message="seed")
+
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    index, embedded = embeddings.append_post(
+        gh, {"kind": "issue", "number": 5, "title": "x", "body": "EDITED"}, token="t"
+    )
+    assert embedded is False
+    assert "embedding" not in index["posts"][0]
 
 
 def test_build_posts_index_refreshes_provider_metadata_without_reembedding(
