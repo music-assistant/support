@@ -255,8 +255,28 @@ def build_docs_index(
     return index, changed
 
 
-def _post_record(post: dict[str, Any], embedding: list[float]) -> dict[str, Any]:
-    return {
+def reusable_vector(cached: dict[str, Any] | None, sha: str) -> bool:
+    """Whether ``cached`` already holds a vector computed from this exact text.
+
+    The sha check is what keeps a vector paired with the text it was computed
+    from; an edited post fails it and must be re-embedded before its vector can
+    be trusted again.
+    """
+    return bool(cached and cached.get("sha") == sha and cached.get("embedding"))
+
+
+def _post_record(
+    post: dict[str, Any], embedding: list[float] | None
+) -> dict[str, Any]:
+    """One index record. ``embedding`` is ``None`` when the provider was down.
+
+    The key is then omitted rather than written empty: ``encode_vec([])`` also
+    produces ``""``, so an empty string would merge "the encoder produced
+    nothing" with "we never asked". Readers filter on the key's presence, so an
+    absent vector removes the record from dense retrieval and leaves it
+    available to everything that only needs its text.
+    """
+    record = {
         "kind": post.get("kind", "issue"),
         "number": int(post.get("number", 0)),
         "title": str(post.get("title", "")),
@@ -273,8 +293,10 @@ def _post_record(post: dict[str, Any], embedding: list[float]) -> dict[str, Any]
         ),
         "excerpt": str(post.get("body", ""))[: config.RELATED_EXCERPT_CHARS],
         "sha": post_sha(str(post.get("title", "")), str(post.get("body", ""))),
-        "embedding": encode_vec(embedding),
     }
+    if embedding:
+        record["embedding"] = encode_vec(embedding)
+    return record
 
 
 def trim_by_kind(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -318,8 +340,13 @@ def build_posts_index(
     *,
     token: str,
     previous: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any] | None, bool]:
-    """Build the posts index from ``{kind,number,title,body,url,state,...}`` dicts."""
+) -> tuple[dict[str, Any], bool]:
+    """Build the posts index from ``{kind,number,title,body,url,state,...}`` dicts.
+
+    Always returns an index. A provider outage costs individual records their
+    vectors, not the whole build — ``index["vectors"]`` reports how many
+    records carry one, which is what tells the caller the run fell short.
+    """
     prev_by_key: dict[tuple[str, int], dict[str, Any]] = {}
     if (
         previous
@@ -339,7 +366,7 @@ def build_posts_index(
         key = (post.get("kind", "issue"), int(post.get("number", 0)))
         sha = post_sha(str(post.get("title", "")), str(post.get("body", "")))
         cached = prev_by_key.get(key)
-        if cached and cached.get("sha") == sha and cached.get("embedding"):
+        if reusable_vector(cached, sha):
             record = dict(cached)
             providers = sorted(
                 {
@@ -368,46 +395,82 @@ def build_posts_index(
             )
 
     if to_embed:
+        # A dead provider costs this run its *new* vectors, not the index. Every
+        # post whose text is unchanged keeps the vector cached above, and the
+        # rest are still written with their text so retrieval that needs no
+        # vector keeps working. `cmd_index` reports the shortfall and still
+        # exits non-zero; leaving no index at all is what left duplicate
+        # detection with nothing to fall back on.
         vectors = embed_texts(embed_targets, token=token)
-        if vectors is None:
-            return None, False
-        for post, vector in zip(to_embed, vectors):
-            records.append(_post_record(post, vector))
+        for i, post in enumerate(to_embed):
+            records.append(_post_record(post, vectors[i] if vectors else None))
 
     changed = bool(to_embed) or metadata_changed or {
         (r.get("kind", "issue"), int(r.get("number", 0))) for r in records
     } != set(prev_by_key)
 
     records.sort(key=lambda r: int(r.get("number", 0)), reverse=True)
+    if changed and previous and previous.get("posts") == records:
+        # A post with no vector is never satisfied by the cache, so `to_embed`
+        # stays non-empty for every night of an outage. Without this the build
+        # would commit an index identical to yesterday's but for its timestamp,
+        # once a night, for as long as the provider stays down.
+        changed = False
+
     index = _empty_posts_index()
     index["posts"] = records
+    index["vectors"] = sum(1 for r in records if r.get("embedding"))
     return index, changed
 
 
 def append_post(
     gh: GitHubClient, post: dict[str, Any], *, token: str
-) -> tuple[dict[str, Any] | None, bool]:
-    """Embed a single new post and upsert it into the posts index."""
+) -> tuple[dict[str, Any], bool]:
+    """Embed a single new post and upsert it into the posts index.
+
+    Returns the index and whether the upserted record carries a vector, so the
+    caller can report a provider outage without having to inspect the record.
+
+    Between nightly builds this is the only path that admits new posts, so it
+    writes the record whether or not a vector could be obtained. Unlike the
+    nightly build there is no cache to fall back on here, so an existing vector
+    for unchanged text is kept rather than overwritten with a vectorless
+    record — a post edited during a provider outage would otherwise lose a good
+    vector it could not get back until the next successful build.
+    """
     previous = load_index(gh, config.POSTS_INDEX_PATH) or _empty_posts_index()
     vector = embed_text(
         f"{post.get('title', '')}\n\n{post.get('body', '')}", token=token
     )
-    if vector is None:
-        return None, False
+    previous_posts = [
+        p for p in previous.get("posts", []) or [] if isinstance(p, dict)
+    ]
     record = _post_record(post, vector)
     key = (record["kind"], record["number"])
+    if vector is None:
+        cached = next(
+            (
+                p
+                for p in previous_posts
+                if (p.get("kind", "issue"), int(p.get("number", 0))) == key
+            ),
+            None,
+        )
+        if reusable_vector(cached, record["sha"]):
+            record["embedding"] = cached["embedding"]
+
     kept = [
         p
-        for p in previous.get("posts", []) or []
-        if isinstance(p, dict)
-        and (p.get("kind", "issue"), int(p.get("number", 0))) != key
+        for p in previous_posts
+        if (p.get("kind", "issue"), int(p.get("number", 0))) != key
     ]
     kept.append(record)
     kept.sort(key=lambda r: int(r.get("number", 0)), reverse=True)
     kept = trim_by_kind(kept)
     index = _empty_posts_index()
     index["posts"] = kept
-    return index, True
+    index["vectors"] = sum(1 for r in kept if r.get("embedding"))
+    return index, bool(record.get("embedding"))
 
 
 def save_index(

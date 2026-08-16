@@ -455,26 +455,37 @@ def _collect_posts(gh: GitHubClient) -> list[dict[str, Any]]:
 
 
 def _build_posts_index(gh: GitHubClient, token: str) -> bool:
-    """Build and persist the posts index. False when it could not be built."""
+    """Build and persist the posts index. False when vectors are missing.
+
+    The index is committed either way. A post can only lack a vector because
+    the provider refused one, so a shortfall is the failure signal — but the
+    records themselves are still worth writing, since everything that ranks on
+    text rather than vectors keeps working from them.
+    """
     prev = embeddings.load_index(gh, config.POSTS_INDEX_PATH)
     posts = _collect_posts(gh)
     index, changed = embeddings.build_posts_index(
         gh, posts, token=token, previous=prev
     )
-    if index is None:
+    count = len(index.get("posts", []))
+    vectors = int(index.get("vectors", 0))
+    if changed:
+        embeddings.save_index(
+            gh,
+            config.POSTS_INDEX_PATH,
+            index,
+            message=f"Update posts index ({count} posts)",
+        )
+        summary(f"- posts: {count} posts indexed ({vectors} with vectors)")
+    else:
+        summary(f"- posts: unchanged ({count} posts); no commit")
+    if vectors < count:
         error(
-            "posts: build FAILED — the embeddings provider returned no vectors. "
-            "Duplicate detection is running against a stale index."
+            f"posts: build INCOMPLETE — {count - vectors} of {count} posts have "
+            "no vector because the embeddings provider returned none. Their text "
+            "is indexed, but dense duplicate detection cannot see them."
         )
         return False
-    count = len(index.get("posts", []))
-    if not changed:
-        summary(f"- posts: unchanged ({count} posts); no commit")
-        return True
-    embeddings.save_index(
-        gh, config.POSTS_INDEX_PATH, index, message=f"Update posts index ({count} posts)"
-    )
-    summary(f"- posts: {count} posts indexed")
     return True
 
 
@@ -487,6 +498,13 @@ def cmd_index(gh: GitHubClient, token: str, target: str = "all") -> int:
     job, so failing to produce one is a failure. Returning 0 here hid a dead
     embeddings provider behind a green nightly build for sixteen days while the
     committed index silently went stale.
+
+    A failing run still commits what it managed to build. The exit code and the
+    artifact answer different questions: the code reports that vectors are
+    missing, the artifact keeps the text those posts do have so retrieval that
+    needs no vector survives the outage. Committing nothing is what left
+    duplicate detection with no fallback in the first place — so do not
+    "simplify" this into skipping the commit when the run fails.
     """
     summary(f"## RAG index build ({target})\n")
     if target not in ("docs", "posts", "all"):
@@ -523,16 +541,18 @@ def cmd_index_append(gh: GitHubClient, token: str) -> int:
         "state": issue.get("state"),
         "updated_at": issue.get("updated_at"),
     }
-    index, _changed = embeddings.append_post(gh, post, token=token)
-    if index is None:
+    index, embedded = embeddings.append_post(gh, post, token=token)
+    if not embedded:
         # Annotate but exit 0 on purpose: this runs inside per-issue triage, and
         # failing here would mark every incoming issue's workflow red for a
-        # provider outage the scheduled build already reports as a failure.
+        # provider outage the scheduled build already reports as a failure. The
+        # post is still appended with its text, so it stays findable by anything
+        # that does not rank on vectors.
         error(
-            f"#{number}: not appended — the embeddings provider returned no "
-            "vectors. The posts index is no longer keeping up with new posts."
+            f"#{number}: appended without a vector — the embeddings provider "
+            "returned none. It is not visible to dense duplicate detection "
+            "until the next successful index build."
         )
-        return 0
     embeddings.save_index(
         gh,
         config.POSTS_INDEX_PATH,
@@ -659,16 +679,18 @@ def cmd_discussion_append(gh: GitHubClient, token: str) -> int:
         "state": "open",
         "updated_at": _now_iso(),
     }
-    index, _changed = embeddings.append_post(gh, post, token=token)
-    if index is None:
+    index, embedded = embeddings.append_post(gh, post, token=token)
+    if not embedded:
         # Annotate but exit 0 on purpose: this runs inside per-issue triage, and
         # failing here would mark every incoming issue's workflow red for a
-        # provider outage the scheduled build already reports as a failure.
+        # provider outage the scheduled build already reports as a failure. The
+        # post is still appended with its text, so it stays findable by anything
+        # that does not rank on vectors.
         error(
-            f"#{number}: not appended — the embeddings provider returned no "
-            "vectors. The posts index is no longer keeping up with new posts."
+            f"#{number}: appended without a vector — the embeddings provider "
+            "returned none. It is not visible to dense duplicate detection "
+            "until the next successful index build."
         )
-        return 0
     embeddings.save_index(
         gh,
         config.POSTS_INDEX_PATH,
