@@ -266,22 +266,10 @@ def assess(
         "temperature": 0.2,
         "response_format": {"type": "json_schema", "json_schema": _OUTPUT_SCHEMA},
     }
+    data = _chat(payload, token=token, what="AI assessment")
+    if data is None:
+        return None
     try:
-        resp = requests.post(
-            config.AI_ENDPOINT,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            json=payload,
-            timeout=60,
-        )
-        if resp.status_code >= 400:
-            print(f"AI assessment skipped: HTTP {resp.status_code}: {resp.text[:200]}")
-            return None
-        content = resp.json()["choices"][0]["message"]["content"]
-        data = json.loads(content)
         result = _coerce(data)
         if candidate_labels is not None:
             allowed = {label.lower(): label for label in candidate_labels}
@@ -393,6 +381,42 @@ def judge_answer(
         "response_format": {"type": "json_schema", "json_schema": _ANSWER_SCHEMA},
     }
     valid_ids = {hit.chunk.id for hit in doc_hits}
+    data = _chat(payload, token=token, what="Doc-answer judge")
+    if data is None:
+        return None
+    try:
+        return _coerce_answer(data, valid_ids)
+    except Exception as exc:  # noqa: BLE001 — never let AI break triage
+        print(f"Doc-answer judge skipped: {exc}")
+        return None
+
+
+# --------------------------------------------------------------------------- #
+# Chat transport
+# --------------------------------------------------------------------------- #
+def _strip_fence(content: str) -> str:
+    """Unwrap a ```json ... ``` block if the model wrapped its answer in one.
+
+    ``response_format`` makes this unnecessary against an API that honours it,
+    but it costs nothing and it is what lets the same parse survive a backend
+    that returns prose-with-JSON rather than JSON.
+    """
+    text = content.strip()
+    if not text.startswith("```"):
+        return text
+    body = text.split("\n", 1)[1] if "\n" in text else ""
+    return body.rsplit("```", 1)[0].strip()
+
+
+def _chat(payload: dict[str, Any], *, token: str, what: str) -> dict[str, Any] | None:
+    """One chat completion, decoded to the object the caller asked the model for.
+
+    ``None`` on any failure, with the reason printed: every caller treats that
+    as "skip the AI part", which is what keeps an unreachable model from
+    breaking triage. ``what`` names the caller in that message, because a
+    silent or mislabelled failure here is what hid a dead provider behind a
+    green build for sixteen days.
+    """
     try:
         resp = requests.post(
             config.AI_ENDPOINT,
@@ -405,11 +429,11 @@ def judge_answer(
             timeout=60,
         )
         if resp.status_code >= 400:
-            print(f"Doc-answer judge skipped: HTTP {resp.status_code}: {resp.text[:200]}")
+            print(f"{what} skipped: HTTP {resp.status_code}: {resp.text[:200]}")
             return None
         content = resp.json()["choices"][0]["message"]["content"]
-        data = json.loads(content)
-        return _coerce_answer(data, valid_ids)
+        data = json.loads(_strip_fence(content))
+        return data if isinstance(data, dict) else None
     except Exception as exc:  # noqa: BLE001 — never let AI break triage
-        print(f"Doc-answer judge skipped: {exc}")
+        print(f"{what} skipped: {exc}")
         return None
