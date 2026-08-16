@@ -281,3 +281,51 @@ def test_build_posts_index_refreshes_provider_metadata_without_reembedding(
     assert calls == []
     assert updated["posts"][0]["providers"] == ["subsonic"]
     assert updated["posts"][0]["excerpt"] == "404"
+
+
+# --- text-only loading (schema-tolerant, vector-free) ------------------------ #
+def test_load_posts_text_accepts_a_legacy_schema_and_strips_vectors():
+    """Schema 1 stored raw float lists, which `decode_vec` raises on by design.
+
+    The text loader accepts those records for their text and removes the key,
+    so nothing it returns can reach the decoder — a hard failure inside the
+    path that exists to survive failure is the thing being avoided.
+    """
+    legacy = {"schema": 1, "model": "other/model", "dim": 999, "posts": [
+        {"kind": "issue", "number": 1, "title": "sonos", "excerpt": "e",
+         "embedding": [0.1, 0.2, 0.3]}]}
+    gh = FakeGH(index_files={config.POSTS_INDEX_PATH: json.dumps(legacy)})
+    posts = embeddings.load_posts_text(gh)
+    assert [p["number"] for p in posts] == [1]
+    assert "embedding" not in posts[0]
+    # The vector path still rejects it, unchanged.
+    assert embeddings.load_posts(gh) == []
+
+
+def test_load_posts_text_keeps_records_with_no_vector(monkeypatch):
+    """Posts indexed during an outage are exactly what this loader is for."""
+    monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    gh = FakeGH()
+    index, _ = embeddings.append_post(
+        gh, {"kind": "issue", "number": 5, "title": "x", "body": "y"}, token="t"
+    )
+    embeddings.save_index(gh, config.POSTS_INDEX_PATH, index, message="m")
+    assert [p["number"] for p in embeddings.load_posts_text(gh)] == [5]
+    assert embeddings.load_posts(gh) == []
+
+
+def test_load_posts_text_rejects_an_unknown_schema():
+    future = {"schema": 99, "posts": [{"kind": "issue", "number": 1, "title": "t"}]}
+    gh = FakeGH(index_files={config.POSTS_INDEX_PATH: json.dumps(future)})
+    assert embeddings.load_posts_text(gh) == []
+
+
+def test_current_schema_has_a_known_text_layout():
+    """Bumping `_SCHEMA` must be a decision about the text loader too.
+
+    The lexical fallback reads the index through `_TEXT_COMPATIBLE_SCHEMAS`. If
+    a bump forgets that list, the fallback goes silent at exactly the moment it
+    is the only path left.
+    """
+    assert embeddings._SCHEMA in embeddings._TEXT_COMPATIBLE_SCHEMAS

@@ -311,7 +311,11 @@ def _render_rag(rag: RagResult | None) -> str:
     if rag.related_posts and rag.duplicates_only:
         parts.extend(_render_duplicates(rag.related_posts))
     elif rag.related_posts:
-        if max(post.score for post in rag.related_posts) >= config.RELATED_EXPAND_SCORE:
+        # Only a dense cosine can justify expanding. Sources never mix within
+        # one result set — `find_related` picks a single path — so the full
+        # list is rendered either way once that decision is made.
+        dense = [post for post in rag.related_posts if post.source == "dense"]
+        if dense and max(post.score for post in dense) >= config.RELATED_EXPAND_SCORE:
             parts.append("\n" + config.RELATED_POSTS_HEADING)
             parts.append(config.RELATED_POSTS_INTRO)
             parts.extend(_post_link(post) for post in rag.related_posts)

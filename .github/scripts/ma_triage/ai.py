@@ -187,9 +187,17 @@ def _assessment_evidence(
     if rag_result is not None and rag_result.related_posts:
         lines = []
         for post in rag_result.related_posts[:3]:
+            # Only a dense match has a similarity to report. Lexical and
+            # search hits carry 0.0 by construction, and printing that would
+            # tell the model the best available match is maximally dissimilar.
+            how = (
+                f"similarity {post.score:.4f}"
+                if post.source == "dense"
+                else f"match={post.source}"
+            )
             lines.append(
                 f"- RELATED #{post.number}: {inline(post.title, max_len=180)} "
-                f"(similarity {post.score:.4f}, state={inline(post.state)})\n"
+                f"({how}, state={inline(post.state)})\n"
                 f"{fenced(post.excerpt, max_len=500)}"
             )
         parts.append("PROVIDER-MATCHED REPORTS (not necessarily duplicates):\n" + "\n".join(lines))

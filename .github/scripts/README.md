@@ -94,8 +94,15 @@ The live bot adds a **retrieval-augmented** layer on top of the analysis:
   judge call that returns `{answers_question, confidence, answer, cited_sections}`.
 - **Similar past reports.** The issue embedding is compared (dense cosine) to an
   index of past issues + discussions to surface likely duplicates / prior answers.
-  When a provider is known, candidates must match that provider exactly; weak
-  matches stay collapsed, while only strong matches render expanded. Pinned
+  When the embedding is unavailable the same index is ranked lexically instead
+  (BM25F over the stored title + excerpt), and only when no index is readable at
+  all does it fall back to GitHub's issue search. When a provider is known,
+  candidates must match that provider exactly — except on the search path, which
+  cannot be scoped and is therefore skipped entirely for provider-specific
+  reports. Weak matches stay collapsed, and only a strong *dense* match renders
+  expanded: BM25 scores are corpus-relative, so a lexical hit is never treated
+  as an assertion of duplication.
+  Pinned
   support notices that mention the provider are surfaced separately and Feature
   Polls are ignored. Translation-category discussions are excluded from the
   index. New/edited Discussions use the same RAG path when

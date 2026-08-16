@@ -193,3 +193,59 @@ def test_find_pinned_skips_catch_all_status_notice():
         ]
     )
     assert similar.find_pinned(gh, {"spotify"}) == []
+
+
+# --- lexical (BM25F over the index text, no embedding involved) -------------- #
+def _text_post(number, title, excerpt="", providers=None):
+    return {"kind": "issue", "number": number, "title": title,
+            "url": f"https://x/{number}", "state": "open", "excerpt": excerpt,
+            "providers": providers or []}
+
+
+def test_related_from_lexical_ranks_on_shared_wording():
+    posts = [
+        _text_post(1, "sonos players stop after a while", "playback stops"),
+        _text_post(2, "spotify login loop", "cannot authenticate"),
+    ]
+    hits = similar.related_from_lexical(
+        "sonos players stop", "playback stops after a while", posts,
+        exclude_number=99,
+    )
+    assert [h.number for h in hits] == [1]
+    assert hits[0].source == "lexical" and hits[0].score == 0.0
+
+
+def test_related_from_lexical_applies_the_provider_filter():
+    """The reason to prefer this over GitHub search: it can be scoped.
+
+    `related_from_search` cannot filter by provider, which is why a report
+    naming one gets nothing from it at all.
+    """
+    posts = [
+        _text_post(1, "playback stops", "stops", providers=["Chromecast"]),
+        _text_post(2, "playback stops", "stops", providers=["Deezer"]),
+    ]
+    hits = similar.related_from_lexical(
+        "playback stops", "stops", posts, exclude_number=99,
+        provider_labels={"deezer"},
+    )
+    assert [h.number for h in hits] == [2]
+
+
+def test_related_from_lexical_excludes_self():
+    posts = [_text_post(7, "sonos grouping", "grouping fails")]
+    assert similar.related_from_lexical(
+        "sonos grouping", "grouping fails", posts, exclude_number=7
+    ) == []
+
+
+def test_find_related_prefers_lexical_over_search_without_a_vector(fake_gh):
+    fake_gh._search_items = [
+        {"number": 42, "title": "from search", "html_url": "u42", "state": "open"}
+    ]
+    hits = similar.find_related(
+        fake_gh, query_vec=None, title="sonos grouping", body="grouping fails",
+        posts=[], text_posts=[_text_post(8, "sonos grouping", "grouping fails")],
+        exclude_number=99,
+    )
+    assert [h.number for h in hits] == [8]  # not 42

@@ -176,3 +176,23 @@ def test_judge_answer_cannot_publish_markdown_or_bare_links():
     assert (
         "](https://www.music-assistant.io/faq/net/#mdns)" in body
     )
+
+
+def test_build_body_never_expands_a_lexical_match():
+    """Only a dense cosine may assert a duplicate.
+
+    Measured over the mined pairs, the best available gate on a lexical top hit
+    reaches ~40% precision — fine for a collapsed suggestion, not enough to
+    claim a duplicate in an expanded block on someone's issue.
+    """
+    rag = RagResult(
+        tier="low",
+        related_posts=[
+            RelatedPost("issue", 7, "playback stops", "https://x/7",
+                        score=0.0, source="lexical")
+        ],
+    )
+    body = comment.build_body(TriageResult(form_kind="main", rag=rag))
+    assert config.RELATED_POSTS_WEAK_SUMMARY in body
+    assert config.RELATED_POSTS_HEADING not in body
+    assert "#7: playback stops" in body

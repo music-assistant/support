@@ -315,6 +315,7 @@ def apply_triage(
                 "judge_conf": result.rag.judge_confidence,
                 "judge_answered": result.rag.judge_answered,
                 "scores": [p.score for p in result.rag.related_posts],
+                "sources": [p.source for p in result.rag.related_posts],
             }
         body = comment.build_body(result)
         comment.upsert(gh, number, body, state)
@@ -640,6 +641,7 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
             "judge_conf": rag_result.judge_confidence,
             "judge_answered": rag_result.judge_answered,
             "scores": [p.score for p in rag_result.related_posts],
+            "sources": [p.source for p in rag_result.related_posts],
         },
     }
     comment.upsert_discussion(
