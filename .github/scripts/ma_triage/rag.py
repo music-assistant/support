@@ -189,12 +189,14 @@ def answer(
 
         # Related posts are independent of the docs tier (dupes may post even
         # when the docs answer is LOW).
-        posts = embeddings.load_posts(gh)
+        posts = embeddings.load_posts(gh) if query_vec else []
         related = similar.find_related(
             gh,
             query_vec=query_vec,
             title=title,
+            body=body,
             posts=posts,
+            text_posts=embeddings.load_posts_text(gh) if not posts else None,
             exclude_number=number,
             exclude_kind=kind,
             provider_labels=provider_labels,
@@ -202,10 +204,15 @@ def answer(
         if duplicates_only:
             # Only likely duplicates justify commenting on these categories, so
             # apply the same bar the comment uses to render a match expanded.
+            # Only a dense cosine can clear this bar. A lexical or search hit
+            # carries 0.0 by construction, so the `source` check is what makes
+            # the intent explicit rather than leaving it to a sentinel: nothing
+            # but semantic similarity may assert a duplicate on its own.
             related = [
                 post
                 for post in related
-                if post.score >= config.RELATED_EXPAND_SCORE
+                if post.source == "dense"
+                and post.score >= config.RELATED_EXPAND_SCORE
             ]
 
         result = RagResult(

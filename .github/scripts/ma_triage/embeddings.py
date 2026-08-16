@@ -170,6 +170,50 @@ def load_posts(gh: GitHubClient) -> list[dict[str, Any]]:
     return [p for p in posts if isinstance(p, dict) and p.get("embedding")] if isinstance(posts, list) else []
 
 
+# Schema versions whose *text* layout this code understands. `_SCHEMA` tracks
+# how a vector is encoded (2 = base64 int8), which is irrelevant to a reader
+# that never looks at one — but it is enumerated rather than ignored, so a
+# future layout change to the record itself still has to be considered here
+# instead of being silently accepted.
+_TEXT_COMPATIBLE_SCHEMAS = (1, 2)
+
+
+def load_posts_text(gh: GitHubClient) -> list[dict[str, Any]]:
+    """Load ``posts.json`` records for retrieval that ranks on text alone.
+
+    Unlike :func:`load_posts` this ignores ``model`` and ``dim``: those guard
+    vector compatibility, and a reader that scores tokens does not care which
+    embedder produced a file it will not read vectors from. It also keeps
+    records that have no vector at all, which is the whole point — those are
+    the posts indexed while the provider was unavailable.
+
+    ``embedding`` is stripped from every record returned. A schema-1 record
+    holds a raw float list rather than base64, and :func:`retrieval.decode_vec`
+    raises on that by design; letting one through would put a hard failure
+    inside the path that exists to survive failure.
+
+    Schema-1 records may predate ``excerpt``. Those still rank, on their title
+    alone — worse, but not a failure.
+    """
+    index = load_index(gh, config.POSTS_INDEX_PATH)
+    if not index:
+        return []
+    if index.get("schema") not in _TEXT_COMPATIBLE_SCHEMAS:
+        log(
+            f"Posts index schema {index.get('schema')} has no known text layout; "
+            "ignoring index"
+        )
+        return []
+    posts = index.get("posts")
+    if not isinstance(posts, list):
+        return []
+    return [
+        {key: value for key, value in post.items() if key != "embedding"}
+        for post in posts
+        if isinstance(post, dict)
+    ]
+
+
 def load_suppress(gh: GitHubClient) -> list[dict[str, Any]]:
     """Load the downvoted-answer fingerprints from ``suppress.json``."""
     index = load_index(gh, config.SUPPRESS_INDEX_PATH)

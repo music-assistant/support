@@ -72,12 +72,21 @@ def test_answer_returns_none_when_nothing_to_show(ai_on):
     assert rag.answer(gh, title="random topic", body="text", number=1, token="t") is None
 
 
-def test_answer_none_on_embed_failure(ai_on, monkeypatch):
-    # No search items either, so the fallback finds nothing and the result
-    # stays None — see the test below for the case where it does find one.
+def test_answer_ranks_the_index_text_when_embedding_fails(ai_on, monkeypatch):
+    """No vector, but the index text is readable — so BM25F, not GitHub search.
+
+    This is the case the search fallback could never serve well: it needs no
+    network call and, unlike search, can be filtered by provider.
+    """
     monkeypatch.setattr(embeddings, "embed_text", lambda text, *, token: None)
     gh = _gh_with_indexes()
-    assert rag.answer(gh, title="sonos mdns", body="", number=1, token="t") is None
+    result = rag.answer(gh, title="sonos mdns", body="", number=1, token="t")
+    assert result is not None
+    assert [post.number for post in result.related_posts] == [50]
+    assert result.related_posts[0].source == "lexical"
+    # BM25 is unbounded and corpus-relative, so it must not reach the field
+    # every other consumer reads as a cosine.
+    assert result.related_posts[0].score == 0.0
 
 
 def test_answer_still_finds_related_posts_on_embed_failure(ai_on, monkeypatch):

@@ -115,3 +115,40 @@ def test_retrieve_docs_cap_never_returns_fewer_than_available(monkeypatch):
 
 def test_retrieve_docs_empty():
     assert retrieval.retrieve_docs([1.0], "q", []) == []
+
+
+# --- BM25F ------------------------------------------------------------------ #
+def test_bm25f_keeps_a_short_title_from_being_swamped_by_a_long_body():
+    """The claim that earns BM25F its place over a weighted concatenation.
+
+    Both documents mention the term once. The first says it in a two-word
+    title; the second buries it in a long body. Per-field length normalisation
+    is what puts the first ahead.
+    """
+    titles = [retrieval.tokenize("sonos grouping"), retrieval.tokenize("unrelated")]
+    bodies = [
+        retrieval.tokenize("nothing to see here"),
+        retrieval.tokenize("padding " * 200 + "grouping"),
+    ]
+    scores = retrieval.bm25f_scores(
+        retrieval.tokenize("grouping"),
+        {"title": titles, "body": bodies},
+        {"title": 3.0, "body": 1.0},
+    )
+    assert scores[0] > scores[1]
+
+
+def test_bm25f_returns_one_score_per_document_for_an_empty_query():
+    """The contract holds even when the first field is the empty one."""
+    scores = retrieval.bm25f_scores(
+        [], {"title": [], "body": [["a"], ["b"], ["c"]]}, {"title": 1.0}
+    )
+    assert scores == [0.0, 0.0, 0.0]
+
+
+def test_bm25f_ignores_a_term_no_document_carries():
+    titles = [retrieval.tokenize("alpha"), retrieval.tokenize("beta")]
+    scores = retrieval.bm25f_scores(
+        retrieval.tokenize("gamma"), {"title": titles}, {"title": 1.0}
+    )
+    assert scores == [0.0, 0.0]

@@ -166,15 +166,25 @@ class DocAnswer:
 
 @dataclass
 class RelatedPost:
-    """A similar past issue or discussion surfaced from the posts index."""
+    """A similar past issue or discussion surfaced from the posts index.
+
+    ``source`` records how the match was made, because callers must treat the
+    four differently and ``score`` cannot tell them apart. Only a dense cosine
+    is a bounded, corpus-independent number; BM25 is neither, so a lexical or
+    keyword-search hit carries ``0.0``. A pinned notice carries ``1.0`` from an
+    exact provider-name match, which is not a similarity at all. Renderers
+    branch on ``source`` rather than inferring provenance from a float that
+    means four different things depending on where it came from.
+    """
 
     kind: str  # "issue" | "discussion"
     number: int
     title: str
     url: str
-    score: float = 0.0
+    score: float = 0.0  # only comparable within one ``source``
     state: str | None = None  # "open" | "closed"
     excerpt: str = ""
+    source: str = "dense"  # "dense" | "lexical" | "search" | "pinned"
 
 
 @dataclass

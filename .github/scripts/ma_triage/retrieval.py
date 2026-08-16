@@ -1,4 +1,4 @@
-"""Local hybrid retrieval — dense cosine + BM25, fused with RRF.
+"""Local hybrid retrieval — dense cosine + BM25/BM25F, fused with RRF.
 
 No model cost: the incoming post is embedded **once** by the caller; everything
 here is pure Python over the in-memory index (a few thousand vectors at most, so
@@ -83,8 +83,11 @@ def decode_vec(raw: str | None) -> list[float]:
     invisible. Callers that must not fail hard already degrade at a higher
     level (see :func:`rag.answer`).
 
-    Indexes written by an older schema are rejected wholesale at load time
-    (``embeddings._SCHEMA``), so this never has to interpret a legacy format.
+    Indexes written by an older schema are rejected wholesale by the vector
+    load path (``embeddings._SCHEMA``), so this never has to interpret a legacy
+    format. :func:`embeddings.load_posts_text` accepts older schemas for their
+    text, and strips ``embedding`` from what it returns precisely so nothing it
+    hands out can reach here.
     """
     if raw is None or raw == "":
         return []
@@ -163,6 +166,67 @@ def rank_by_bm25(query_tokens: list[str], docs_tokens: list[list[str]]) -> list[
     scores = bm25_scores(query_tokens, docs_tokens)
     order = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
     return [i for i in order if scores[i] > 0.0]
+
+
+def bm25f_scores(
+    query_tokens: list[str],
+    fields: dict[str, list[list[str]]],
+    weights: dict[str, float],
+) -> list[float]:
+    """Fielded BM25 (BM25F) over documents split into named fields.
+
+    Each field is length-normalised against its own average before the weights
+    apply, so a short title keeps its pull against a long body instead of being
+    swamped by it. That is what separates this from scoring a concatenation
+    with the title repeated: field weight 2, 3 and 5 all measured the same,
+    because the normalisation — not the multiplier — is doing the work.
+
+    Saturation is applied once to the combined weighted frequency rather than
+    per field, which is what makes that claim true; summing per-field BM25
+    would not. :func:`bm25_scores` is the single-field, weight-1 case up to a
+    constant factor — kept separate because merging them would rewrite the docs
+    retrieval path for no gain here.
+
+    Every field must supply one token list per document.
+    """
+    names = [name for name in fields if fields[name]]
+    if not names or not query_tokens:
+        n = next((len(docs) for docs in fields.values() if docs), 0)
+        return [0.0] * n
+
+    n = len(fields[names[0]])
+    counts = {name: [Counter(doc) for doc in fields[name]] for name in names}
+    norm: dict[str, list[float]] = {}
+    for name in names:
+        lengths = [sum(c.values()) for c in counts[name]]
+        avg = sum(lengths) / n if n else 0.0
+        norm[name] = [
+            1 - config.BM25_B + config.BM25_B * (length / avg if avg else 0.0)
+            for length in lengths
+        ]
+
+    df: Counter[str] = Counter()
+    for i in range(n):
+        seen: set[str] = set()
+        for name in names:
+            seen |= set(counts[name][i])
+        df.update(seen)
+
+    scores = [0.0] * n
+    for term in set(query_tokens):
+        n_qi = df.get(term, 0)
+        if not n_qi:
+            continue
+        idf = math.log(1 + (n - n_qi + 0.5) / (n_qi + 0.5))
+        for i in range(n):
+            weighted = 0.0
+            for name in names:
+                freq = counts[name][i].get(term, 0)
+                if freq:
+                    weighted += weights.get(name, 1.0) * freq / norm[name][i]
+            if weighted:
+                scores[i] += idf * weighted / (config.BM25_K1 + weighted)
+    return scores
 
 
 def rrf(rank_lists: list[list[int]], *, k: int | None = None) -> dict[int, float]:
