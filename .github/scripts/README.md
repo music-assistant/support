@@ -4,13 +4,13 @@ Autonomous, AI-assisted triage for issues and Discussions in
 `music-assistant/support`.
 
 The bot reads the **diagnostics file** that reporters attach (produced by
-_Settings → Download diagnostics_ in Music Assistant), or falls back to scanning
-an attached **raw log file** (for older versions without the diagnostics
-feature), posts a single sticky summary comment, applies setup/provider labels,
-involves community provider maintainers, surfaces docs-grounded answers and
-similar past reports, and manages the issue's response state. New/edited
-Discussions receive the same docs-grounded help without issue-specific
-diagnostics or label handling.
+_Settings → System → Diagnostics → Download diagnostics_ in Music Assistant), or
+falls back to scanning an attached **raw log file** (for older versions without
+the diagnostics feature), posts a single sticky summary comment, applies
+setup/provider labels, involves community provider maintainers, surfaces
+docs-grounded answers and similar past reports, and manages the issue's response
+state. New/edited Discussions receive the same docs-grounded help without
+issue-specific diagnostics or label handling.
 
 > **Live configuration in this repository:** deterministic triage, AI assessment,
 > RAG and Discussion triage are all enabled; dry-run is off. The code retains

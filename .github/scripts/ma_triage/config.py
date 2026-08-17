@@ -446,14 +446,18 @@ AUTO_CLOSE_MESSAGE = (
 # genuine user activity.
 REMINDER_MARKER = "<!-- ma-triage-reminder -->"
 
+DIAGNOSTICS_SETTINGS_PATH = (
+    "Settings → System → Diagnostics → Download diagnostics"
+)
+
 # Note added when the analysis came from a raw log file rather than a diagnostics
 # report (older MA versions). We only ever show redacted, derived facts from logs.
 LOG_FALLBACK_NOTE = (
     "ℹ️ I analysed the **attached log file** (no diagnostics report was found). "
     "Logs give me less to go on than a diagnostics report, and I only surface "
     "redacted, derived facts from them. If you're on Music Assistant 2.9.6 or "
-    "newer, a diagnostics report would help us a lot more — see **Settings → "
-    "Download diagnostics**."
+    "newer, a diagnostics report would help us a lot more — see "
+    f"**{DIAGNOSTICS_SETTINGS_PATH}**."
 )
 
 # Note added when the reporter selected the unsupported install method.

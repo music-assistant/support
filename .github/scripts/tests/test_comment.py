@@ -54,6 +54,10 @@ def test_build_body_no_attachment_no_screenshot():
     result = TriageResult(form_kind="main", missing_attachment=True)
     body = comment.build_body(result)
     assert "diagnostics report or log file" in body
+    assert "Settings → System → Diagnostics → Download diagnostics" in body
+    assert "Update it first, or attach your **server log file** instead" in body
+    assert "/diagnostics?include_log_tail=true" not in body
+    assert "2.10 or newer" not in body
     assert "screenshot" not in body.lower()
 
 
@@ -77,6 +81,7 @@ def test_build_body_log_source_note(sample_log, fake_gh):
     body = comment.build_body(result)
     assert "attached log file" in body  # log-fallback note present
     assert "attached log" in body  # findings section wording
+    assert f"**{config.DIAGNOSTICS_SETTINGS_PATH}**" in body
     # No raw secret leaks through the rendered comment.
     assert "/home/frank" not in body
     assert "sk-abcdef0123456789ABCDEF" not in body
