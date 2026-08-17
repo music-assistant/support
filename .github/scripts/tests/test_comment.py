@@ -54,6 +54,10 @@ def test_build_body_no_attachment_no_screenshot():
     result = TriageResult(form_kind="main", missing_attachment=True)
     body = comment.build_body(result)
     assert "diagnostics report or log file" in body
+    assert "Settings → System → Diagnostics → Download diagnostics" in body
+    assert "Update it first, or attach your **server log file** instead" in body
+    assert "/diagnostics?include_log_tail=true" not in body
+    assert "2.10 or newer" not in body
     assert "screenshot" not in body.lower()
 
 
