@@ -27,12 +27,12 @@ _SEVERITY_ICON = {
 }
 
 _DIAGNOSTICS_HOWTO = (
-    "Grab it from **Settings → System → Diagnostics → Download diagnostics** and "
-    "attach the `music-assistant-diagnostics-*.json` file. If you don't see the "
-    "button, your Music Assistant server is likely outdated. Update it first, or "
-    "attach your **server log file** instead. Diagnostics are privacy-sanitized "
-    "(paths, tokens, emails and non-local IPs are removed) and let us understand "
-    "your setup at a glance."
+    f"Grab it from **{config.DIAGNOSTICS_SETTINGS_PATH}** and attach the "
+    "`music-assistant-diagnostics-*.json` file. If you don't see the button, your "
+    "Music Assistant server is likely outdated. Update it first, or attach your "
+    "**server log file** instead. Diagnostics are privacy-sanitized (paths, tokens, "
+    "emails and non-local IPs are removed) and let us understand your setup at a "
+    "glance."
 )
 
 

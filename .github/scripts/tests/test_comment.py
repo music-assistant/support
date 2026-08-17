@@ -81,6 +81,7 @@ def test_build_body_log_source_note(sample_log, fake_gh):
     body = comment.build_body(result)
     assert "attached log file" in body  # log-fallback note present
     assert "attached log" in body  # findings section wording
+    assert f"**{config.DIAGNOSTICS_SETTINGS_PATH}**" in body
     # No raw secret leaks through the rendered comment.
     assert "/home/frank" not in body
     assert "sk-abcdef0123456789ABCDEF" not in body
