@@ -1,0 +1,10 @@
+{
+  "name": "ma-triage-embeddings",
+  "private": true,
+  "type": "module",
+  "description": "CI-only embeddings shim for the triage bot. Not a runtime dependency of ma_triage.",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@huggingface/transformers": "4.2.0"
+  }
+}

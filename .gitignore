@@ -28,3 +28,6 @@ Thumbs.db
 
 # Keep triage test log fixtures (excluded by the *.log rule above)
 !/.github/scripts/tests/fixtures/*.log
+
+# CI-only embeddings shim (.github/embeddings)
+node_modules/
