@@ -54,7 +54,7 @@ def test_cmd_index_unknown_target():
 # unavailable embedder was treated as an acceptable outcome. Producing an index
 # is this command's only job, so it must now say when it did not.
 def _no_embeddings(monkeypatch):
-    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: [None] * len(texts))
 
 
 def test_cmd_index_fails_when_embeddings_are_unavailable(ai_on, monkeypatch):

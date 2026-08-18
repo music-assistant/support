@@ -70,31 +70,41 @@ def _request_embeddings(inputs: list[str], token: str) -> list[list[float]]:
     return [list(item["embedding"]) for item in ordered]
 
 
-def embed_texts(texts: list[str], *, token: str) -> list[list[float]] | None:
-    """Embed a list of texts (batched). Returns ``None`` on any failure."""
+def embed_texts(texts: list[str], *, token: str) -> list[list[float] | None]:
+    """Embed a list of texts, batched. One entry per input, ``None`` where the
+    provider did not return a vector.
+
+    A failing batch costs only its own inputs. Collapsing every batch into a
+    single ``None`` meant one timed-out request near the end of a long backfill
+    discarded thousands of vectors that had already been computed — and because
+    a vectorless record is never satisfied by the sha cache, the next run
+    retried the whole backlog and could fail the same way indefinitely. Partial
+    progress is written instead, so each run advances the cache.
+    """
     if not texts:
         return []
-    vectors: list[list[float]] = []
+    vectors: list[list[float] | None] = []
     batch = max(1, config.EMBED_BATCH)
-    try:
-        for start in range(0, len(texts), batch):
-            chunk = texts[start : start + batch]
-            vectors.extend(_request_embeddings(chunk, token))
-    except Exception as exc:  # noqa: BLE001 — never let embeddings break triage
-        log(f"Embeddings skipped: {exc}")
-        return None
-    if len(vectors) != len(texts):
-        log("Embeddings response count mismatch; skipping")
-        return None
+    for start in range(0, len(texts), batch):
+        chunk = texts[start : start + batch]
+        try:
+            result = _request_embeddings(chunk, token)
+        except Exception as exc:  # noqa: BLE001 — never let embeddings break triage
+            log(f"Embeddings skipped for {len(chunk)} of {len(texts)}: {exc}")
+            vectors.extend([None] * len(chunk))
+            continue
+        if len(result) != len(chunk):
+            log(f"Embeddings response count mismatch for {len(chunk)}; skipping")
+            vectors.extend([None] * len(chunk))
+            continue
+        vectors.extend(result)
     return vectors
 
 
 def embed_text(text: str, *, token: str) -> list[float] | None:
     """Embed a single text; ``None`` on failure."""
     result = embed_texts([text[: config.MAX_POST_EMBED_CHARS]], token=token)
-    if not result:
-        return None
-    return result[0]
+    return result[0] if result else None
 
 
 def _chunk_embed_input(chunk: DocChunk) -> str:
@@ -122,6 +132,24 @@ def load_index(gh: GitHubClient, path: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def dim_matches(index: dict[str, Any]) -> bool:
+    """Whether an index's stored vector width is usable with the current config.
+
+    ``dim`` records the width the vectors in the file actually have, not the
+    width that was requested. When ``EMBED_DIM`` asks for a specific width the
+    file has to match it; when it asks for nothing (0), whatever the provider
+    natively returned is fine. Recording the request instead would let a
+    provider that ignores the ``dimensions`` parameter produce a header that
+    does not describe the file — and `cosine` scores mismatched widths as 0.0,
+    so that disagreement would surface as duplicate detection quietly finding
+    nothing rather than as an error.
+    """
+    stored = index.get("dim")
+    if config.EMBED_DIM > 0:
+        return stored == config.EMBED_DIM
+    return isinstance(stored, int) and stored > 0
+
+
 def load_docs_chunks(gh: GitHubClient) -> list[DocChunk]:
     """Load ``docs.json`` into :class:`DocChunk` objects (with embeddings)."""
     index = load_index(gh, config.DOCS_INDEX_PATH)
@@ -130,7 +158,7 @@ def load_docs_chunks(gh: GitHubClient) -> list[DocChunk]:
     if (
         index.get("schema") != _SCHEMA
         or index.get("model") != config.EMBED_MODEL
-        or index.get("dim") != config.EMBED_DIM
+        or not dim_matches(index)
     ):
         log("Docs index schema/model/dim mismatch; ignoring index")
         return []
@@ -162,7 +190,7 @@ def load_posts(gh: GitHubClient) -> list[dict[str, Any]]:
     if (
         index.get("schema") != _SCHEMA
         or index.get("model") != config.EMBED_MODEL
-        or index.get("dim") != config.EMBED_DIM
+        or not dim_matches(index)
     ):
         log("Posts index schema/model/dim mismatch; ignoring index")
         return []
@@ -263,7 +291,7 @@ def build_docs_index(
         previous
         and previous.get("schema") == _SCHEMA
         and previous.get("model") == config.EMBED_MODEL
-        and previous.get("dim") == config.EMBED_DIM
+        and dim_matches(previous)
     ):
         for raw in previous.get("chunks", []) or []:
             if isinstance(raw, dict) and raw.get("id"):
@@ -281,10 +309,11 @@ def build_docs_index(
         vectors = embed_texts(
             [_chunk_embed_input(chunks[i]) for i in to_embed], token=token
         )
-        if vectors is None:
+        if not any(vector is not None for vector in vectors):
             return None, False
         for i, vector in zip(to_embed, vectors):
-            chunks[i].embedding = vector
+            if vector is not None:
+                chunks[i].embedding = vector
 
     new_ids = {c.id for c in chunks}
     changed = bool(to_embed) or new_ids != set(prev_by_id)
@@ -292,7 +321,7 @@ def build_docs_index(
     index = {
         "schema": _SCHEMA,
         "model": config.EMBED_MODEL,
-        "dim": config.EMBED_DIM,
+        "dim": next((len(c.embedding) for c in chunks if c.embedding), 0),
         "built_at": _now_iso(),
         "chunks": [_chunk_to_dict(c) for c in chunks],
     }
@@ -368,11 +397,20 @@ def trim_by_kind(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return kept
 
 
+def _observed_dim(records: list[dict[str, Any]]) -> int:
+    """Width of the vectors actually stored, or 0 when none are."""
+    for record in records:
+        raw = record.get("embedding")
+        if raw:
+            return len(decode_vec(raw))
+    return 0
+
+
 def _empty_posts_index() -> dict[str, Any]:
     return {
         "schema": _SCHEMA,
         "model": config.EMBED_MODEL,
-        "dim": config.EMBED_DIM,
+        "dim": 0,  # replaced with the observed width once vectors exist
         "built_at": _now_iso(),
         "posts": [],
     }
@@ -396,7 +434,7 @@ def build_posts_index(
         previous
         and previous.get("schema") == _SCHEMA
         and previous.get("model") == config.EMBED_MODEL
-        and previous.get("dim") == config.EMBED_DIM
+        and dim_matches(previous)
     ):
         for raw in previous.get("posts", []) or []:
             if isinstance(raw, dict) and raw.get("number") is not None:
@@ -447,7 +485,7 @@ def build_posts_index(
         # detection with nothing to fall back on.
         vectors = embed_texts(embed_targets, token=token)
         for i, post in enumerate(to_embed):
-            records.append(_post_record(post, vectors[i] if vectors else None))
+            records.append(_post_record(post, vectors[i] if i < len(vectors) else None))
 
     changed = bool(to_embed) or metadata_changed or {
         (r.get("kind", "issue"), int(r.get("number", 0))) for r in records
@@ -464,6 +502,7 @@ def build_posts_index(
     index = _empty_posts_index()
     index["posts"] = records
     index["vectors"] = sum(1 for r in records if r.get("embedding"))
+    index["dim"] = _observed_dim(records)
     return index, changed
 
 
@@ -514,6 +553,7 @@ def append_post(
     index = _empty_posts_index()
     index["posts"] = kept
     index["vectors"] = sum(1 for r in kept if r.get("embedding"))
+    index["dim"] = _observed_dim(kept)
     return index, bool(record.get("embedding"))
 
 
