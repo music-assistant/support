@@ -76,7 +76,6 @@ jobs:
           TRIAGE_SCAN_LOGS: ${{ vars.TRIAGE_SCAN_LOGS }}
           # RAG layer (Phase 2) — only active when TRIAGE_AI_ENABLED is true.
           TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
-          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
           TRIAGE_ANSWER_MODEL: ${{ vars.TRIAGE_ANSWER_MODEL }}
           TRIAGE_ANSWER_HI: ${{ vars.TRIAGE_ANSWER_HI }}
           TRIAGE_ANSWER_LO: ${{ vars.TRIAGE_ANSWER_LO }}
@@ -169,7 +168,6 @@ jobs:
           TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
           TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
           TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
-          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
         run: python -m ma_triage index-append
