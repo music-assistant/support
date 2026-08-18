@@ -1,0 +1,28 @@
+name: Set up Copilot chat
+description: Install the pinned GitHub Copilot CLI, which `ai._chat` shells out to.
+
+# GitHub Models was retired 2026-07-30, taking the chat model with it. Copilot
+# replaces it at no new spend, but it is a command rather than an endpoint, so
+# `ai._chat` runs it as a subprocess instead of POSTing to a URL. The presence
+# of COPILOT_GITHUB_TOKEN in the environment is what selects that path, and
+# callers pass that alongside their other credentials rather than through here:
+# a secret does not belong in GITHUB_ENV, where later steps could echo it.
+#
+# HOW TO STOP USING A PERSONAL TOKEN. The org has Copilot policies enabled but
+# no seats assigned, so the org-billed route (`copilot-requests: write` with the
+# built-in GITHUB_TOKEN) is refused with "Access denied by policy settings".
+# Until seats exist this runs on a maintainer's own fine-grained PAT. Callers
+# pass `${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}`, so once seats are
+# assigned, deleting that secret switches to org billing with no code change.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: "22"
+    - name: Install the Copilot CLI
+      shell: bash
+      # Pinned: this runs in jobs that process user-authored issue text, so the
+      # version is not allowed to drift.
+      run: npm install -g @github/copilot@1.0.80
