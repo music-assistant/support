@@ -1,0 +1,40 @@
+# Runs the triage bot's own test suite.
+#
+# The suite existed and passed for a long time without anything running it, so
+# every change to the bot merged on the author's word. It is also the only place
+# the code is exercised at the Python version the bot actually runs: the tests
+# were being run locally on whatever the author had installed, while every
+# workflow pins 3.12.
+name: CI - triage scripts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/scripts/**"
+      - ".github/workflows/ci_scripts.yml"
+  pull_request:
+    paths:
+      - ".github/scripts/**"
+      - ".github/workflows/ci_scripts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ma_triage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          # Match the version every other workflow runs the bot on, so a syntax
+          # or stdlib difference cannot pass here and fail in production.
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: .github/scripts
+        run: pip install -r requirements.txt pytest
+      - name: Run tests
+        working-directory: .github/scripts
+        run: python -m pytest tests/ -q
