@@ -271,6 +271,16 @@ AI_ENABLED = _flag("TRIAGE_AI_ENABLED", False)
 SCAN_LOGS = _flag("TRIAGE_SCAN_LOGS", True)
 AI_MODEL = _env_str("TRIAGE_AI_MODEL", "openai/gpt-4o-mini")
 AI_ENDPOINT = _env_str("TRIAGE_AI_ENDPOINT", "https://models.github.ai/inference/chat/completions")
+# Set by the workflow when GitHub Copilot is available. Its presence selects the
+# CLI backend in `ai._chat` instead of an HTTP endpoint — Copilot is a command,
+# not a URL, so there is nothing for AI_ENDPOINT to point at. Not a TRIAGE_*
+# variable because it is a credential, and the credential is the capability: no
+# token means no CLI to call, which is exactly the condition to branch on.
+AI_CLI_TOKEN = os.environ.get("COPILOT_GITHUB_TOKEN", "")
+# Longer than the HTTP timeout: the CLI starts a process and does its own
+# retries, so it is slower to answer than an endpoint that either responds or
+# does not.
+AI_CLI_TIMEOUT = _env_int("TRIAGE_AI_CLI_TIMEOUT", 180)
 
 # --------------------------------------------------------------------------- #
 # RAG layer (Phase 2) — docs-grounded answers + similar-post detection

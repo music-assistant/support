@@ -27,6 +27,7 @@ concurrency:
 permissions:
   contents: read
   models: read # docs-grounded answer via GitHub Models (only when AI enabled)
+  copilot-requests: write # used only once org Copilot seats exist
 
 jobs:
   answer:
@@ -53,6 +54,7 @@ jobs:
         working-directory: .github/scripts
         run: pip install -r requirements.txt
       - uses: ./.github/actions/start-embeddings
+      - uses: ./.github/actions/setup-copilot
       - name: Triage discussion
         working-directory: .github/scripts
         env:
@@ -84,6 +86,9 @@ jobs:
           # Optional PAT for GitHub Models (used only when set); falls back to
           # the default token. Lets Models work when the org token can't.
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+          # Falls through to the workflow token once org Copilot seats exist,
+          # so switching off the personal PAT is a secret deletion.
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
         run: python -m ma_triage discussion
 
   # Separate, least-privilege job: embed a newly-created discussion and append it

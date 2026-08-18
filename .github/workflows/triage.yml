@@ -41,6 +41,7 @@ jobs:
     permissions:
       contents: read
       models: read
+      copilot-requests: write # used only once org Copilot seats exist
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create triage App token
@@ -60,6 +61,7 @@ jobs:
         working-directory: .github/scripts
         run: pip install -r requirements.txt
       - uses: ./.github/actions/start-embeddings
+      - uses: ./.github/actions/setup-copilot
       - name: Triage issue
         working-directory: .github/scripts
         env:
@@ -92,6 +94,9 @@ jobs:
           # Optional PAT for GitHub Models (used only when set); falls back to
           # the default token. Lets Models work when the org token can't.
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+          # Falls through to the workflow token once org Copilot seats exist,
+          # so switching off the personal PAT is a secret deletion.
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
         run: python -m ma_triage triage
 
   respond:

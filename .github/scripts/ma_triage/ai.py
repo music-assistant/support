@@ -1,7 +1,9 @@
-"""Tier 1 — optional GitHub Models assessment.
+"""Tier 1 — optional chat-model assessment.
 
 Sends a **bounded, sanitized** summary of the diagnostics and the issue text to
-the GitHub Models inference API and asks for a small, strictly-typed JSON verdict.
+a chat model and asks for a small, strictly-typed JSON verdict. The model is
+reached either over an OpenAI-compatible endpoint or, when a Copilot token is
+present, by running the Copilot CLI — see :func:`_chat`.
 
 This tier is entirely optional and defensive:
 * gated behind ``config.AI_ENABLED`` (repo variable ``TRIAGE_AI_ENABLED``),
@@ -13,6 +15,8 @@ This tier is entirely optional and defensive:
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 from typing import Any
 
 import requests
@@ -408,6 +412,70 @@ def _strip_fence(content: str) -> str:
     return body.rsplit("```", 1)[0].strip()
 
 
+def _prompt_from(payload: dict[str, Any]) -> str:
+    """Flatten a chat payload into the single prompt a CLI backend accepts.
+
+    The schema travels as instructions because there is nothing else to carry
+    it: `response_format` is an API feature and the CLI has no equivalent. That
+    downgrades a guarantee to a request, which is survivable only because the
+    callers never trusted the shape anyway — `_coerce` and `_coerce_answer`
+    default every field, clamp confidence, filter the category, and drop
+    citation ids the model was not given. A response that ignores the schema
+    entirely fails to parse and becomes a skip.
+    """
+    system = [
+        str(m.get("content", ""))
+        for m in payload.get("messages", [])
+        if m.get("role") == "system"
+    ]
+    user = [
+        str(m.get("content", ""))
+        for m in payload.get("messages", [])
+        if m.get("role") != "system"
+    ]
+    schema = (
+        (payload.get("response_format") or {}).get("json_schema", {}).get("schema")
+    )
+    parts = [*system]
+    if schema:
+        parts.append(
+            "Reply with a single JSON object and nothing else — no prose, no "
+            "code fence. It must validate against this JSON Schema:\n"
+            + json.dumps(schema, separators=(",", ":"))
+        )
+    parts.extend(user)
+    return "\n\n".join(part for part in parts if part)
+
+
+def _chat_via_cli(payload: dict[str, Any], *, what: str) -> str | None:
+    """Assistant text from the Copilot CLI, or ``None`` with the reason logged.
+
+    The prompt goes in on **stdin**, never argv: it carries issue text written
+    by anyone, and argv is readable from the process table by every other step
+    in the job. The token is passed explicitly because the CLI will otherwise
+    find its own credentials, and a run that silently authenticates as
+    something else is worse than one that fails.
+    """
+    try:
+        completed = subprocess.run(
+            ["copilot", "-s", "--no-ask-user"],
+            input=_prompt_from(payload),
+            capture_output=True,
+            text=True,
+            timeout=config.AI_CLI_TIMEOUT,
+            env={**os.environ, "COPILOT_GITHUB_TOKEN": config.AI_CLI_TOKEN},
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"{what} skipped: {exc}")
+        return None
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()[:200]
+        print(f"{what} skipped: copilot exited {completed.returncode}: {detail}")
+        return None
+    return completed.stdout
+
+
 def _chat(payload: dict[str, Any], *, token: str, what: str) -> dict[str, Any] | None:
     """One chat completion, decoded to the object the caller asked the model for.
 
@@ -417,6 +485,16 @@ def _chat(payload: dict[str, Any], *, token: str, what: str) -> dict[str, Any] |
     silent or mislabelled failure here is what hid a dead provider behind a
     green build for sixteen days.
     """
+    if config.AI_CLI_TOKEN:
+        content = _chat_via_cli(payload, what=what)
+        if content is None:
+            return None
+        try:
+            data = json.loads(_strip_fence(content))
+        except ValueError as exc:
+            print(f"{what} skipped: reply was not JSON: {exc}")
+            return None
+        return data if isinstance(data, dict) else None
     try:
         resp = requests.post(
             config.AI_ENDPOINT,
