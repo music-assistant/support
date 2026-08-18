@@ -47,18 +47,41 @@ def test_embed_texts_happy(monkeypatch):
     assert embeddings.embed_texts(["a", "b"], token="x") == [[1.0, 2.0], [3.0, 4.0]]
 
 
-def test_embed_texts_http_error_returns_none(monkeypatch):
+def test_embed_texts_http_error_yields_none_per_input(monkeypatch):
     monkeypatch.setattr(
         embeddings.requests, "post", lambda *a, **k: _Resp({"error": "no"}, status=429)
     )
-    assert embeddings.embed_texts(["a"], token="x") is None
+    assert embeddings.embed_texts(["a"], token="x") == [None]
 
 
-def test_embed_texts_count_mismatch_returns_none(monkeypatch):
+def test_embed_texts_count_mismatch_yields_none_per_input(monkeypatch):
     monkeypatch.setattr(
         embeddings.requests, "post", lambda *a, **k: _Resp(_emb_payload([[1.0]]))
     )
-    assert embeddings.embed_texts(["a", "b"], token="x") is None
+    assert embeddings.embed_texts(["a", "b"], token="x") == [None, None]
+
+
+def test_embed_texts_keeps_the_batches_that_succeeded(monkeypatch):
+    """One failing batch must not discard the vectors already computed.
+
+    A long backfill sends many batches. Collapsing them all into a single
+    failure meant the last request timing out threw away everything before it,
+    and since a vectorless record never satisfies the sha cache, the next run
+    retried the whole backlog and could fail identically forever.
+    """
+    monkeypatch.setattr(config, "EMBED_BATCH", 1)
+    calls = {"n": 0}
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            return _Resp({"error": "timeout"}, status=504)
+        return _Resp(_emb_payload([[float(calls["n"])]]))
+
+    monkeypatch.setattr(embeddings.requests, "post", flaky)
+    assert embeddings.embed_texts(["a", "b", "c"], token="x") == [
+        [1.0], None, [3.0]
+    ]
 
 
 def test_embed_text_single(monkeypatch):
@@ -121,7 +144,7 @@ def test_build_docs_index_sha_cache(monkeypatch):
 
 def test_build_docs_index_skip_on_limit(monkeypatch):
     monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
-    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: [None] * len(texts))
     gh = FakeGH()
     index, changed = embeddings.build_docs_index(
         gh, token="t", chunks=[_chunk("a#x", "alpha")]
@@ -207,7 +230,7 @@ def test_build_posts_index_truncates_long_body(monkeypatch):
 
 def test_append_post_writes_the_text_when_embedding_fails(monkeypatch):
     monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
-    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: [None] * len(texts))
     gh = FakeGH()
     index, embedded = embeddings.append_post(
         gh, {"kind": "issue", "number": 5, "title": "x", "body": "y"}, token="t"
@@ -231,7 +254,7 @@ def test_append_post_keeps_an_existing_vector_when_embedding_fails(
     assert embedded is True
     embeddings.save_index(gh, config.POSTS_INDEX_PATH, index, message="seed")
 
-    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: [None] * len(texts))
     index, embedded = embeddings.append_post(gh, post, token="t")
     assert embedded is True  # carried forward, not re-embedded
     assert index["posts"][0]["embedding"]
@@ -245,7 +268,7 @@ def test_append_post_drops_a_stale_vector_when_the_text_changed(ai_on, monkeypat
     )
     embeddings.save_index(gh, config.POSTS_INDEX_PATH, index, message="seed")
 
-    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: [None] * len(texts))
     index, embedded = embeddings.append_post(
         gh, {"kind": "issue", "number": 5, "title": "x", "body": "EDITED"}, token="t"
     )
@@ -305,7 +328,7 @@ def test_load_posts_text_accepts_a_legacy_schema_and_strips_vectors():
 def test_load_posts_text_keeps_records_with_no_vector(monkeypatch):
     """Posts indexed during an outage are exactly what this loader is for."""
     monkeypatch.setattr(config, "EMBED_DIM", FAKE_DIM)
-    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: None)
+    monkeypatch.setattr(embeddings, "embed_texts", lambda texts, *, token: [None] * len(texts))
     gh = FakeGH()
     index, _ = embeddings.append_post(
         gh, {"kind": "issue", "number": 5, "title": "x", "body": "y"}, token="t"
@@ -329,3 +352,39 @@ def test_current_schema_has_a_known_text_layout():
     is the only path left.
     """
     assert embeddings._SCHEMA in embeddings._TEXT_COMPATIBLE_SCHEMAS
+
+
+# --- the index header describes the file, not the request -------------------- #
+def test_index_records_the_width_actually_stored(ai_on, monkeypatch):
+    """A provider free to ignore `dimensions` must not produce a lying header.
+
+    `cosine` scores mismatched widths as 0.0, so a header that disagrees with
+    its vectors shows up as duplicate detection quietly finding nothing.
+    """
+    monkeypatch.setattr(config, "EMBED_DIM", 0)  # request no particular width
+    monkeypatch.setattr(
+        embeddings, "embed_texts",
+        lambda texts, *, token: [[0.5] * 7 for _ in texts],  # provider returns 7
+    )
+    gh = FakeGH()
+    index, _ = embeddings.build_posts_index(
+        gh, [{"kind": "issue", "number": 1, "title": "t", "body": "b",
+              "url": "u", "state": "open"}], token="t",
+    )
+    assert index["dim"] == 7
+
+
+def test_dim_matches_requires_the_requested_width_when_one_is_asked_for(monkeypatch):
+    monkeypatch.setattr(config, "EMBED_DIM", 512)
+    assert embeddings.dim_matches({"dim": 512})
+    assert not embeddings.dim_matches({"dim": 1024})
+    assert not embeddings.dim_matches({"dim": 0})
+
+
+def test_dim_matches_accepts_any_real_width_when_none_is_requested(monkeypatch):
+    monkeypatch.setattr(config, "EMBED_DIM", 0)
+    assert embeddings.dim_matches({"dim": 1024})
+    assert embeddings.dim_matches({"dim": 384})
+    # 0 means no vectors were stored, so there is nothing to rank against.
+    assert not embeddings.dim_matches({"dim": 0})
+    assert not embeddings.dim_matches({})
