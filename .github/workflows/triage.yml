@@ -59,6 +59,7 @@ jobs:
       - name: Install dependencies
         working-directory: .github/scripts
         run: pip install -r requirements.txt
+      - uses: ./.github/actions/start-embeddings
       - name: Triage issue
         working-directory: .github/scripts
         env:
@@ -75,7 +76,6 @@ jobs:
           TRIAGE_SCAN_LOGS: ${{ vars.TRIAGE_SCAN_LOGS }}
           # RAG layer (Phase 2) — only active when TRIAGE_AI_ENABLED is true.
           TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
-          TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
           TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
           TRIAGE_ANSWER_MODEL: ${{ vars.TRIAGE_ANSWER_MODEL }}
           TRIAGE_ANSWER_HI: ${{ vars.TRIAGE_ANSWER_HI }}
@@ -151,7 +151,6 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write # commit the posts index to the triage-index branch
-      models: read # embeddings
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -160,6 +159,7 @@ jobs:
       - name: Install dependencies
         working-directory: .github/scripts
         run: pip install -r requirements.txt
+      - uses: ./.github/actions/start-embeddings
       - name: Append issue to posts index
         working-directory: .github/scripts
         env:
@@ -169,9 +169,7 @@ jobs:
           TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
           TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
           TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
-          TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
           TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
-          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: python -m ma_triage index-append

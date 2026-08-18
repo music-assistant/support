@@ -1,0 +1,95 @@
+name: Start local embeddings
+description: >-
+  Serve the triage bot's embedding model from this runner on an OpenAI-shaped
+  endpoint, and export TRIAGE_EMBED_* so the bot uses it.
+
+# GitHub Models was retired 2026-07-30 and nothing GitHub-hosted replaced its
+# embeddings endpoint. Every job that needs a vector runs the model itself.
+#
+# Never fails the calling job. An unreachable endpoint is indistinguishable
+# from an unreachable provider to the bot: it logs, produces no vectors, and
+# each caller already decides for itself whether that is fatal — `cmd_index`
+# exits non-zero, per-issue triage degrades to lexical matching and carries on.
+
+inputs:
+  port:
+    description: Port for the local endpoint
+    default: "11435"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: "22"
+
+    # Two caches: the dependency tree moves with the lockfile, the weights only
+    # when the model does. One shared key would re-download 600MB for a bump.
+    - name: Cache embeddings dependencies
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .github/embeddings/node_modules
+        key: embed-deps-${{ runner.os }}-${{ hashFiles('.github/embeddings/package-lock.json') }}
+    - name: Cache embedding model weights
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ma-triage-embeddings
+        key: embed-model-${{ hashFiles('.github/embeddings/server.mjs') }}
+
+    - name: Install embeddings shim
+      shell: bash
+      working-directory: .github/embeddings
+      # --ignore-scripts: nothing here needs a native postinstall, and these
+      # jobs process user-authored issue text.
+      run: npm ci --ignore-scripts
+
+    - name: Start the embeddings server
+      shell: bash
+      working-directory: .github/embeddings
+      env:
+        MODEL_CACHE_DIR: ~/.cache/ma-triage-embeddings
+        PORT: ${{ inputs.port }}
+      run: |
+        node server.mjs "${PORT}" > "${RUNNER_TEMP}/embeddings.log" 2>&1 &
+        echo "$!" > "${RUNNER_TEMP}/embeddings.pid"
+        # The server listens only once the model has loaded, so an open port is
+        # the readiness signal. Give up the moment the process dies rather than
+        # burning the whole budget on a corpse; a cold cache fetches ~600MB.
+        for _ in $(seq 1 180); do
+          if curl -sf -m 3 "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
+            echo "ready"; exit 0
+          fi
+          if ! kill -0 "$(cat "${RUNNER_TEMP}/embeddings.pid")" 2>/dev/null; then
+            echo "::warning::embeddings server exited before becoming ready"
+            tail -20 "${RUNNER_TEMP}/embeddings.log"; exit 0
+          fi
+          sleep 5
+        done
+        echo "::warning::embeddings server did not become ready in time"
+        tail -20 "${RUNNER_TEMP}/embeddings.log"
+
+    - name: Point the bot at the local endpoint
+      shell: bash
+      env:
+        PORT: ${{ inputs.port }}
+      # DIM 0 because the server serves the model's native width and ignores
+      # the OpenAI `dimensions` parameter; the index records the width it
+      # actually stores. BATCH 4 keeps each request inside the client's 60s
+      # timeout, since the server embeds one input at a time to bound memory.
+      run: |
+        # The model identifier comes from the server, so server.mjs stays the
+        # single place a model change has to be made. It lands in the index's
+        # `model` field, which the loaders treat as a compatibility key: if it
+        # did not change with the weights, a stale index would be accepted.
+        model=$(curl -sf -m 5 "http://127.0.0.1:${PORT}/health" \
+          | python3 -c 'import json,sys; print(json.load(sys.stdin)["embedModel"])' \
+          2>/dev/null || true)
+        {
+          echo "TRIAGE_EMBED_ENDPOINT=http://127.0.0.1:${PORT}/v1/embeddings"
+          echo "TRIAGE_EMBED_DIM=0"
+          echo "TRIAGE_EMBED_BATCH=4"
+          # Empty when the server never came up. The bot then keeps its
+          # configured model string and finds no endpoint to call, which is the
+          # same degraded state as an unreachable provider.
+          [ -n "$model" ] && echo "TRIAGE_EMBED_MODEL=$model"
+        } >> "$GITHUB_ENV"

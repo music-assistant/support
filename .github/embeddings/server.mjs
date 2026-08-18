@@ -80,7 +80,17 @@ function send(res, status, body) {
 
 const server = createServer((req, res) => {
 	if (req.method === "GET" && req.url === "/health") {
-		return send(res, 200, { status: "ok", model: MODEL, dtype: MODEL_DTYPE });
+		return send(res, 200, {
+			status: "ok",
+			model: MODEL,
+			revision: MODEL_REVISION,
+			dtype: MODEL_DTYPE,
+			// The identifier the bot records in the index header. It carries the
+			// revision and dtype because the index's `model` field is a
+			// compatibility key: anything that would change the vectors has to
+			// change this string, or a stale index is silently accepted.
+			embedModel: `${MODEL}@${MODEL_REVISION.slice(0, 12)}@${MODEL_DTYPE}`,
+		});
 	}
 	if (req.method !== "POST" || !req.url.endsWith("/embeddings")) {
 		return send(res, 404, { error: { message: "not found" } });
