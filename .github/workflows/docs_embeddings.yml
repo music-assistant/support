@@ -4,10 +4,10 @@
 # `docs.json` (documentation chunks) and `posts.json` (past issues + discussions)
 # — and commits them to the orphan `triage-index` branch so `main` stays clean.
 #
-# COST / RATE LIMITS: embeddings run via GitHub Models (free tier is rate
-# limited). The build is cached by content SHA, so unchanged chunks are never
-# re-embedded, and a rate-limited run skips the commit rather than writing a
-# broken index. Runs nightly (not per-minute).
+# EMBEDDINGS run on the runner itself, from `.github/embeddings`, against a
+# local OpenAI-shaped endpoint. No provider, no key, no per-call billing. The
+# build is cached by content SHA, so unchanged chunks are never re-embedded, and
+# a batch that fails costs only its own inputs. Runs nightly (not per-minute).
 #
 # SAFETY: this job needs `contents: write` to push the index branch, but it has
 # NO `issues:` permission — it can never comment on or modify issues. Honours the
@@ -35,7 +35,6 @@ concurrency:
 
 permissions:
   contents: write # commit the indexes to the triage-index branch
-  models: read # GitHub Models embeddings
 
 jobs:
   build:
@@ -49,9 +48,61 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
       - name: Install dependencies
         working-directory: .github/scripts
         run: pip install -r requirements.txt
+
+      # Two caches, because the two things change on different schedules: the
+      # dependency tree when the lockfile moves, the weights only when the
+      # model does. Sharing one key would re-download 600MB for a lockfile bump.
+      - name: Cache embeddings dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .github/embeddings/node_modules
+          key: embed-deps-${{ runner.os }}-${{ hashFiles('.github/embeddings/package-lock.json') }}
+      - name: Cache embedding model weights
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ma-triage-embeddings
+          key: embed-model-${{ hashFiles('.github/embeddings/server.mjs') }}
+      - name: Install embeddings shim
+        working-directory: .github/embeddings
+        # --ignore-scripts: no package here needs a native postinstall, and this
+        # job holds `contents: write` while processing user-authored issue text.
+        run: npm ci --ignore-scripts
+
+      - name: Start the embeddings server
+        working-directory: .github/embeddings
+        env:
+          MODEL_CACHE_DIR: ~/.cache/ma-triage-embeddings
+        run: |
+          node server.mjs 11435 > "${RUNNER_TEMP}/embeddings.log" 2>&1 &
+          echo "$!" > "${RUNNER_TEMP}/embeddings.pid"
+          # The server listens only once the model is loaded, so an open port is
+          # the readiness signal. Poll for it, but give up the moment the process
+          # dies rather than burning the whole timeout on a corpse — a cold cache
+          # downloads ~600MB, so the budget has to be generous.
+          for _ in $(seq 1 180); do
+            if curl -sf -m 3 http://127.0.0.1:11435/health >/dev/null 2>&1; then
+              echo "ready"; exit 0
+            fi
+            if ! kill -0 "$(cat "${RUNNER_TEMP}/embeddings.pid")" 2>/dev/null; then
+              echo "::warning::embeddings server exited before becoming ready"
+              tail -20 "${RUNNER_TEMP}/embeddings.log"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::warning::embeddings server did not become ready in time"
+          tail -20 "${RUNNER_TEMP}/embeddings.log"
+        # Never fail the job here. An unreachable endpoint already looks like an
+        # unreachable provider to the Python: it logs, returns no vectors, and
+        # `cmd_index` reports the shortfall and exits non-zero on its own.
+        continue-on-error: true
+
       - name: Build RAG indexes
         working-directory: .github/scripts
         env:
@@ -63,11 +114,21 @@ jobs:
           TRIAGE_DRY_RUN: ${{ vars.TRIAGE_DRY_RUN }}
           TRIAGE_AI_ENABLED: ${{ vars.TRIAGE_AI_ENABLED }}
           TRIAGE_RAG_ENABLED: ${{ vars.TRIAGE_RAG_ENABLED }}
+          # Local endpoint. It serves the model's native width and ignores the
+          # OpenAI `dimensions` parameter, so no width is requested and the
+          # index records the width it actually stores.
+          TRIAGE_EMBED_ENDPOINT: http://127.0.0.1:11435/v1/embeddings
           TRIAGE_EMBED_MODEL: ${{ vars.TRIAGE_EMBED_MODEL }}
-          TRIAGE_EMBED_DIM: ${{ vars.TRIAGE_EMBED_DIM }}
+          TRIAGE_EMBED_DIM: "0"
+          # Small batches keep each request well inside the client's 60s
+          # timeout: the server embeds one input at a time to bound memory.
+          TRIAGE_EMBED_BATCH: "4"
           TRIAGE_DOCS_REPO: ${{ vars.TRIAGE_DOCS_REPO }}
           TRIAGE_DOCS_SITE: ${{ vars.TRIAGE_DOCS_SITE }}
           TRIAGE_INDEX_BRANCH: ${{ vars.TRIAGE_INDEX_BRANCH }}
           TRIAGE_INDEX_MAX_POSTS: ${{ vars.TRIAGE_INDEX_MAX_POSTS }}
-          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: python -m ma_triage index "$INDEX_TARGET"
+
+      - name: Stop the embeddings server
+        if: always()
+        run: kill "$(cat "${RUNNER_TEMP}/embeddings.pid")" 2>/dev/null || true
