@@ -1,15 +1,22 @@
-"""GitHub Models embeddings client + JSON index read/write.
+"""Embeddings client + JSON index read/write.
 
-The embeddings API is OpenAI-compatible and served from ``models.github.ai`` with
-the default ``GITHUB_TOKEN`` (``models: read`` permission) — no secret required.
+The client speaks OpenAI-compatible HTTP and takes its endpoint from
+``TRIAGE_EMBED_ENDPOINT``, so it does not care what serves it. In CI that is a
+process on the runner itself (see ``.github/embeddings``); nothing here assumes
+a hosted provider or a credential.
 
 Everything here is **defensive and cost-aware**:
 
-* embeddings are requested in batches, with a reduced ``dimensions`` to keep the
-  indexes small; any HTTP / network failure returns ``None`` (**skip-on-limit**)
-  so a rate-limited run never writes a broken index,
+* embeddings are requested in batches, and a failing batch costs only its own
+  inputs — the rest are kept, so a long backfill accumulates progress across
+  runs instead of discarding it,
 * index builds are **cached by content SHA** — an unchanged chunk is never
   re-embedded — and the caller skips the commit entirely when nothing changed,
+* a run that cannot embed everything still writes what it has, and reports the
+  shortfall; retrieval that ranks on text keeps working from the records while
+  ``cmd_index`` fails loudly about the missing vectors,
+* ``dim`` records the width the vectors actually have, not the width that was
+  requested, because a provider is free to ignore the ``dimensions`` parameter,
 * the indexes are plain JSON persisted on the orphan ``triage-index`` branch and
   read back at runtime through :meth:`GitHubClient.get_raw_file`.
 """
