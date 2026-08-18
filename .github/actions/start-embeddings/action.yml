@@ -93,3 +93,9 @@ runs:
           # same degraded state as an unreachable provider.
           [ -n "$model" ] && echo "TRIAGE_EMBED_MODEL=$model"
         } >> "$GITHUB_ENV"
+
+# NOTE: callers must not set TRIAGE_EMBED_DIM, _MODEL, _ENDPOINT or _BATCH in a
+# step's own `env:`. Step-level env beats GITHUB_ENV, so an entry there — even
+# one reading an unset repo variable, which yields an empty string — silently
+# overrides what this action exported. That is how the indexes came to be
+# rejected at runtime for having the width they were built with.
