@@ -61,12 +61,17 @@ class FakeGH:
         self._discussion_obj = discussion
         self._search_items = list(search_items or [])
         self.calls: list[tuple] = []
+        # Paths passed to get_raw_file, so a test can assert what was *not*
+        # fetched. A selector that stops retrieving an irrelevant file has no
+        # other visible effect whenever that file would have scored zero.
+        self.raw_reads: list[str] = []
 
     # reads -----------------------------------------------------------------
     def get_latest_release(self, repo="music-assistant/server"):
         return {"tag_name": self._latest_tag} if self._latest_tag else None
 
     def get_raw_file(self, repo, path, ref="main"):
+        self.raw_reads.append(path)
         if path in self._index_files:
             return self._index_files[path]
         if path in self._raw_files:
