@@ -15,13 +15,11 @@ This tier is entirely optional and defensive:
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 from typing import Any
 
 import requests
 
-from . import config
+from . import config, copilot
 from .models import (
     AIResult,
     Diagnostics,
@@ -447,35 +445,6 @@ def _prompt_from(payload: dict[str, Any]) -> str:
     return "\n\n".join(part for part in parts if part)
 
 
-def _chat_via_cli(payload: dict[str, Any], *, what: str) -> str | None:
-    """Assistant text from the Copilot CLI, or ``None`` with the reason logged.
-
-    The prompt goes in on **stdin**, never argv: it carries issue text written
-    by anyone, and argv is readable from the process table by every other step
-    in the job. The token is passed explicitly because the CLI will otherwise
-    find its own credentials, and a run that silently authenticates as
-    something else is worse than one that fails.
-    """
-    try:
-        completed = subprocess.run(
-            ["copilot", "-s", "--no-ask-user"],
-            input=_prompt_from(payload),
-            capture_output=True,
-            text=True,
-            timeout=config.AI_CLI_TIMEOUT,
-            env={**os.environ, "COPILOT_GITHUB_TOKEN": config.AI_CLI_TOKEN},
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        print(f"{what} skipped: {exc}")
-        return None
-    if completed.returncode != 0:
-        detail = (completed.stderr or completed.stdout or "").strip()[:200]
-        print(f"{what} skipped: copilot exited {completed.returncode}: {detail}")
-        return None
-    return completed.stdout
-
-
 def _chat(payload: dict[str, Any], *, token: str, what: str) -> dict[str, Any] | None:
     """One chat completion, decoded to the object the caller asked the model for.
 
@@ -486,7 +455,7 @@ def _chat(payload: dict[str, Any], *, token: str, what: str) -> dict[str, Any] |
     green build for sixteen days.
     """
     if config.AI_CLI_TOKEN:
-        content = _chat_via_cli(payload, what=what)
+        content = copilot.run(_prompt_from(payload), what=what)
         if content is None:
             return None
         try:
