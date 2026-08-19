@@ -49,15 +49,7 @@ _STOP_WORDS = frozenset(
         "version",
     }
 )
-_PROVIDER_FILES = (
-    "manifest.json",
-    "helpers.py",
-    "__init__.py",
-    "provider.py",
-    "client.py",
-    "ARCHITECTURE.md",
-    "strings.json",
-)
+_MAX_PROVIDER_FILES = 10
 _PACKAGING_HINTS = (
     "binary",
     "dependency",
@@ -129,6 +121,39 @@ def _origin_paths(
                 elif describes_report:
                     paths.add(path)
     return paths
+
+
+def _provider_paths(
+    gh: GitHubClient, domains: list[str], refs: list[str]
+) -> set[str]:
+    """The files in each reported provider's directory, shallowest first.
+
+    Providers carry parsers, models, auth helpers and subpackages under names of
+    their own choosing, so the directory is the only authority on what is there.
+    Depth orders the candidates because a provider's own modules sit beside its
+    ``__init__.py`` while subpackages hold the details.
+    """
+    if not domains:
+        return set()
+    roots = tuple(f"music_assistant/providers/{domain}/" for domain in domains)
+    for ref in refs:
+        tree = gh.get_tree(config.SERVER_REPO, ref)
+        if not tree:
+            continue
+        paths: set[str] = set()
+        for root in roots:
+            in_root = sorted(
+                (
+                    str(entry.get("path", ""))
+                    for entry in tree
+                    if entry.get("type") == "blob"
+                    and str(entry.get("path", "")).startswith(root)
+                ),
+                key=lambda path: (path.count("/"), path),
+            )
+            paths.update(in_root[:_MAX_PROVIDER_FILES])
+        return paths
+    return set()
 
 
 def _refs(version: str | None) -> list[str]:
@@ -211,16 +236,14 @@ def build(
         for label in sorted(provider_labels, key=str.lower)[:2]
     ]
     prefixes = tuple(f"music_assistant/providers/{domain}/" for domain in domains)
+    refs = _refs(version)
     paths = _origin_paths(diagnostics, issue_terms, provider_prefixes=prefixes)
-    for domain in domains:
-        root = f"music_assistant/providers/{domain}"
-        paths.update(f"{root}/{name}" for name in _PROVIDER_FILES)
+    paths.update(_provider_paths(gh, domains, refs))
 
     combined = f"{title}\n{body}".lower()
     if any(hint in combined for hint in _PACKAGING_HINTS):
         paths.update({"Dockerfile", "Dockerfile.base"})
 
-    refs = _refs(version)
     snippets: list[_Snippet] = []
     for path in sorted(paths):
         fetched = _fetch(gh, path, refs)
