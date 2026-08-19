@@ -238,6 +238,10 @@ class GitHubClient:
         if isinstance(data, dict):
             tree = data.get("tree")
             if isinstance(tree, list):
+                if data.get("truncated"):
+                    # Callers filter this list by prefix, so a truncated tree
+                    # reads as a directory with fewer files in it.
+                    log(f"Tree {repo}@{ref} was truncated by the API")
                 return tree
         return []
 

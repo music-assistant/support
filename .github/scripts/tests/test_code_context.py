@@ -25,8 +25,17 @@ def _diagnostics(*, origin=None, message="go-librespot binary not found on PATH"
     )
 
 
+def _tree(*paths):
+    """A git tree listing, which is how provider files are discovered."""
+    return [{"path": path, "type": "blob"} for path in paths]
+
+
 def test_build_retrieves_provider_and_packaging_evidence():
     gh = FakeGH(
+        tree=_tree(
+            "music_assistant/providers/spotify_connect/__init__.py",
+            "music_assistant/providers/spotify_connect/helpers.py",
+        ),
         raw_files={
             "music_assistant/providers/spotify_connect/helpers.py": (
                 "def get_go_librespot_binary():\n"
@@ -172,3 +181,80 @@ def test_build_keeps_reported_provider_paths_without_shared_vocabulary():
 
     assert _SONOS in evidence
     assert _HASS not in evidence
+
+
+def test_build_finds_provider_modules_by_listing_the_directory():
+    """Providers name their own modules; the directory is the only authority."""
+    parsers = "music_assistant/providers/opensubsonic/parsers.py"
+    gh = FakeGH(
+        tree=_tree(
+            "music_assistant/providers/opensubsonic/__init__.py",
+            parsers,
+        ),
+        raw_files={
+            parsers: (
+                "def parse_track(item):\n"
+                "    # Cover art id is optional in the Subsonic response.\n"
+                "    return Track(image=item.get('coverArt'))\n"
+            )
+        },
+    )
+
+    evidence = code_context.build(
+        gh,
+        title="Track cover art missing in playlist view",
+        body="The coverArt image never loads for tracks in a playlist.",
+        diagnostics=_diagnostics(message="cover art missing"),
+        provider_labels={"subsonic"},
+        version="2.9.7",
+    )
+
+    assert parsers in evidence
+
+
+def test_build_bounds_how_many_provider_files_it_will_fetch():
+    """A directory listing is unbounded; the fetch budget is not."""
+    many = [
+        f"music_assistant/providers/opensubsonic/mod{index:02d}.py"
+        for index in range(30)
+    ]
+    gh = FakeGH(tree=_tree(*many))
+
+    code_context.build(
+        gh,
+        title="Subsonic playback fails",
+        body="Playback stops immediately on every track.",
+        diagnostics=_diagnostics(message="playback failure"),
+        provider_labels={"subsonic"},
+        version="2.9.7",
+    )
+
+    fetched = [path for path in gh.raw_reads if path.startswith("music_assistant/")]
+    assert len(set(fetched)) <= code_context._MAX_PROVIDER_FILES
+
+
+def test_the_fetch_budget_is_per_provider_for_each_reported_provider():
+    """Two reported providers means two directories, and two budgets."""
+    tree = _tree(
+        *(
+            f"music_assistant/providers/{domain}/mod{index:02d}.py"
+            for domain in ("opensubsonic", "spotify")
+            for index in range(30)
+        )
+    )
+    gh = FakeGH(tree=tree)
+
+    code_context.build(
+        gh,
+        title="Subsonic and Spotify playback both fail",
+        body="Playback stops immediately on every track from either source.",
+        diagnostics=_diagnostics(message="playback failure"),
+        provider_labels={"subsonic", "spotify"},
+        version="2.9.7",
+    )
+
+    fetched = {path for path in gh.raw_reads if path.startswith("music_assistant/")}
+    assert len(fetched) <= code_context._MAX_PROVIDER_FILES * 2
+    for domain in ("opensubsonic", "spotify"):
+        in_domain = [p for p in fetched if f"/{domain}/" in p]
+        assert 0 < len(in_domain) <= code_context._MAX_PROVIDER_FILES
