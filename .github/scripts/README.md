@@ -157,6 +157,7 @@ Maintainer override labels: `triage/hold` (pause automation), `triage/skip`
 | `TRIAGE_AI_ENABLED` | `false` | `true` | Evidence-grounded GitHub Models assessment. |
 | `TRIAGE_RAG_ENABLED` | `true` | `true` (default) | Docs answers, pinned notices and related reports. |
 | `TRIAGE_DISCUSSIONS_ENABLED` | `false` | `true` | Docs-grounded triage on new/edited Discussions. |
+| `TRIAGE_CODE_TRACE_ENABLED` | `false` | `false` | Let the assessment model search a server checkout for the code behind a report. |
 | `TRIAGE_SCAN_LOGS` | `true` | `true` (default) | Redact and scan a raw log when diagnostics are absent. |
 | `TRIAGE_AI_MODEL` | `openai/gpt-4o-mini` | default | Evidence assessment model. |
 | `TRIAGE_ANSWER_MODEL` | `openai/gpt-4o` | default | Docs judge/answer model. |
@@ -211,6 +212,7 @@ tokens.
 
 | Workflow job | App-token permissions | Traced use |
 |---|---|---|
+| `triage.yml` / `trace` | none — built-in `GITHUB_TOKEN` only | Searches a checkout of the server repository under the direction of untrusted issue text. Holds `contents: read` and `copilot-requests: write`, no App token, and cannot comment. |
 | `triage.yml` / `analyze` | `contents: read`, `discussions: read`, `issues: write`, `metadata: read` | Read releases, manifests and RAG indexes; read pinned Discussions; search issues; read/update issues, labels, assignees and sticky comments. |
 | `triage.yml` / `respond` | `issues: write` | Read the issue and update response-state labels. |
 | `triage_scheduled.yml` / `sweep` | `issues: write` | List issues/comments, post reminders, update labels and close stale issues. |
