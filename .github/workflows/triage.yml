@@ -56,6 +56,10 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      # Reading the issue on a manual dispatch. A public repo can be read
+      # unauthenticated, but that shares a 60/hour limit across every runner on
+      # the same address, so it fails intermittently rather than never.
+      issues: read
       copilot-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,12 +78,30 @@ jobs:
         working-directory: .github/scripts
         run: pip install -r requirements.txt
       - uses: ./.github/actions/setup-copilot
+      - name: Fetch the reported problem
+        # A manual dispatch carries no issue payload. The token lives in this
+        # step alone: the step after it launches a model holding file-reading
+        # tools, and must not have a credential anywhere in its environment.
+        # `gh api` authenticated from GH_TOKEN leaves nothing on disk either —
+        # only `gh auth login` writes a credential file — so the fetched copy is
+        # the public issue text and nothing more.
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+        run: |
+          gh api "/repos/${REPOSITORY}/issues/${ISSUE_NUMBER}" \
+            --jq '{title, body}' > "${RUNNER_TEMP}/issue.json"
       - name: Trace the code behind the report
         working-directory: .github/scripts
         env:
           # Untrusted content — safe because it is an env var, not shell input.
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
+          # Only read when the payload above is empty, which is the dispatch
+          # case; an issue event always carries a title.
+          TRIAGE_ISSUE_FILE: ${{ runner.temp }}/issue.json
           TRIAGE_CODE_TRACE_ENABLED: ${{ vars.TRIAGE_CODE_TRACE_ENABLED }}
           TRIAGE_SERVER_CHECKOUT: ${{ github.workspace }}/server
           TRIAGE_TRACED_PATHS: ${{ runner.temp }}/traced-paths.json
