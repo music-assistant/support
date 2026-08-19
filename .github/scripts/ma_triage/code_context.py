@@ -1,10 +1,12 @@
 """Bounded retrieval of relevant code from the official server repository.
 
-Tier-1 should not classify a report from its wording alone. For one or two
-reported providers, this module fetches a small fixed set of likely source files
-at the reported release tag (falling back to ``dev``), extracts the line windows
-that overlap the issue/diagnostics vocabulary, and returns a tightly capped
-evidence block for the model.
+Tier-1 should not classify a report from its wording alone. Candidate files come
+from three places — the directories of the providers the reporter named, the
+paths in a traceback that matches the reported symptom, and, when tracing is
+enabled, a search of the source by the model itself. Whatever chose them, this
+module fetches their contents at the reported release tag (falling back to
+``dev``), keeps the line windows that overlap the issue vocabulary, and returns
+a tightly capped evidence block that says how each file was chosen.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from . import config
+from . import code_trace, config
 from .gh import GitHubClient, log
 from .models import Diagnostics, ExceptionEntry
 from .providers import provider_manifest_domain
@@ -68,6 +70,10 @@ class _Snippet:
     ref: str
     score: int
     text: str
+    # How the path was chosen. A file the traceback named is hard evidence; one
+    # a search picked out is a candidate, and the model has to be able to tell
+    # them apart before it weighs either against the reporter's account.
+    origin: str
 
 
 def _tokens(text: str) -> set[str]:
@@ -244,6 +250,9 @@ def build(
     if any(hint in combined for hint in _PACKAGING_HINTS):
         paths.update({"Dockerfile", "Dockerfile.base"})
 
+    traced = code_trace.load()
+    paths.update(traced)
+
     snippets: list[_Snippet] = []
     for path in sorted(paths):
         fetched = _fetch(gh, path, refs)
@@ -252,12 +261,23 @@ def build(
         ref, content = fetched
         score, excerpt = _excerpt(content, terms)
         if score and excerpt:
-            snippets.append(_Snippet(path=path, ref=ref, score=score, text=excerpt))
+            snippets.append(
+                _Snippet(
+                    path=path,
+                    ref=ref,
+                    score=score,
+                    text=excerpt,
+                    origin="searched" if path in traced else "reported",
+                )
+            )
 
     snippets.sort(key=lambda snippet: (-snippet.score, snippet.path))
     rendered: list[str] = []
     for snippet in snippets[: config.MAX_CODE_CONTEXT_FILES]:
-        block = f"SOURCE: {snippet.path} @ {snippet.ref}\n{snippet.text}"
+        block = (
+            f"SOURCE: {snippet.path} @ {snippet.ref} ({snippet.origin})\n"
+            f"{snippet.text}"
+        )
         projected = sum(len(item) + 2 for item in rendered) + len(block)
         if projected > config.MAX_CODE_CONTEXT_CHARS:
             break

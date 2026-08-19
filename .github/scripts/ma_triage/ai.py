@@ -206,7 +206,7 @@ def _assessment_evidence(
 
     if code_context:
         parts.append(
-            "OFFICIAL SERVER CODE (authoritative excerpts):\n"
+            "OFFICIAL SERVER CODE (candidate excerpts, verify relevance):\n"
             + fenced(code_context, max_len=config.MAX_CODE_CONTEXT_CHARS)
         )
     return "\n\n".join(parts)
