@@ -105,12 +105,19 @@ jobs:
           TRIAGE_CODE_TRACE_ENABLED: ${{ vars.TRIAGE_CODE_TRACE_ENABLED }}
           TRIAGE_SERVER_CHECKOUT: ${{ github.workspace }}/server
           TRIAGE_TRACED_PATHS: ${{ runner.temp }}/traced-paths.json
-          # The built-in token, never the personal PAT that `analyze` may fall
-          # back to. `cat` is one of the tools this job grants, and a process
-          # that can read files can read its own `/proc/self/environ`, so this
-          # job must hold only a credential scoped to this run. That ties
-          # tracing to org Copilot seats, which is why it ships disabled.
-          COPILOT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Falls through to the workflow token once org Copilot seats exist,
+          # so moving off the personal PAT is a secret deletion. Matches the
+          # `analyze` job, which already runs on the same credential.
+          #
+          # KNOWN EXPOSURE while the PAT is the credential in use: this job
+          # grants the model file-reading tools, and `/proc/self/environ` is a
+          # file, so the token in this environment is readable by the model
+          # that issue text is steering. It cannot be sent anywhere from here —
+          # no granted binary opens a network connection, and the only output
+          # channel is a path list filtered against the checkout — but it can
+          # be read into a prompt. The built-in token closes that off, and is
+          # refused until the org configures Copilot seats.
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT || secrets.GITHUB_TOKEN }}
         run: python -m ma_triage trace
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

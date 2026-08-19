@@ -212,7 +212,7 @@ tokens.
 
 | Workflow job | App-token permissions | Traced use |
 |---|---|---|
-| `triage.yml` / `trace` | none — built-in `GITHUB_TOKEN` only | Searches a checkout of the server repository under the direction of untrusted issue text. Holds `contents: read`, `issues: read` and `copilot-requests: write`, no App token, and cannot comment. The read token is scoped to the step that fetches the issue, so it is absent from the environment that launches the model. |
+| `triage.yml` / `trace` | none — built-in `GITHUB_TOKEN` only | Searches a checkout of the server repository under the direction of untrusted issue text. Holds `contents: read`, `issues: read` and `copilot-requests: write`, no App token, and cannot comment. The read token is scoped to the step that fetches the issue, so it is absent from the environment that launches the model. The Copilot credential is not: while it is a personal PAT rather than the org-billed built-in token, it sits in the environment of the process the model runs in, and that model has file-reading tools. |
 | `triage.yml` / `analyze` | `contents: read`, `discussions: read`, `issues: write`, `metadata: read` | Read releases, manifests and RAG indexes; read pinned Discussions; search issues; read/update issues, labels, assignees and sticky comments. |
 | `triage.yml` / `respond` | `issues: write` | Read the issue and update response-state labels. |
 | `triage_scheduled.yml` / `sweep` | `issues: write` | List issues/comments, post reminders, update labels and close stale issues. |
