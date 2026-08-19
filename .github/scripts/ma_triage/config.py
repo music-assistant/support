@@ -309,6 +309,10 @@ CODE_TRACE_CHECKOUT = _env_str("TRIAGE_SERVER_CHECKOUT", "")
 # searches a tree under the direction of public issue text holds no token that
 # can write to the repository.
 CODE_TRACE_PATHS_FILE = _env_str("TRIAGE_TRACED_PATHS", "")
+# The reported problem, fetched to a file for the trace job. A manual dispatch
+# carries no issue payload, so the file is the only source of the issue text
+# there, and reading one keeps that job free of an API client and its token.
+CODE_TRACE_ISSUE_FILE = _env_str("TRIAGE_ISSUE_FILE", "")
 # The report as handed to the tracer. Smaller than MAX_AI_INPUT_CHARS because
 # the tracer gets only the report, never the diagnostics or retrieved evidence.
 MAX_TRACE_INPUT_CHARS = 6000

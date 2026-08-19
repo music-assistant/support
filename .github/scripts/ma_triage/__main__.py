@@ -372,6 +372,34 @@ def _diag_status(result: TriageResult) -> str:
     return "missing"
 
 
+def _reported_problem() -> tuple[str, str]:
+    """The issue's title and body for the trace job.
+
+    The event payload is used when present. A manual dispatch carries none, so
+    the workflow fetches the issue to a file and this reads that instead.
+
+    Returns empty strings only when neither source has anything, and says which
+    one was missing: this command cannot fail, so its log is the only place a
+    broken wiring can show itself.
+    """
+    title = _env("ISSUE_TITLE")
+    body = _env("ISSUE_BODY")
+    if title or body:
+        return title, body
+    if not config.CODE_TRACE_ISSUE_FILE:
+        log("No issue payload, and TRIAGE_ISSUE_FILE names no fetched copy")
+        return "", ""
+    try:
+        issue = json.loads(Path(config.CODE_TRACE_ISSUE_FILE).read_text())
+    except (OSError, ValueError) as exc:
+        log(f"Could not read the fetched issue: {exc}")
+        return "", ""
+    if not isinstance(issue, dict):
+        log(f"Fetched issue was {type(issue).__name__}, expected an object")
+        return "", ""
+    return str(issue.get("title") or ""), str(issue.get("body") or "")
+
+
 def cmd_trace() -> int:
     """Find the code behind the reported problem, for the triage job to use.
 
@@ -391,7 +419,13 @@ def cmd_trace() -> int:
         Path(destination).write_text("[]")
         return 0
 
-    body = os.environ.get("ISSUE_BODY", "")
+    title, body = _reported_problem()
+    if not (title or body):
+        # Distinct from the skip below: nothing arrived to look at, which is a
+        # wiring fault rather than a property of the report.
+        log("Code tracing skipped: the reported problem never reached this job")
+        Path(destination).write_text("[]")
+        return 0
     if not find_diagnostics_url(body):
         # Without diagnostics the report never reaches the assessment, so
         # anything found here would have no consumer.
@@ -399,7 +433,7 @@ def cmd_trace() -> int:
         Path(destination).write_text("[]")
         return 0
 
-    paths = code_trace.trace(title=os.environ.get("ISSUE_TITLE", ""), body=body)
+    paths = code_trace.trace(title=title, body=body)
     Path(destination).write_text(json.dumps(paths, indent=1))
     log(f"Traced {len(paths)} candidate path(s)")
     return 0

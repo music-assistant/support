@@ -257,3 +257,120 @@ def test_the_trace_command_skips_a_report_with_no_diagnostics(monkeypatch, tmp_p
     )
     assert code == 0
     assert written == []
+
+
+def _run_with_capture(monkeypatch, tmp_path, *, title=""):
+    """Run `cmd_trace` and report the title and body the tracer was handed."""
+    from ma_triage import __main__ as main
+
+    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(tmp_path / "out.json"))
+    monkeypatch.setattr(config, "CODE_TRACE_ENABLED", True)
+    monkeypatch.setattr(config, "CODE_TRACE_CHECKOUT", str(tmp_path))
+    if title:
+        monkeypatch.setenv("ISSUE_TITLE", title)
+    seen = {}
+
+    def fake_trace(*, title, body):
+        seen["title"] = title
+        seen["body"] = body
+        return []
+
+    monkeypatch.setattr(main.code_trace, "trace", fake_trace)
+    main.cmd_trace()
+    return seen
+
+
+def test_the_trace_command_reads_the_issue_the_workflow_fetched(
+    monkeypatch, tmp_path
+):
+    """A manual dispatch carries no issue payload, so the environment is empty
+    on exactly the path a maintainer uses to test."""
+    from ma_triage import __main__ as main
+
+    fetched = tmp_path / "issue.json"
+    fetched.write_text(
+        json.dumps(
+            {
+                "title": "Playback stops after ten minutes",
+                "body": "Logs: https://github.com/user-attachments/files/1/diag.json",
+            }
+        )
+    )
+    destination = tmp_path / "traced-paths.json"
+    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(destination))
+    monkeypatch.setattr(config, "CODE_TRACE_ISSUE_FILE", str(fetched))
+    monkeypatch.setattr(config, "CODE_TRACE_ENABLED", True)
+    monkeypatch.setattr(config, "CODE_TRACE_CHECKOUT", str(tmp_path))
+    monkeypatch.delenv("ISSUE_TITLE", raising=False)
+    monkeypatch.delenv("ISSUE_BODY", raising=False)
+    seen = {}
+
+    def fake_trace(*, title, body):
+        seen["title"] = title
+        seen["body"] = body
+        return ["music_assistant/helpers/util.py"]
+
+    monkeypatch.setattr(main.code_trace, "trace", fake_trace)
+
+    assert main.cmd_trace() == 0
+    assert seen["title"] == "Playback stops after ten minutes"
+    assert json.loads(destination.read_text()) == ["music_assistant/helpers/util.py"]
+
+
+def test_the_event_payload_wins_over_the_fetched_copy(monkeypatch, tmp_path):
+    """An issue event already carries the text; the fetch is for dispatch only."""
+    from ma_triage import __main__ as main
+
+    fetched = tmp_path / "issue.json"
+    fetched.write_text(json.dumps({"title": "stale", "body": "stale"}))
+    monkeypatch.setattr(config, "CODE_TRACE_ISSUE_FILE", str(fetched))
+    monkeypatch.setenv("ISSUE_BODY", "https://github.com/user-attachments/files/1/d.json")
+    seen = _run_with_capture(monkeypatch, tmp_path, title="from the event")
+
+    assert seen["title"] == "from the event"
+    assert "stale" not in seen["body"]
+
+
+def test_an_unreadable_fetched_issue_reports_the_wiring_not_the_report(
+    monkeypatch, tmp_path, capsys
+):
+    """This command cannot fail, so its log is the only place a broken wiring
+    can show itself — and it must not read as a property of the report."""
+    from ma_triage import __main__ as main
+
+    broken = tmp_path / "issue.json"
+    broken.write_text("{not json")
+    destination = tmp_path / "traced-paths.json"
+    monkeypatch.setattr(config, "CODE_TRACE_ISSUE_FILE", str(broken))
+    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(destination))
+    monkeypatch.setattr(config, "CODE_TRACE_ENABLED", True)
+    monkeypatch.setattr(config, "CODE_TRACE_CHECKOUT", str(tmp_path))
+    monkeypatch.delenv("ISSUE_TITLE", raising=False)
+    monkeypatch.delenv("ISSUE_BODY", raising=False)
+
+    assert main.cmd_trace() == 0
+    err = capsys.readouterr().err
+    assert "Could not read the fetched issue" in err
+    assert "never reached this job" in err
+    assert "No diagnostics attached" not in err
+    assert json.loads(destination.read_text()) == []
+
+
+def test_no_payload_and_no_fetched_copy_names_the_missing_wiring(
+    monkeypatch, tmp_path, capsys
+):
+    """The configuration as shipped before the fetch step existed."""
+    from ma_triage import __main__ as main
+
+    destination = tmp_path / "traced-paths.json"
+    monkeypatch.setattr(config, "CODE_TRACE_ISSUE_FILE", "")
+    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(destination))
+    monkeypatch.setattr(config, "CODE_TRACE_ENABLED", True)
+    monkeypatch.setattr(config, "CODE_TRACE_CHECKOUT", str(tmp_path))
+    monkeypatch.delenv("ISSUE_TITLE", raising=False)
+    monkeypatch.delenv("ISSUE_BODY", raising=False)
+
+    assert main.cmd_trace() == 0
+    err = capsys.readouterr().err
+    assert "TRIAGE_ISSUE_FILE" in err
+    assert "No diagnostics attached" not in err
