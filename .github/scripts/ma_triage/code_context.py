@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from . import config
 from .gh import GitHubClient, log
-from .models import Diagnostics
+from .models import Diagnostics, ExceptionEntry
 from .providers import provider_manifest_domain
 
 _TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_.\-/]{3,}")
@@ -86,20 +86,17 @@ def _tokens(text: str) -> set[str]:
     }
 
 
-def _terms(title: str, body: str, diag: Diagnostics) -> set[str]:
-    issue_terms = _tokens(f"{title}\n{body}")
+def _exc_text(exc: ExceptionEntry) -> str:
+    return "\n".join(
+        [exc.exc_type, exc.message or "", exc.origin or "", exc.traceback or ""]
+    )
+
+
+def _terms(diag: Diagnostics, issue_terms: set[str]) -> set[str]:
+    """Scoring vocabulary: the report, plus exceptions that corroborate it."""
     terms = set(issue_terms)
     for exc in diag.exceptions:
-        exc_terms = _tokens(
-            "\n".join(
-                [
-                    exc.exc_type,
-                    exc.message or "",
-                    exc.origin or "",
-                    exc.traceback or "",
-                ]
-            )
-        )
+        exc_terms = _tokens(_exc_text(exc))
         # Diagnostics often contain unrelated background exceptions. Only let an
         # exception steer code retrieval when it overlaps the reported symptom.
         if issue_terms & exc_terms:
@@ -109,15 +106,19 @@ def _terms(title: str, body: str, diag: Diagnostics) -> set[str]:
 
 def _origin_paths(
     diag: Diagnostics,
-    terms: set[str],
+    issue_terms: set[str],
     *,
     provider_prefixes: tuple[str, ...],
 ) -> set[str]:
+    """Source paths named by the exceptions, scoped to the reported problem.
+
+    A path inside a reported provider's directory is evidence on its own. With
+    no provider to scope by, the exception earns its place only by overlapping
+    the reporter's own words.
+    """
     paths: set[str] = set()
     for exc in diag.exceptions:
-        exc_text = "\n".join(
-            [exc.exc_type, exc.message or "", exc.origin or "", exc.traceback or ""]
-        )
+        describes_report = bool(issue_terms & _tokens(_exc_text(exc)))
         for value in (exc.origin, exc.traceback):
             if not value:
                 continue
@@ -125,7 +126,7 @@ def _origin_paths(
                 if provider_prefixes:
                     if path.startswith(provider_prefixes):
                         paths.add(path)
-                elif _tokens(exc_text) & terms:
+                elif describes_report:
                     paths.add(path)
     return paths
 
@@ -200,7 +201,8 @@ def build(
     version: str | None,
 ) -> str:
     """Return relevant official-code excerpts, or ``""`` on no useful match."""
-    terms = _terms(title, body, diagnostics)
+    issue_terms = _tokens(f"{title}\n{body}")
+    terms = _terms(diagnostics, issue_terms)
     if not terms:
         return ""
 
@@ -209,7 +211,7 @@ def build(
         for label in sorted(provider_labels, key=str.lower)[:2]
     ]
     prefixes = tuple(f"music_assistant/providers/{domain}/" for domain in domains)
-    paths = _origin_paths(diagnostics, terms, provider_prefixes=prefixes)
+    paths = _origin_paths(diagnostics, issue_terms, provider_prefixes=prefixes)
     for domain in domains:
         root = f"music_assistant/providers/{domain}"
         paths.update(f"{root}/{name}" for name in _PROVIDER_FILES)
