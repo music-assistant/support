@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
+from collections.abc import Sequence
 
 from . import config
 
@@ -28,12 +29,28 @@ from . import config
 _ENV_PASSTHROUGH = ("PATH",)
 
 
-def run(prompt: str, *, what: str) -> str | None:
+def run(
+    prompt: str,
+    *,
+    what: str,
+    tools: Sequence[str] = (),
+    cwd: str | None = None,
+    timeout: int | None = None,
+) -> str | None:
     """Assistant text for ``prompt``, or ``None`` with the reason logged.
 
     ``what`` names the caller in that message, so a skipped step says which one.
+
+    ``tools`` are the tool permissions to grant, and granting one is a security
+    decision rather than a convenience. ``--allow-tool`` matches on the **binary
+    name, not on argv**: an allowlist of ``shell(find)`` alone is enough to run
+    ``find -exec <anything>``. Only name a binary with no way to execute another
+    — which rules out ``find`` (``-exec``), GNU ``sed`` (``e`` and ``s///e``)
+    and ``rg`` (``--pre``).
     """
     args = ["copilot", "-s", "--no-ask-user", "--disable-builtin-mcps"]
+    for tool in tools:
+        args += ["--allow-tool", tool]
     try:
         with tempfile.TemporaryDirectory(prefix="copilot-home-") as home:
             completed = subprocess.run(
@@ -41,8 +58,9 @@ def run(prompt: str, *, what: str) -> str | None:
                 input=prompt,
                 capture_output=True,
                 text=True,
-                timeout=config.AI_CLI_TIMEOUT,
+                timeout=timeout or config.AI_CLI_TIMEOUT,
                 env=_environment(home),
+                cwd=cwd,
                 check=False,
             )
     except (OSError, subprocess.SubprocessError) as exc:

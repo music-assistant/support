@@ -297,6 +297,22 @@ RAG_ENABLED = _flag("TRIAGE_RAG_ENABLED", True)
 # ``AI_ENABLED and RAG_ENABLED and DISCUSSIONS_ENABLED``.
 DISCUSSIONS_ENABLED = _flag("TRIAGE_DISCUSSIONS_ENABLED", False)
 
+# Code tracing lets the chat model search a checkout of the server repository
+# for the code behind a report. Its paths join those from the provider label and
+# the traceback rather than replacing them. Defaults OFF so merging it is
+# dormant, and needs a checkout the workflow has placed on disk — both must be
+# set for tracing to run.
+CODE_TRACE_ENABLED = _flag("TRIAGE_CODE_TRACE_ENABLED", False)
+CODE_TRACE_CHECKOUT = _env_str("TRIAGE_SERVER_CHECKOUT", "")
+# Where the trace job left its result for the triage job to pick up. Producing
+# the paths and using them run in different jobs on purpose: the process that
+# searches a tree under the direction of public issue text holds no token that
+# can write to the repository.
+CODE_TRACE_PATHS_FILE = _env_str("TRIAGE_TRACED_PATHS", "")
+# The report as handed to the tracer. Smaller than MAX_AI_INPUT_CHARS because
+# the tracer gets only the report, never the diagnostics or retrieved evidence.
+MAX_TRACE_INPUT_CHARS = 6000
+
 # Public docs repository (Astro/Starlight). Readable with the default
 # GITHUB_TOKEN — it is public, so no secret is required.
 DOCS_REPO = _env_str("TRIAGE_DOCS_REPO", "music-assistant/music-assistant.io")
