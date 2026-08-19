@@ -187,3 +187,73 @@ def test_load_survives_a_corrupt_artifact(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(recorded))
     assert code_trace.load() == []
     assert "Traced paths ignored" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------- #
+# The `trace` subcommand, which is the whole of the separate job.
+# --------------------------------------------------------------------------- #
+def _run_command(monkeypatch, tmp_path, *, body, enabled=True, traced=None):
+    from ma_triage import __main__ as main
+
+    destination = tmp_path / "traced-paths.json"
+    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(destination))
+    monkeypatch.setattr(config, "CODE_TRACE_ENABLED", enabled)
+    monkeypatch.setattr(config, "CODE_TRACE_CHECKOUT", str(tmp_path))
+    monkeypatch.setenv("ISSUE_TITLE", "Players drop out")
+    monkeypatch.setenv("ISSUE_BODY", body)
+    monkeypatch.setattr(
+        main.code_trace, "trace", lambda **kwargs: list(traced or [])
+    )
+    code = main.cmd_trace()
+    written = json.loads(destination.read_text()) if destination.exists() else None
+    return code, written
+
+
+def test_the_trace_command_needs_no_github_token(monkeypatch, tmp_path):
+    """It reads a local checkout and writes a local file, nothing more — so the
+    job that runs it is never handed a credential."""
+    from ma_triage import __main__ as main
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(tmp_path / "out.json"))
+    monkeypatch.setattr(config, "CODE_TRACE_ENABLED", False)
+    assert main.main(["trace"]) == 0
+
+
+def test_the_trace_command_records_what_it_found(monkeypatch, tmp_path):
+    code, written = _run_command(
+        monkeypatch,
+        tmp_path,
+        body="Logs attached https://github.com/user-attachments/files/1/diag.json",
+        traced=["music_assistant/helpers/util.py"],
+    )
+    assert code == 0
+    assert written == ["music_assistant/helpers/util.py"]
+
+
+def test_the_trace_command_writes_an_empty_result_when_disabled(
+    monkeypatch, tmp_path
+):
+    """`analyze` downloads this artifact; absent and empty must mean the same."""
+    code, written = _run_command(
+        monkeypatch,
+        tmp_path,
+        body="Logs attached https://github.com/user-attachments/files/1/diag.json",
+        enabled=False,
+        traced=["never/used.py"],
+    )
+    assert code == 0
+    assert written == []
+
+
+def test_the_trace_command_skips_a_report_with_no_diagnostics(monkeypatch, tmp_path):
+    """Without diagnostics the report never reaches the assessment, so a traced
+    path would have no consumer and the model call would be spent for nothing."""
+    code, written = _run_command(
+        monkeypatch,
+        tmp_path,
+        body="It just stopped working, no file attached.",
+        traced=["music_assistant/helpers/util.py"],
+    )
+    assert code == 0
+    assert written == []

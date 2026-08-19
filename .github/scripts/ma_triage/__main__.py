@@ -8,6 +8,7 @@ shell interpolation of untrusted issue content):
     python -m ma_triage respond     # react to a new issue comment
     python -m ma_triage sweep       # scheduled reminder / auto-close pass
     python -m ma_triage discussion  # answer a new/edited discussion (RAG)
+    python -m ma_triage trace       # find the code behind an issue (no token)
 
 Required env: ``GITHUB_TOKEN``. Issue subcommands also read ``ISSUE_NUMBER``
 (and, for triage, ``ISSUE_TITLE`` / ``ISSUE_BODY``). Feature flags come from the
@@ -16,15 +17,18 @@ Required env: ``GITHUB_TOKEN``. Issue subcommands also read ``ISSUE_NUMBER``
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from . import (
     ai,
     analyze,
     code_context,
+    code_trace,
     comment,
     config,
     embeddings,
@@ -368,6 +372,39 @@ def _diag_status(result: TriageResult) -> str:
     return "missing"
 
 
+def cmd_trace() -> int:
+    """Find the code behind the reported problem, for the triage job to use.
+
+    Runs in a job of its own, holding no credential that can write to the
+    repository, because it searches a tree under the direction of issue text
+    written by the public. Its whole output is a list of paths on disk.
+
+    Always exits 0: tracing is an optimisation, and a trace that fails must
+    leave triage to run on its deterministic selection rather than block it.
+    """
+    destination = config.CODE_TRACE_PATHS_FILE
+    if not destination:
+        log("TRIAGE_TRACED_PATHS is required to record traced paths")
+        return 0
+    if not code_trace.enabled():
+        log("Code tracing is disabled")
+        Path(destination).write_text("[]")
+        return 0
+
+    body = os.environ.get("ISSUE_BODY", "")
+    if not find_diagnostics_url(body):
+        # Without diagnostics the report never reaches the assessment, so
+        # anything found here would have no consumer.
+        log("No diagnostics attached — nothing would read a traced path")
+        Path(destination).write_text("[]")
+        return 0
+
+    paths = code_trace.trace(title=os.environ.get("ISSUE_TITLE", ""), body=body)
+    Path(destination).write_text(json.dumps(paths, indent=1))
+    log(f"Traced {len(paths)} candidate path(s)")
+    return 0
+
+
 def cmd_respond(gh: GitHubClient) -> int:
     number = int(_env("ISSUE_NUMBER"))
     actor = _env("COMMENT_AUTHOR_LOGIN")
@@ -708,10 +745,17 @@ def main(argv: list[str] | None = None) -> int:
     if not argv:
         log(
             "usage: python -m ma_triage "
-            "{triage|respond|sweep|index|index-append|discussion|discussion-append}"
+            "{triage|trace|respond|sweep|index|index-append|"
+            "discussion|discussion-append}"
         )
         return 2
     command = argv[0]
+
+    # Tracing reads a local checkout and writes a local file. Dispatched before
+    # the client is built because it needs no API access, and a job that needs
+    # no token should not be handed one.
+    if command == "trace":
+        return cmd_trace()
 
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token:
