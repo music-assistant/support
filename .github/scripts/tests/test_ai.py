@@ -208,55 +208,35 @@ def test_prompt_from_carries_the_schema_as_instructions():
     assert "JSON Schema" in text and '"required":["summary"]' in text
 
 
-def test_chat_via_cli_sends_the_prompt_on_stdin_not_argv(monkeypatch):
-    """Issue text is written by anyone, and argv is readable from the process
-    table by every other step in the job."""
+def test_chat_decodes_a_fenced_reply_from_the_cli(monkeypatch):
+    """The CLI has no `response_format`, so a fence has to survive the parse."""
     monkeypatch.setattr(config, "AI_CLI_TOKEN", "tok")
     seen = {}
 
-    def fake_run(args, **kwargs):
-        seen["args"] = args
-        seen["input"] = kwargs.get("input")
-        seen["env"] = kwargs.get("env")
-        class R:
-            returncode = 0
-            stdout = '```json\n{"answers_question": true}\n```'
-            stderr = ""
-        return R()
+    def fake_run(prompt, *, what):
+        seen["prompt"] = prompt
+        return '```json\n{"answers_question": true}\n```'
 
-    monkeypatch.setattr(ai.subprocess, "run", fake_run)
+    monkeypatch.setattr(ai.copilot, "run", fake_run)
+
     assert ai._chat(_payload(), token="unused", what="X") == {"answers_question": True}
-    assert seen["args"] == ["copilot", "-s", "--no-ask-user"]
-    assert not any("ISSUE BODY" in a for a in seen["args"])
-    assert "ISSUE BODY" in seen["input"]
-    # Passed explicitly: the CLI finds its own credentials otherwise, and
-    # authenticating as something else silently is worse than failing.
-    assert seen["env"]["COPILOT_GITHUB_TOKEN"] == "tok"
+    assert "ISSUE BODY" in seen["prompt"]
 
 
-def test_chat_via_cli_skips_on_a_non_zero_exit(monkeypatch, capsys):
+def test_chat_skips_when_the_cli_reports_a_failure(monkeypatch):
+    """The runner logs the reason; `_chat` only has to degrade to a skip."""
     monkeypatch.setattr(config, "AI_CLI_TOKEN", "tok")
-
-    class R:
-        returncode = 1
-        stdout = ""
-        stderr = "Access denied by policy settings"
-
-    monkeypatch.setattr(ai.subprocess, "run", lambda *a, **k: R())
+    monkeypatch.setattr(ai.copilot, "run", lambda *a, **k: None)
     assert ai._chat(_payload(), token="unused", what="Doc-answer judge") is None
-    assert "Access denied by policy settings" in capsys.readouterr().out
 
 
-def test_chat_via_cli_skips_when_the_reply_is_not_json(monkeypatch, capsys):
+def test_chat_skips_when_the_reply_is_not_json(monkeypatch, capsys):
     """Losing schema enforcement means prose is possible; it must not raise."""
     monkeypatch.setattr(config, "AI_CLI_TOKEN", "tok")
-
-    class R:
-        returncode = 0
-        stdout = "I think the issue is probably a network problem."
-        stderr = ""
-
-    monkeypatch.setattr(ai.subprocess, "run", lambda *a, **k: R())
+    monkeypatch.setattr(
+        ai.copilot, "run",
+        lambda *a, **k: "I think the issue is probably a network problem.",
+    )
     assert ai._chat(_payload(), token="unused", what="AI assessment") is None
     assert "was not JSON" in capsys.readouterr().out
 
