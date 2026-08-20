@@ -52,6 +52,13 @@ _STOP_WORDS = frozenset(
     }
 )
 _MAX_PROVIDER_FILES = 10
+# One file's share of the evidence block, so the per-file and total budgets
+# cannot contradict each other.
+_EXCERPT_CHARS = config.MAX_CODE_CONTEXT_CHARS // config.MAX_CODE_CONTEXT_FILES
+# The best-scoring window keeps its surroundings; later ones are tightened, so
+# the budget reaches more of the file than it reaches around one line of it.
+_EXCERPT_RADIUS = 3
+_EXCERPT_RADIUS_TAIL = 1
 _PACKAGING_HINTS = (
     "binary",
     "dependency",
@@ -177,37 +184,46 @@ def _line_score(line: str, terms: set[str]) -> int:
     return sum(min(len(term), 24) for term in terms if term in lowered)
 
 
-def _excerpt(text: str, terms: set[str], max_chars: int = 1400) -> tuple[int, str]:
+def _excerpt(
+    text: str, terms: set[str], max_chars: int = _EXCERPT_CHARS
+) -> tuple[int, str]:
+    """Score a file against ``terms``, and quote the lines that earned it.
+
+    Returns ``(0, "")`` when no line matches. ``max_chars`` bounds the quoted
+    text and is the only limit on how many windows it holds.
+    """
     lines = text.splitlines()
+    scored = [(_line_score(line, terms), index) for index, line in enumerate(lines)]
+    # Highest score first; among equals the earliest line, which is where a
+    # module's public surface sits.
     ranked = sorted(
-        (
-            (_line_score(line, terms), index)
-            for index, line in enumerate(lines)
-        ),
-        reverse=True,
+        ((score, index) for score, index in scored if score > 0),
+        key=lambda item: (-item[0], item[1]),
     )
-    ranked = [(score, index) for score, index in ranked if score > 0]
     if not ranked:
         return 0, ""
 
     selected: set[int] = set()
-    blocks: list[str] = []
+    blocks: list[tuple[int, str]] = []
     selected_scores: list[int] = []
     used = 0
-    for score, index in ranked[:8]:
-        if index in selected:
+    for score, index in ranked:
+        radius = _EXCERPT_RADIUS if not blocks else _EXCERPT_RADIUS_TAIL
+        window = range(max(0, index - radius), min(len(lines), index + radius + 1))
+        if selected.intersection(window):
+            # Overlapping windows would quote the same line in two blocks, and
+            # split one contiguous region into what reads as several places.
             continue
-        window = range(max(0, index - 3), min(len(lines), index + 4))
         rendered = "\n".join(f"L{line + 1}: {lines[line]}" for line in window)
         if used + len(rendered) + 2 > max_chars:
             continue
-        blocks.append(rendered)
+        blocks.append((index, rendered))
         selected_scores.append(score)
         selected.update(window)
         used += len(rendered) + 2
     if not blocks:
         return 0, ""
-    excerpt = "\n\n".join(blocks)
+    excerpt = "\n\n".join(text for _, text in sorted(blocks))
     distinct_matches = sum(1 for term in terms if term in excerpt.lower())
     return max(selected_scores) + distinct_matches * 5, excerpt
 

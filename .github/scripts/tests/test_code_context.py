@@ -1,5 +1,7 @@
 """Tests for bounded official server-code evidence retrieval."""
 
+import re
+
 from conftest import FakeGH
 from ma_triage import code_context, config
 from ma_triage.models import Diagnostics, ExceptionEntry, SystemInfo
@@ -258,3 +260,73 @@ def test_the_fetch_budget_is_per_provider_for_each_reported_provider():
     for domain in ("opensubsonic", "spotify"):
         in_domain = [p for p in fetched if f"/{domain}/" in p]
         assert 0 < len(in_domain) <= code_context._MAX_PROVIDER_FILES
+
+
+def test_excerpt_breaks_a_score_tie_toward_the_top_of_the_file():
+    """Among lines that score equally, the earliest is the one quoted."""
+    lines = ["filler"] * 400
+    lines[10] = "def set_shuffle(queue_id, shuffle_enabled):"
+    for index in range(300, 340):
+        lines[index] = "queue.shuffle_enabled = shuffle_enabled"
+    terms = {"shuffle", "enabled"}
+
+    _, excerpt = code_context._excerpt("\n".join(lines), terms)
+
+    shown = {int(n) for n in re.findall(r"^L(\d+): ", excerpt, re.M)}
+    assert 11 in shown, f"the definition was never quoted: {sorted(shown)[:6]}"
+
+
+def test_excerpt_spends_its_budget_on_more_places_not_more_context():
+    """A file's relevant code is rarely all in one spot, so only the best
+    window keeps its full surroundings and the rest are tightened.
+    """
+    lines = ["a fairly long line of filler that eats into the budget"] * 900
+    relevant = tuple(range(20, 900, 60))
+    for index in relevant:
+        lines[index] = "shuffle_enabled matters on this particular line here"
+    terms = {"shuffle", "enabled", "matters"}
+
+    _, excerpt = code_context._excerpt("\n".join(lines), terms, max_chars=1000)
+
+    shown = {int(n) for n in re.findall(r"^L(\d+): ", excerpt, re.M)}
+    reached = sum(1 for index in relevant if index + 1 in shown)
+    assert len(excerpt) <= 1000
+    assert reached >= 4, f"only reached {reached} of {len(relevant)} locations"
+
+
+def test_excerpt_never_quotes_the_same_line_twice():
+    """Windows that overlap would repeat lines and split one contiguous region
+    into what reads as several separate places in the file."""
+    lines = ["filler"] * 400
+    for index in range(100, 140):
+        lines[index] = "queue.shuffle_enabled = shuffle_enabled"
+
+    _, excerpt = code_context._excerpt("\n".join(lines), {"shuffle", "enabled"})
+
+    quoted = [int(n) for n in re.findall(r"^L(\d+): ", excerpt, re.M)]
+    assert len(quoted) == len(set(quoted)), f"repeated lines: {sorted(quoted)}"
+
+
+def test_build_reaches_several_files_when_each_one_fills_its_share():
+    """The per-file budget is a share of the total, so a long first file cannot
+    swallow the whole block and starve the ones behind it."""
+    paths = [f"music_assistant/providers/opensubsonic/mod{n}.py" for n in range(6)]
+    body = "\n".join(
+        f"def handler_{n}(): return 'playback stalled on subsonic'" for n in range(60)
+    )
+    gh = FakeGH(
+        tree=_tree(*paths),
+        raw_files={path: body for path in paths},
+    )
+
+    evidence = code_context.build(
+        gh,
+        title="Subsonic playback stalled",
+        body="Playback stalled on every track.",
+        diagnostics=_diagnostics(message="playback stalled"),
+        provider_labels={"subsonic"},
+        version="2.9.7",
+    )
+
+    assert evidence.count("SOURCE: ") >= 4
+    assert len(evidence) <= config.MAX_CODE_CONTEXT_CHARS
