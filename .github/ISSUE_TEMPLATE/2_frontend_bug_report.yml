@@ -1,6 +1,6 @@
 name: 🖥️ Frontend/UI bug report
 description: Report a visual or user-interface bug in the Music Assistant web app.
-labels: ["triage", "frontend"]
+labels: ["triage", "Frontend"]
 body:
   - type: markdown
     attributes:
