@@ -10,12 +10,23 @@ import json
 from ma_triage import code_trace, config
 
 
+SOURCE = "def handler():\n    value = 1\n    return value\n"
+
+
 def _checkout(tmp_path, *paths):
     for path in paths:
         target = tmp_path / path
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("x = 1\n")
+        target.write_text(SOURCE)
     return tmp_path
+
+
+def _reply(*locations):
+    return json.dumps({"locations": list(locations)})
+
+
+def _at(path, line=2, symbol="handler"):
+    return {"path": path, "line": line, "symbol": symbol}
 
 
 def _enable(monkeypatch, checkout, reply):
@@ -62,20 +73,20 @@ def test_returns_the_ranked_paths_that_exist_in_the_checkout(monkeypatch, tmp_pa
         "music_assistant/providers/sonos/player.py",
         "music_assistant/controllers/players.py",
     )
-    reply = json.dumps(
-        {
-            "paths": [
-                "music_assistant/controllers/players.py",
-                "music_assistant/providers/sonos/player.py",
-            ]
-        }
+    reply = _reply(
+        _at("music_assistant/controllers/players.py"),
+        _at("music_assistant/providers/sonos/player.py"),
     )
     seen = _enable(monkeypatch, checkout, reply)
 
-    assert code_trace.trace(title="Players drop out", body="They disconnect.") == [
+    found = code_trace.trace(title="Players drop out", body="They disconnect.")
+    assert [item["path"] for item in found] == [
         "music_assistant/controllers/players.py",
         "music_assistant/providers/sonos/player.py",
     ]
+    # Line 2 sits one line below `def handler` on line 1.
+    assert found[0]["symbol"] == "handler"
+    assert found[0]["offset"] == 1
     assert seen["cwd"] == str(checkout)
 
 
@@ -84,7 +95,7 @@ def test_only_tools_that_cannot_execute_another_binary_are_granted(
 ):
     """`--allow-tool` matches the binary name, not argv, so one exec primitive
     is a shell: `find -exec`, GNU `sed`'s `e`, and `rg --pre` each run anything."""
-    seen = _enable(monkeypatch, _checkout(tmp_path, "a.py"), '{"paths": []}')
+    seen = _enable(monkeypatch, _checkout(tmp_path, "a.py"), '{"locations": []}')
     code_trace.trace(title="t", body="b")
 
     granted = set(seen["tools"])
@@ -103,25 +114,18 @@ def test_a_path_outside_the_checkout_is_refused(monkeypatch, tmp_path, capsys):
     """The model may point at a file; it may not reach out of the tree."""
     checkout = _checkout(tmp_path / "server", "music_assistant/real.py")
     (tmp_path / "secret.txt").write_text("token")
-    reply = json.dumps(
-        {
-            "paths": [
-                "../secret.txt",
-                "/etc/passwd",
-                "music_assistant/real.py",
-            ]
-        }
-    )
+    reply = _reply(_at("../secret.txt"), _at("/etc/passwd"),
+                   _at("music_assistant/real.py"))
     _enable(monkeypatch, checkout, reply)
 
-    assert code_trace.trace(title="t", body="b") == ["music_assistant/real.py"]
+    found = code_trace.trace(title="t", body="b")
+    assert [item["path"] for item in found] == ["music_assistant/real.py"]
     assert "outside the checkout" in capsys.readouterr().err
 
 
 def test_a_path_that_does_not_exist_is_refused(monkeypatch, tmp_path):
     checkout = _checkout(tmp_path, "music_assistant/real.py")
-    reply = json.dumps({"paths": ["music_assistant/invented.py"]})
-    _enable(monkeypatch, checkout, reply)
+    _enable(monkeypatch, checkout, _reply(_at("music_assistant/invented.py")))
     assert code_trace.trace(title="t", body="b") == []
 
 
@@ -129,7 +133,7 @@ def test_prose_instead_of_json_is_a_logged_skip(monkeypatch, tmp_path, capsys):
     """The CLI has no `response_format`, so the shape is a request not a promise."""
     _enable(monkeypatch, _checkout(tmp_path, "a.py"), "I think it's the network.")
     assert code_trace.trace(title="t", body="b") == []
-    assert "no usable paths" in capsys.readouterr().err
+    assert "no usable locations" in capsys.readouterr().err
 
 
 def test_a_cli_failure_degrades_to_no_paths(monkeypatch, tmp_path):
@@ -138,7 +142,7 @@ def test_a_cli_failure_degrades_to_no_paths(monkeypatch, tmp_path):
 
 
 def test_the_report_is_capped_before_it_reaches_the_model(monkeypatch, tmp_path):
-    seen = _enable(monkeypatch, _checkout(tmp_path, "a.py"), '{"paths": []}')
+    seen = _enable(monkeypatch, _checkout(tmp_path, "a.py"), '{"locations": []}')
     code_trace.trace(title="t", body="x" * 50_000)
     assert len(seen["prompt"]) < config.MAX_TRACE_INPUT_CHARS + 2_000
 
@@ -157,36 +161,65 @@ def test_load_returns_nothing_when_the_trace_job_left_no_file(monkeypatch, tmp_p
     assert code_trace.load() == []
 
 
-def test_load_reads_the_paths_the_trace_job_recorded(monkeypatch, tmp_path):
+def _record(tmp_path, monkeypatch, payload):
     recorded = tmp_path / "traced.json"
-    recorded.write_text(json.dumps(["music_assistant/helpers/util.py"]))
+    recorded.write_text(json.dumps(payload) if not isinstance(payload, str) else payload)
     monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(recorded))
-    assert code_trace.load() == ["music_assistant/helpers/util.py"]
+
+
+def test_load_reads_the_locations_the_trace_job_recorded(monkeypatch, tmp_path):
+    _record(tmp_path, monkeypatch, [
+        {"path": "music_assistant/helpers/util.py", "line": 40,
+         "symbol": "parse_tag", "offset": 6}])
+    assert code_trace.load() == [
+        {"path": "music_assistant/helpers/util.py", "line": 40,
+         "symbol": "parse_tag", "offset": 6}]
 
 
 def test_load_refuses_a_path_that_could_steer_a_url(monkeypatch, tmp_path):
     """The artifact crosses a job boundary and each path becomes a fetch URL."""
-    recorded = tmp_path / "traced.json"
-    recorded.write_text(
-        json.dumps(
-            [
-                "../../etc/passwd",
-                "/etc/passwd",
-                "music_assistant/a/../../b.py",
-                "music_assistant/helpers/util.py",
-            ]
-        )
-    )
-    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(recorded))
-    assert code_trace.load() == ["music_assistant/helpers/util.py"]
+    _record(tmp_path, monkeypatch, [
+        {"path": "../../etc/passwd", "line": 1, "symbol": "", "offset": 0},
+        {"path": "/etc/passwd", "line": 1, "symbol": "", "offset": 0},
+        {"path": "music_assistant/a/../../b.py", "line": 1, "symbol": "", "offset": 0},
+        {"path": "music_assistant/helpers/util.py", "line": 9,
+         "symbol": "ok", "offset": 2},
+    ])
+    assert [item["path"] for item in code_trace.load()] == [
+        "music_assistant/helpers/util.py"]
+
+
+def test_load_refuses_a_malformed_anchor(monkeypatch, tmp_path):
+    """A symbol becomes a regex-free lookup, and a line becomes an index."""
+    _record(tmp_path, monkeypatch, [
+        {"path": "a.py", "line": "nope", "symbol": "", "offset": 0},
+        {"path": "b.py", "line": 3, "symbol": "not an identifier", "offset": 0},
+        {"path": "c.py", "line": 0, "symbol": "", "offset": 0},
+        {"path": "d.py", "line": 3, "symbol": "", "offset": -5},
+        {"path": "e.py", "line": 3, "symbol": "fine", "offset": 1},
+    ])
+    assert [item["path"] for item in code_trace.load()] == ["e.py"]
 
 
 def test_load_survives_a_corrupt_artifact(monkeypatch, tmp_path, capsys):
-    recorded = tmp_path / "traced.json"
-    recorded.write_text("{not json")
-    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(recorded))
+    _record(tmp_path, monkeypatch, "{not json")
     assert code_trace.load() == []
-    assert "Traced paths ignored" in capsys.readouterr().err
+    assert "Traced locations ignored" in capsys.readouterr().err
+
+
+def test_a_symbol_that_does_not_enclose_the_line_is_refused(monkeypatch, tmp_path):
+    """The model must have opened the file, not guessed a plausible name."""
+    checkout = _checkout(tmp_path, "music_assistant/real.py")
+    _enable(monkeypatch, checkout,
+            _reply(_at("music_assistant/real.py", line=2, symbol="somewhere_else")))
+    assert code_trace.trace(title="t", body="b") == []
+
+
+def test_a_line_past_the_end_of_the_file_is_refused(monkeypatch, tmp_path):
+    checkout = _checkout(tmp_path, "music_assistant/real.py")
+    _enable(monkeypatch, checkout,
+            _reply(_at("music_assistant/real.py", line=9000, symbol="handler")))
+    assert code_trace.trace(title="t", body="b") == []
 
 
 # --------------------------------------------------------------------------- #
@@ -202,7 +235,11 @@ def _run_command(monkeypatch, tmp_path, *, body, enabled=True, traced=None):
     monkeypatch.setenv("ISSUE_TITLE", "Players drop out")
     monkeypatch.setenv("ISSUE_BODY", body)
     monkeypatch.setattr(
-        main.code_trace, "trace", lambda **kwargs: list(traced or [])
+        main.code_trace, "trace",
+        lambda **kwargs: [
+            {"path": p, "line": 1, "symbol": "", "offset": 0}
+            for p in (traced or [])
+        ],
     )
     code = main.cmd_trace()
     written = json.loads(destination.read_text()) if destination.exists() else None
@@ -228,7 +265,8 @@ def test_the_trace_command_records_what_it_found(monkeypatch, tmp_path):
         traced=["music_assistant/helpers/util.py"],
     )
     assert code == 0
-    assert written == ["music_assistant/helpers/util.py"]
+    assert [item["path"] for item in written] == [
+        "music_assistant/helpers/util.py"]
 
 
 def test_the_trace_command_writes_an_empty_result_when_disabled(
@@ -308,13 +346,15 @@ def test_the_trace_command_reads_the_issue_the_workflow_fetched(
     def fake_trace(*, title, body):
         seen["title"] = title
         seen["body"] = body
-        return ["music_assistant/helpers/util.py"]
+        return [{"path": "music_assistant/helpers/util.py", "line": 1,
+                 "symbol": "", "offset": 0}]
 
     monkeypatch.setattr(main.code_trace, "trace", fake_trace)
 
     assert main.cmd_trace() == 0
     assert seen["title"] == "Playback stops after ten minutes"
-    assert json.loads(destination.read_text()) == ["music_assistant/helpers/util.py"]
+    assert [item["path"] for item in json.loads(destination.read_text())] == [
+        "music_assistant/helpers/util.py"]
 
 
 def test_the_event_payload_wins_over_the_fetched_copy(monkeypatch, tmp_path):
@@ -359,7 +399,7 @@ def test_an_unreadable_fetched_issue_reports_the_wiring_not_the_report(
 def test_no_payload_and_no_fetched_copy_names_the_missing_wiring(
     monkeypatch, tmp_path, capsys
 ):
-    """The configuration as shipped before the fetch step existed."""
+    """No payload and no fetched copy is a wiring fault, not a quiet skip."""
     from ma_triage import __main__ as main
 
     destination = tmp_path / "traced-paths.json"
@@ -374,3 +414,84 @@ def test_no_payload_and_no_fetched_copy_names_the_missing_wiring(
     err = capsys.readouterr().err
     assert "TRIAGE_ISSUE_FILE" in err
     assert "No diagnostics attached" not in err
+
+
+def test_a_module_level_line_is_not_anchored_to_the_function_above_it(
+    monkeypatch, tmp_path
+):
+    """Containment is decided by indentation. A constant below a function is
+    inside nothing, however many definitions precede it."""
+    path = "music_assistant/constants.py"
+    target = tmp_path / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("def helper():\n    return 1\n\nSETTING = 5\n")
+    _enable(monkeypatch, tmp_path, _reply(_at(path, line=4, symbol="")))
+
+    found = code_trace.trace(title="t", body="b")
+
+    assert found and found[0]["symbol"] == ""
+    assert found[0]["offset"] == 0
+
+
+def test_a_symbol_claimed_over_a_module_level_line_is_not_believed(
+    monkeypatch, tmp_path
+):
+    path = "music_assistant/constants.py"
+    target = tmp_path / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("def helper():\n    return 1\n\nSETTING = 5\n")
+    _enable(monkeypatch, tmp_path, _reply(_at(path, line=4, symbol="helper")))
+
+    found = code_trace.trace(title="t", body="b")
+
+    assert found and found[0]["symbol"] == "", "believed a symbol that encloses nothing"
+
+
+def test_what_trace_records_is_what_load_reads_back(monkeypatch, tmp_path):
+    """The artifact is the contract between two jobs, so it is round-tripped."""
+    from ma_triage import __main__ as main
+
+    checkout = _checkout(tmp_path / "server", "music_assistant/real.py")
+    _enable(monkeypatch, checkout, _reply(_at("music_assistant/real.py")))
+    recorded = code_trace.trace(title="t", body="b")
+
+    destination = tmp_path / "traced.json"
+    destination.write_text(json.dumps(recorded))
+    monkeypatch.setattr(config, "CODE_TRACE_PATHS_FILE", str(destination))
+
+    assert code_trace.load() == recorded
+    assert recorded and recorded[0]["symbol"] == "handler"
+    assert main  # the command that writes this file lives there
+
+
+def test_a_definition_contains_its_own_signature(monkeypatch, tmp_path):
+    """Pointing at `def stop` is pointing inside `stop`. Eleven percent of
+    traced locations name a definition line, and rejecting them would throw
+    away the most natural answer a search gives."""
+    path = "music_assistant/providers/sonos/player.py"
+    target = tmp_path / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("class Sonos:\n    def stop(self):\n        pass\n")
+    _enable(monkeypatch, tmp_path, _reply(_at(path, line=2, symbol="stop")))
+
+    found = code_trace.trace(title="t", body="b")
+
+    assert found, "a location on a definition line was refused"
+    assert found[0]["symbol"] == "stop"
+    assert found[0]["offset"] == 0
+
+
+def test_an_enclosing_class_is_as_true_an_answer_as_the_method(
+    monkeypatch, tmp_path
+):
+    """Both name a definition that really contains the line."""
+    path = "music_assistant/providers/sonos/player.py"
+    target = tmp_path / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("class Sonos:\n    def stop(self):\n        pass\n")
+    _enable(monkeypatch, tmp_path, _reply(_at(path, line=3, symbol="Sonos")))
+
+    found = code_trace.trace(title="t", body="b")
+
+    assert found and found[0]["symbol"] == "Sonos"
+    assert found[0]["offset"] == 2

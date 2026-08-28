@@ -228,6 +228,68 @@ def _excerpt(
     return max(selected_scores) + distinct_matches * 5, excerpt
 
 
+def _quote_around(text: str, line: int, terms: set[str]) -> tuple[int, str]:
+    """Quote ``line`` with its surroundings, scored as ``_excerpt`` scores.
+
+    The score has to be on the same scale, because ``build`` ranks every
+    candidate against every other one and keeps only the best few.
+    """
+    lines = text.splitlines()
+    if not 1 <= line <= len(lines):
+        return 0, ""
+    window = range(
+        max(0, line - 1 - _EXCERPT_RADIUS),
+        min(len(lines), line + _EXCERPT_RADIUS),
+    )
+    excerpt = "\n".join(f"L{index + 1}: {lines[index]}" for index in window)
+    best = max(_line_score(lines[index], terms) for index in window)
+    matched = sum(1 for term in terms if term in excerpt.lower())
+    return best + matched * 5, excerpt
+
+
+def _traced_excerpt(
+    text: str, terms: set[str], location: dict[str, object]
+) -> tuple[int, str]:
+    """Quote the place the model pointed at, in the text that was fetched.
+
+    The trace ran against a different tree, so its line number does not carry
+    over; its enclosing definition does. The symbol is located here and the
+    recorded offset applied to it. Where that cannot be done — the symbol has
+    gone, or the file holds more than one of that name, or the offset runs past
+    the end — the file is excerpted the ordinary way, which measures better
+    than trusting the stale line.
+    """
+    symbol = str(location.get("symbol") or "")
+    if not symbol:
+        # Module level, so the line number is the only anchor there is — and it
+        # was measured against a different tree, which is why it has to earn
+        # its place against ordinary excerpting rather than replace it.
+        score, excerpt = _quote_around(
+            text, int(location.get("line") or 0), terms
+        )
+        return (score, excerpt) if score else _excerpt(text, terms)
+
+    at = [
+        text.count("\n", 0, match.start()) + 1
+        for match in code_trace.DEFINITION.finditer(text)
+        if match.group(2) == symbol
+    ]
+    if len(at) != 1:
+        log(
+            f"Traced symbol {symbol!r} is "
+            + ("not unique here" if at else "no longer here")
+            + "; excerpting instead"
+        )
+        return _excerpt(text, terms)
+
+    score, excerpt = _quote_around(
+        text, at[0] + int(location.get("offset") or 0), terms
+    )
+    # A window that matches nothing is worth less than the file's own best
+    # lines, and `build` drops a zero-scored snippet outright.
+    return (score, excerpt) if score else _excerpt(text, terms)
+
+
 def _fetch(
     gh: GitHubClient, path: str, refs: list[str]
 ) -> tuple[str, str] | None:
@@ -259,14 +321,15 @@ def build(
     ]
     prefixes = tuple(f"music_assistant/providers/{domain}/" for domain in domains)
     refs = _refs(version)
-    paths = _origin_paths(diagnostics, issue_terms, provider_prefixes=prefixes)
+    reported = _origin_paths(diagnostics, issue_terms, provider_prefixes=prefixes)
+    paths = set(reported)
     paths.update(_provider_paths(gh, domains, refs))
 
     combined = f"{title}\n{body}".lower()
     if any(hint in combined for hint in _PACKAGING_HINTS):
         paths.update({"Dockerfile", "Dockerfile.base"})
 
-    traced = code_trace.load()
+    traced = {str(item["path"]): item for item in code_trace.load()}
     paths.update(traced)
 
     snippets: list[_Snippet] = []
@@ -275,7 +338,11 @@ def build(
         if fetched is None:
             continue
         ref, content = fetched
-        score, excerpt = _excerpt(content, terms)
+        location = traced.get(path)
+        if location is not None:
+            score, excerpt = _traced_excerpt(content, terms, location)
+        else:
+            score, excerpt = _excerpt(content, terms)
         if score and excerpt:
             snippets.append(
                 _Snippet(
@@ -283,7 +350,10 @@ def build(
                     ref=ref,
                     score=score,
                     text=excerpt,
-                    origin="searched" if path in traced else "reported",
+                    # A path the traceback also named is hard evidence, and
+                    # stays labelled as such even when the search found it too.
+                    origin="reported" if path not in traced or path in reported
+                    else "searched",
                 )
             )
 
