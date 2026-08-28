@@ -459,13 +459,51 @@ def test_a_traced_window_is_scored_on_the_same_scale_as_any_other():
     """`build` ranks every candidate together and keeps five, so a traced
     snippet scored differently would be dropped before it is read."""
     body = "\n".join(
-        ["def handler(queue):"]
-        + [f"    queue.shuffle_enabled = {n}" for n in range(20)]
+        ["def handler(queue):", "    queue.shuffle_enabled = True"]
+        + [f"    unrelated_{n}()" for n in range(20)]
+        + ["    queue.shuffle_enabled = False"]
     )
     terms = {"shuffle", "enabled", "queue", "handler"}
     plain, _ = code_context._excerpt(body, terms)
     traced, _ = code_context._traced_excerpt(
-        body, terms, {"path": "x.py", "line": 5, "symbol": "handler", "offset": 4}
+        body, terms, {"path": "x.py", "line": 2, "symbol": "handler", "offset": 1}
     )
 
-    assert traced > plain / 2, f"traced {traced} against untraced {plain}"
+    # The anchor lands on the same line `_excerpt` would rank first, so the two
+    # should agree closely. A traced snippet worth much less than an untraced
+    # one is sorted last and dropped by `build`'s five-file cut.
+    assert traced >= plain * 0.8, f"traced {traced} against untraced {plain}"
+
+
+def test_an_anchor_landing_on_cold_code_does_not_hide_the_file():
+    """`build` drops a snippet that scores zero, so a traced file whose anchor
+    misses would vanish where the same file untraced would have been quoted."""
+    body = "\n".join(
+        ["def handler():"]
+        + [f"    unrelated_{n}()" for n in range(30)]
+        + ["def other():", "    queue.shuffle_enabled = True"]
+    )
+    terms = {"shuffle", "enabled", "queue"}
+
+    traced, _ = code_context._traced_excerpt(
+        body, terms, {"path": "x.py", "line": 5, "symbol": "handler", "offset": 4}
+    )
+    plain, _ = code_context._excerpt(body, terms)
+
+    assert plain, "fixture is wrong: the untraced path found nothing either"
+    assert traced, "a cold anchor made the file invisible"
+
+
+def test_a_module_level_anchor_also_falls_back_when_it_misses():
+    """Its line was measured against another tree too."""
+    body = "\n".join(
+        ["FILLER = 0"] * 30 + ["SHUFFLE_ENABLED_DEFAULT = True"]
+    )
+    terms = {"shuffle", "enabled", "default"}
+
+    traced, excerpt = code_context._traced_excerpt(
+        body, terms, {"path": "c.py", "line": 3, "symbol": "", "offset": 0}
+    )
+
+    assert traced, "a stale module-level line made the file invisible"
+    assert "SHUFFLE_ENABLED_DEFAULT" in excerpt

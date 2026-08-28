@@ -462,3 +462,36 @@ def test_what_trace_records_is_what_load_reads_back(monkeypatch, tmp_path):
     assert code_trace.load() == recorded
     assert recorded and recorded[0]["symbol"] == "handler"
     assert main  # the command that writes this file lives there
+
+
+def test_a_definition_contains_its_own_signature(monkeypatch, tmp_path):
+    """Pointing at `def stop` is pointing inside `stop`. Eleven percent of
+    traced locations name a definition line, and rejecting them would throw
+    away the most natural answer a search gives."""
+    path = "music_assistant/providers/sonos/player.py"
+    target = tmp_path / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("class Sonos:\n    def stop(self):\n        pass\n")
+    _enable(monkeypatch, tmp_path, _reply(_at(path, line=2, symbol="stop")))
+
+    found = code_trace.trace(title="t", body="b")
+
+    assert found, "a location on a definition line was refused"
+    assert found[0]["symbol"] == "stop"
+    assert found[0]["offset"] == 0
+
+
+def test_an_enclosing_class_is_as_true_an_answer_as_the_method(
+    monkeypatch, tmp_path
+):
+    """Both name a definition that really contains the line."""
+    path = "music_assistant/providers/sonos/player.py"
+    target = tmp_path / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("class Sonos:\n    def stop(self):\n        pass\n")
+    _enable(monkeypatch, tmp_path, _reply(_at(path, line=3, symbol="Sonos")))
+
+    found = code_trace.trace(title="t", body="b")
+
+    assert found and found[0]["symbol"] == "Sonos"
+    assert found[0]["offset"] == 2

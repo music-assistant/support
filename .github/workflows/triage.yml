@@ -51,11 +51,13 @@ jobs:
       || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     # `analyze` waits on this job, so a slow trace delays the comment a reporter
-    # is waiting for. The search stops itself after six and a half minutes
-    # (TRIAGE_CODE_TRACE_TIMEOUT); this bounds the checkouts and installs around
-    # it, which measure about fifteen seconds together. Seven minutes here and
-    # three on `analyze` hold the pair to the ten a reporter may wait, whatever
-    # either does.
+    # is waiting for. Seven minutes here and three on `analyze` hold the pair to
+    # the ten a reporter may wait, whatever either of them does.
+    #
+    # The search stops itself first, via TRIAGE_CODE_TRACE_TIMEOUT. It has to,
+    # because a job cancelled at this limit uploads no artifact and the trace is
+    # wasted entirely. Keep the search below this minus the steps before it,
+    # which measured 15s and 13s on two production runs.
     timeout-minutes: 7
     permissions:
       contents: read

@@ -180,6 +180,8 @@ def trace(*, title: str, body: str) -> list[dict[str, object]]:
         if inside is None:
             log(f"Code tracing ignored a path outside the checkout: {candidate!r}")
             continue
+        if inside in seen:
+            continue
         source = checkout / inside
         if source.stat().st_size > _MAX_SOURCE_BYTES:
             log(f"Code tracing ignored {inside}: too large to check")
@@ -191,8 +193,6 @@ def trace(*, title: str, body: str) -> list[dict[str, object]]:
         )
         if anchored is None:
             log(f"Code tracing ignored {inside}: the line or symbol is not there")
-            continue
-        if inside in seen:
             continue
         seen.add(inside)
         symbol, offset = anchored
@@ -240,27 +240,34 @@ def _parse(reply: str) -> list[dict[str, object]]:
     return out[:_MAX_PATHS]
 
 
-def _enclosing(text: str, line: int) -> tuple[str, int] | None:
-    """The innermost definition containing ``line``, as ``(name, its line)``.
+def _containing(text: str, line: int) -> list[tuple[str, int]]:
+    """Definitions containing ``line``, innermost first, as ``(name, its line)``.
 
-    Containment is decided by indentation: a definition encloses a line when the
-    line is indented past it, or is blank inside its body. A line at module
-    level is enclosed by nothing, however many definitions sit above it.
+    Containment is decided by indentation, and a definition contains its own
+    signature: pointing at ``def stop`` is pointing inside ``stop``. A line at
+    module level is contained by nothing, however many definitions sit above it.
+
+    The whole chain is returned because a caller naming an outer class and one
+    naming the inner method are both telling the truth.
     """
     lines = text.splitlines()
     body = lines[line - 1]
     depth = len(body) - len(body.lstrip()) if body.strip() else None
+    chain: list[tuple[str, int]] = []
     for match in reversed(list(DEFINITION.finditer(text))):
         at = text.count("\n", 0, match.start()) + 1
-        if at >= line:
+        if at > line:
             continue
         indent = len(match.group(1))
-        if depth is None or depth > indent:
-            return match.group(2), at
-        # A line at or left of this definition's own indentation is outside it,
-        # and so outside everything that encloses it too.
-        return None
-    return None
+        if at == line or depth is None or depth > indent:
+            chain.append((match.group(2), at))
+            depth = indent
+            if not indent:
+                break
+        elif depth is not None and depth <= indent:
+            # A sibling or something nested beside us, not an enclosing scope.
+            continue
+    return chain
 
 
 def _anchor(text: str, line: int, symbol: str) -> tuple[str, int] | None:
@@ -274,13 +281,18 @@ def _anchor(text: str, line: int, symbol: str) -> tuple[str, int] | None:
     """
     if line < 1 or line > len(text.splitlines()):
         return None
-    found = _enclosing(text, line)
-    if found is None:
+    chain = _containing(text, line)
+    if not chain:
+        if symbol:
+            log(f"Code tracing dropped the symbol {symbol!r}: it encloses nothing")
         return ("", 0)
-    enclosing, at = found
-    if symbol and symbol != enclosing:
-        return None
-    return enclosing, line - at
+    if not symbol:
+        name, at = chain[0]
+        return name, line - at
+    for name, at in chain:
+        if name == symbol:
+            return name, line - at
+    return None
 
 
 def _inside(checkout: Path, candidate: str) -> str | None:

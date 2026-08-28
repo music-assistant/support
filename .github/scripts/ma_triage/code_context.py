@@ -261,8 +261,13 @@ def _traced_excerpt(
     """
     symbol = str(location.get("symbol") or "")
     if not symbol:
-        # Module level: the line number is the only anchor there is.
-        return _quote_around(text, int(location.get("line") or 0), terms)
+        # Module level, so the line number is the only anchor there is — and it
+        # was measured against a different tree, which is why it has to earn
+        # its place against ordinary excerpting rather than replace it.
+        score, excerpt = _quote_around(
+            text, int(location.get("line") or 0), terms
+        )
+        return (score, excerpt) if score else _excerpt(text, terms)
 
     at = [
         text.count("\n", 0, match.start()) + 1
@@ -270,14 +275,19 @@ def _traced_excerpt(
         if match.group(2) == symbol
     ]
     if len(at) != 1:
-        if at:
-            log(f"Traced symbol {symbol!r} is not unique here; excerpting instead")
+        log(
+            f"Traced symbol {symbol!r} is "
+            + ("not unique here" if at else "no longer here")
+            + "; excerpting instead"
+        )
         return _excerpt(text, terms)
 
     score, excerpt = _quote_around(
         text, at[0] + int(location.get("offset") or 0), terms
     )
-    return (score, excerpt) if excerpt else _excerpt(text, terms)
+    # A window that matches nothing is worth less than the file's own best
+    # lines, and `build` drops a zero-scored snippet outright.
+    return (score, excerpt) if score else _excerpt(text, terms)
 
 
 def _fetch(
@@ -311,7 +321,8 @@ def build(
     ]
     prefixes = tuple(f"music_assistant/providers/{domain}/" for domain in domains)
     refs = _refs(version)
-    paths = _origin_paths(diagnostics, issue_terms, provider_prefixes=prefixes)
+    reported = _origin_paths(diagnostics, issue_terms, provider_prefixes=prefixes)
+    paths = set(reported)
     paths.update(_provider_paths(gh, domains, refs))
 
     combined = f"{title}\n{body}".lower()
@@ -339,7 +350,10 @@ def build(
                     ref=ref,
                     score=score,
                     text=excerpt,
-                    origin="searched" if path in traced else "reported",
+                    # A path the traceback also named is hard evidence, and
+                    # stays labelled as such even when the search found it too.
+                    origin="reported" if path not in traced or path in reported
+                    else "searched",
                 )
             )
 
