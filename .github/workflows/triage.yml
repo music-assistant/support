@@ -51,9 +51,10 @@ jobs:
       || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     # `analyze` waits on this job, so a hung trace delays the comment a
-    # reporter is waiting for. The tracer stops itself after four minutes; this
-    # bounds everything around it.
-    timeout-minutes: 15
+    # reporter is waiting for. The search stops itself after eight minutes; this
+    # bounds the checkouts and installs around it, keeping the whole run inside
+    # the ten minutes allowed from report to comment.
+    timeout-minutes: 9
     permissions:
       contents: read
       # Reading the issue on a manual dispatch. A public repo can be read

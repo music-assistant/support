@@ -46,10 +46,16 @@ _TOOLS = (
     "shell(wc)",
 )
 
-# Longer than the chat timeout because tracing is a search rather than a single
-# completion. Measured over 25 reports: median 81s, and a run that reaches this
-# limit returns nothing rather than returning late.
-_TIMEOUT = 240
+# What is left of a ten-minute budget from report to comment once the rest is
+# paid for: about 15s of job setup, 4s between jobs, and 90s for the assessment
+# that follows, which is ordered after this and so adds to the wait.
+#
+# Nearly every search finishes given room. Of thirteen that returned nothing
+# inside 300s, twelve completed when allowed 900s, needing a median of 326s —
+# they are slow rather than stuck. This limit reaches ten of them. How long any
+# one takes also varies a great deal between runs, so it is a distribution being
+# cut, not a set of difficult reports.
+_TIMEOUT = 480
 _MAX_PATHS = 8
 # A definition line, used to anchor a location against a tree that has moved on.
 _DEF = re.compile(r"^[ \t]*(?:async[ \t]+)?(?:def|class)[ \t]+(\w+)", re.M)
