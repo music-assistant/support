@@ -90,8 +90,10 @@ runs:
           echo "TRIAGE_EMBED_BATCH=4"
           # Empty when the server never came up. The bot then keeps its
           # configured model string and finds no endpoint to call, which is the
-          # same degraded state as an unreachable provider.
-          [ -n "$model" ] && echo "TRIAGE_EMBED_MODEL=$model"
+          # same degraded state as an unreachable provider. Written with `if`
+          # rather than `&&` because a false test is this step's last command,
+          # and under `-e` that fails the job the degradation exists to avoid.
+          if [ -n "$model" ]; then echo "TRIAGE_EMBED_MODEL=$model"; fi
         } >> "$GITHUB_ENV"
 
 # NOTE: callers must not set TRIAGE_EMBED_DIM, _MODEL, _ENDPOINT or _BATCH in a
