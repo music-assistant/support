@@ -330,3 +330,84 @@ def test_build_reaches_several_files_when_each_one_fills_its_share():
 
     assert evidence.count("SOURCE: ") >= 4
     assert len(evidence) <= config.MAX_CODE_CONTEXT_CHARS
+
+
+def _traced(monkeypatch, path, *, line, symbol, offset):
+    monkeypatch.setattr(
+        code_context.code_trace, "load",
+        lambda: [{"path": path, "line": line, "symbol": symbol, "offset": offset}],
+    )
+
+
+def _shifted_source(pad):
+    """The same function, moved down the file by `pad` lines.
+
+    The interesting line sits well below the `def`, so a window anchored on the
+    definition cannot reach it by accident.
+    """
+    return "\n".join(
+        ["# filler"] * pad
+        + ["def apply_shuffle(queue):"]
+        + [f"    step_{n}()" for n in range(12)]
+        + ["    queue.shuffle_enabled = True"]
+    )
+
+
+def test_a_traced_location_is_found_after_the_file_has_shifted(monkeypatch):
+    """The trace searches one tree and the reader fetches another. Line numbers
+    do not survive that; the enclosing symbol does."""
+    path = "music_assistant/controllers/player_queues/controller.py"
+    gh = FakeGH(raw_files={path: _shifted_source(400)})
+    # Traced against a tree where the function sat at line 10; the line of
+    # interest was 13 lines further down.
+    _traced(monkeypatch, path, line=23, symbol="apply_shuffle", offset=13)
+
+    evidence = code_context.build(
+        gh,
+        title="Shuffle does nothing until playback starts",
+        body="Enabling shuffle before play has no effect.",
+        diagnostics=_diagnostics(message="shuffle not applied"),
+        provider_labels=set(),
+        version="2.9.7",
+    )
+
+    assert "queue.shuffle_enabled = True" in evidence
+    assert "L414:" in evidence, "the offset was not applied to the symbol"
+    assert "L401:" not in evidence, "quoted the definition instead of the line"
+
+
+def test_a_traced_location_falls_back_when_the_symbol_is_gone(monkeypatch):
+    """A renamed or deleted function must not cost more than the anchor."""
+    path = "music_assistant/controllers/player_queues/controller.py"
+    gh = FakeGH(raw_files={path: _shifted_source(20)})
+    _traced(monkeypatch, path, line=33, symbol="renamed_since", offset=13)
+
+    evidence = code_context.build(
+        gh,
+        title="Shuffle does nothing until playback starts",
+        body="Enabling shuffle before play has no effect.",
+        diagnostics=_diagnostics(message="shuffle not applied"),
+        provider_labels=set(),
+        version="2.9.7",
+    )
+
+    assert "shuffle_enabled" in evidence, "fell through to nothing at all"
+
+
+def test_a_traced_location_with_no_symbol_uses_the_line(monkeypatch):
+    """Module-level code has no definition to anchor to."""
+    path = "music_assistant/constants.py"
+    body = "\n".join(f"SETTING_{n} = {n}" for n in range(40))
+    gh = FakeGH(raw_files={path: body})
+    _traced(monkeypatch, path, line=12, symbol="", offset=0)
+
+    evidence = code_context.build(
+        gh,
+        title="Setting has the wrong default",
+        body="SETTING_11 defaults incorrectly for shuffle.",
+        diagnostics=_diagnostics(message="wrong default"),
+        provider_labels=set(),
+        version="2.9.7",
+    )
+
+    assert "L12:" in evidence

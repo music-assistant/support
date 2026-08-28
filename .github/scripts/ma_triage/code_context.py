@@ -59,6 +59,8 @@ _EXCERPT_CHARS = config.MAX_CODE_CONTEXT_CHARS // config.MAX_CODE_CONTEXT_FILES
 # the budget reaches more of the file than it reaches around one line of it.
 _EXCERPT_RADIUS = 3
 _EXCERPT_RADIUS_TAIL = 1
+# A definition line, used to find a traced location in the reporter's version.
+_DEF = re.compile(r"^[ \t]*(?:async[ \t]+)?(?:def|class)[ \t]+(\w+)", re.M)
 _PACKAGING_HINTS = (
     "binary",
     "dependency",
@@ -228,6 +230,46 @@ def _excerpt(
     return max(selected_scores) + distinct_matches * 5, excerpt
 
 
+def _quote_around(text: str, line: int) -> tuple[int, str]:
+    """Quote ``line`` with its surroundings, scored like any other excerpt."""
+    lines = text.splitlines()
+    if not 1 <= line <= len(lines):
+        return 0, ""
+    window = range(
+        max(0, line - 1 - _EXCERPT_RADIUS),
+        min(len(lines), line + _EXCERPT_RADIUS),
+    )
+    return 1, "\n".join(f"L{index + 1}: {lines[index]}" for index in window)
+
+
+def _traced_excerpt(
+    text: str, terms: set[str], location: dict[str, object]
+) -> tuple[int, str]:
+    """Quote the place the model pointed at, in the text we actually fetched.
+
+    The trace searched a different tree from the one shown to the reader, and
+    line numbers do not survive that: between the current release and ``dev``,
+    an actively edited module moves every definition it has. The symbol does
+    survive, so it is found first and the recorded offset applied to it. A file
+    with no symbol, or one whose symbol has since gone, falls back to the line
+    and then to ordinary excerpting, so a stale anchor is never worse than no
+    anchor at all.
+    """
+    symbol = str(location.get("symbol") or "")
+    line = int(location.get("line") or 0)
+    if symbol:
+        for match in _DEF.finditer(text):
+            if match.group(1) == symbol:
+                found = text.count("\n", 0, match.start()) + 1
+                line = found + int(location.get("offset") or 0)
+                break
+    score, excerpt = _quote_around(text, line)
+    if excerpt:
+        matched = sum(1 for term in terms if term in excerpt.lower())
+        return score + matched * 5, excerpt
+    return _excerpt(text, terms)
+
+
 def _fetch(
     gh: GitHubClient, path: str, refs: list[str]
 ) -> tuple[str, str] | None:
@@ -266,7 +308,7 @@ def build(
     if any(hint in combined for hint in _PACKAGING_HINTS):
         paths.update({"Dockerfile", "Dockerfile.base"})
 
-    traced = code_trace.load()
+    traced = {str(item["path"]): item for item in code_trace.load()}
     paths.update(traced)
 
     snippets: list[_Snippet] = []
@@ -275,7 +317,11 @@ def build(
         if fetched is None:
             continue
         ref, content = fetched
-        score, excerpt = _excerpt(content, terms)
+        location = traced.get(path)
+        if location is not None:
+            score, excerpt = _traced_excerpt(content, terms, location)
+        else:
+            score, excerpt = _excerpt(content, terms)
         if score and excerpt:
             snippets.append(
                 _Snippet(
