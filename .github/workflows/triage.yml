@@ -50,11 +50,13 @@ jobs:
       && ((github.event_name == 'issues' && !github.event.issue.pull_request)
       || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
-    # `analyze` waits on this job, so a hung trace delays the comment a
-    # reporter is waiting for. The search stops itself after eight minutes; this
-    # bounds the checkouts and installs around it, keeping the whole run inside
-    # the ten minutes allowed from report to comment.
-    timeout-minutes: 9
+    # `analyze` waits on this job, so a slow trace delays the comment a reporter
+    # is waiting for. The search stops itself after six and a half minutes
+    # (TRIAGE_CODE_TRACE_TIMEOUT); this bounds the checkouts and installs around
+    # it, which measure about fifteen seconds together. Seven minutes here and
+    # three on `analyze` hold the pair to the ten a reporter may wait, whatever
+    # either does.
+    timeout-minutes: 7
     permissions:
       contents: read
       # Reading the issue on a manual dispatch. A public repo can be read
@@ -135,6 +137,9 @@ jobs:
     # optimisation and deterministic triage must not depend on it, while a
     # cancelled run still stops.
     needs: [trace]
+    # Bounds the half of the wait this job owns. It measures well under two
+    # minutes; this is a backstop, not a target.
+    timeout-minutes: 3
     if: >-
       ${{ !cancelled()
       && ((github.event_name == 'issues' && !github.event.issue.pull_request)

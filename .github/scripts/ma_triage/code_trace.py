@@ -9,13 +9,12 @@ be within it, and the symbol must really enclose that line — the same defence
 cannot invent, and cannot reach outside the tree.
 
 The tree searched here is ``TRIAGE_SERVER_REF``, while the contents shown to the
-assessment come from the reporter's release tag. **Those are different trees**,
-and line numbers do not survive the crossing — between the current stable
-release and ``dev``, an actively edited module moves every one of its
-definitions, by a median of 16 lines. The symbol does survive: 90% of traced
-symbols are still findable across a wider gap than production sees. So the line
-is recorded as an offset from its enclosing symbol, and the reader locates the
-symbol first.
+assessment come from the reporter's release tag. Those are different trees, and
+a line number means nothing in the one it was not measured against: an actively
+edited module moves every definition it has between a release and ``dev``. A
+definition's name survives that, so a location is recorded as the enclosing
+symbol plus the offset of the line below it, and the reader finds the symbol
+before applying the offset.
 
 Producing the list and using it are separate. :func:`trace` runs in a job that
 holds no credential able to write to the repository, and records the paths;
@@ -46,19 +45,16 @@ _TOOLS = (
     "shell(wc)",
 )
 
-# What is left of a ten-minute budget from report to comment once the rest is
-# paid for: about 15s of job setup, 4s between jobs, and 90s for the assessment
-# that follows, which is ordered after this and so adds to the wait.
-#
-# Nearly every search finishes given room. Of thirteen that returned nothing
-# inside 300s, twelve completed when allowed 900s, needing a median of 326s —
-# they are slow rather than stuck. This limit reaches ten of them. How long any
-# one takes also varies a great deal between runs, so it is a distribution being
-# cut, not a set of difficult reports.
-_TIMEOUT = 480
 _MAX_PATHS = 8
-# A definition line, used to anchor a location against a tree that has moved on.
-_DEF = re.compile(r"^[ \t]*(?:async[ \t]+)?(?:def|class)[ \t]+(\w+)", re.M)
+# The largest file worth reading to check an anchor. The job holds no
+# credentials and reads a path a model chose, so the read is bounded.
+_MAX_SOURCE_BYTES = 2_000_000
+# A definition line and the indentation it sits at. Both this module and the one
+# that reads the anchor need the same notion of a definition; if they disagree,
+# an offset recorded against one is applied against the other.
+DEFINITION = re.compile(
+    r"^([ \t]*)(?:async[ \t]+)?(?:def|class)[ \t]+(\w+)", re.M
+)
 
 _PROMPT = """You are helping triage a bug report for the open-source project
 Music Assistant. The working directory is a checkout of the server repository.
@@ -117,23 +113,31 @@ def load() -> list[dict[str, object]]:
     if not isinstance(data, list):
         return []
     out: list[dict[str, object]] = []
+    dropped = 0
     for item in data:
         if not isinstance(item, dict):
+            dropped += 1
             continue
         path = item.get("path")
         symbol = item.get("symbol", "")
         if not isinstance(path, str) or not _SAFE_PATH.fullmatch(path):
+            dropped += 1
             continue
         if not isinstance(symbol, str) or (symbol and not symbol.isidentifier()):
+            dropped += 1
             continue
         try:
             line, offset = int(item["line"]), int(item["offset"])
         except (KeyError, TypeError, ValueError):
+            dropped += 1
             continue
         if line < 1 or offset < 0:
+            dropped += 1
             continue
         out.append({"path": path, "line": line, "symbol": symbol,
                     "offset": offset})
+    if dropped:
+        log(f"Traced locations: {dropped} of {len(data)} were malformed")
     return out[:_MAX_PATHS]
 
 
@@ -163,7 +167,7 @@ def trace(*, title: str, body: str) -> list[dict[str, object]]:
         what="Code tracing",
         tools=_TOOLS,
         cwd=str(checkout),
-        timeout=_TIMEOUT,
+        timeout=config.CODE_TRACE_TIMEOUT,
     )
     if reply is None:
         return []
@@ -176,8 +180,12 @@ def trace(*, title: str, body: str) -> list[dict[str, object]]:
         if inside is None:
             log(f"Code tracing ignored a path outside the checkout: {candidate!r}")
             continue
+        source = checkout / inside
+        if source.stat().st_size > _MAX_SOURCE_BYTES:
+            log(f"Code tracing ignored {inside}: too large to check")
+            continue
         anchored = _anchor(
-            (checkout / inside).read_text(errors="replace"),
+            source.read_text(errors="replace"),
             int(item["line"]),
             str(item["symbol"]),
         )
@@ -232,30 +240,44 @@ def _parse(reply: str) -> list[dict[str, object]]:
     return out[:_MAX_PATHS]
 
 
+def _enclosing(text: str, line: int) -> tuple[str, int] | None:
+    """The innermost definition containing ``line``, as ``(name, its line)``.
+
+    Containment is decided by indentation: a definition encloses a line when the
+    line is indented past it, or is blank inside its body. A line at module
+    level is enclosed by nothing, however many definitions sit above it.
+    """
+    lines = text.splitlines()
+    body = lines[line - 1]
+    depth = len(body) - len(body.lstrip()) if body.strip() else None
+    for match in reversed(list(DEFINITION.finditer(text))):
+        at = text.count("\n", 0, match.start()) + 1
+        if at >= line:
+            continue
+        indent = len(match.group(1))
+        if depth is None or depth > indent:
+            return match.group(2), at
+        # A line at or left of this definition's own indentation is outside it,
+        # and so outside everything that encloses it too.
+        return None
+    return None
+
+
 def _anchor(text: str, line: int, symbol: str) -> tuple[str, int] | None:
     """``(symbol, offset)`` for ``line``, or ``None`` if the claim is untrue.
 
-    The symbol has to be the definition that really encloses the line, checked
-    against the checkout rather than taken on trust. ``offset`` is how far the
-    line sits below that definition, which is what survives when the file is
-    read from a tree where everything has shifted.
+    The symbol is checked against the checkout rather than taken on trust: it
+    has to be the definition that really contains the line, which a model that
+    has not opened the file cannot know. ``offset`` is how far the line sits
+    below that definition. A module-level line yields an empty symbol, and the
+    caller keeps the line number as the only thing there is.
     """
-    if line < 1:
+    if line < 1 or line > len(text.splitlines()):
         return None
-    lines = text.splitlines()
-    if line > len(lines):
-        return None
-    enclosing = ""
-    at = 0
-    for match in _DEF.finditer(text):
-        found = text.count("\n", 0, match.start()) + 1
-        if found > line:
-            break
-        enclosing, at = match.group(1), found
-    if not enclosing:
-        # A module-level line has no symbol to anchor to; the caller falls back
-        # to the line number, which is all there is.
-        return ("", 0) if not symbol else None
+    found = _enclosing(text, line)
+    if found is None:
+        return ("", 0)
+    enclosing, at = found
     if symbol and symbol != enclosing:
         return None
     return enclosing, line - at

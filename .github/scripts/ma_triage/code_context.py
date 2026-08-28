@@ -59,8 +59,6 @@ _EXCERPT_CHARS = config.MAX_CODE_CONTEXT_CHARS // config.MAX_CODE_CONTEXT_FILES
 # the budget reaches more of the file than it reaches around one line of it.
 _EXCERPT_RADIUS = 3
 _EXCERPT_RADIUS_TAIL = 1
-# A definition line, used to find a traced location in the reporter's version.
-_DEF = re.compile(r"^[ \t]*(?:async[ \t]+)?(?:def|class)[ \t]+(\w+)", re.M)
 _PACKAGING_HINTS = (
     "binary",
     "dependency",
@@ -230,8 +228,12 @@ def _excerpt(
     return max(selected_scores) + distinct_matches * 5, excerpt
 
 
-def _quote_around(text: str, line: int) -> tuple[int, str]:
-    """Quote ``line`` with its surroundings, scored like any other excerpt."""
+def _quote_around(text: str, line: int, terms: set[str]) -> tuple[int, str]:
+    """Quote ``line`` with its surroundings, scored as ``_excerpt`` scores.
+
+    The score has to be on the same scale, because ``build`` ranks every
+    candidate against every other one and keeps only the best few.
+    """
     lines = text.splitlines()
     if not 1 <= line <= len(lines):
         return 0, ""
@@ -239,35 +241,43 @@ def _quote_around(text: str, line: int) -> tuple[int, str]:
         max(0, line - 1 - _EXCERPT_RADIUS),
         min(len(lines), line + _EXCERPT_RADIUS),
     )
-    return 1, "\n".join(f"L{index + 1}: {lines[index]}" for index in window)
+    excerpt = "\n".join(f"L{index + 1}: {lines[index]}" for index in window)
+    best = max(_line_score(lines[index], terms) for index in window)
+    matched = sum(1 for term in terms if term in excerpt.lower())
+    return best + matched * 5, excerpt
 
 
 def _traced_excerpt(
     text: str, terms: set[str], location: dict[str, object]
 ) -> tuple[int, str]:
-    """Quote the place the model pointed at, in the text we actually fetched.
+    """Quote the place the model pointed at, in the text that was fetched.
 
-    The trace searched a different tree from the one shown to the reader, and
-    line numbers do not survive that: between the current release and ``dev``,
-    an actively edited module moves every definition it has. The symbol does
-    survive, so it is found first and the recorded offset applied to it. A file
-    with no symbol, or one whose symbol has since gone, falls back to the line
-    and then to ordinary excerpting, so a stale anchor is never worse than no
-    anchor at all.
+    The trace ran against a different tree, so its line number does not carry
+    over; its enclosing definition does. The symbol is located here and the
+    recorded offset applied to it. Where that cannot be done — the symbol has
+    gone, or the file holds more than one of that name, or the offset runs past
+    the end — the file is excerpted the ordinary way, which measures better
+    than trusting the stale line.
     """
     symbol = str(location.get("symbol") or "")
-    line = int(location.get("line") or 0)
-    if symbol:
-        for match in _DEF.finditer(text):
-            if match.group(1) == symbol:
-                found = text.count("\n", 0, match.start()) + 1
-                line = found + int(location.get("offset") or 0)
-                break
-    score, excerpt = _quote_around(text, line)
-    if excerpt:
-        matched = sum(1 for term in terms if term in excerpt.lower())
-        return score + matched * 5, excerpt
-    return _excerpt(text, terms)
+    if not symbol:
+        # Module level: the line number is the only anchor there is.
+        return _quote_around(text, int(location.get("line") or 0), terms)
+
+    at = [
+        text.count("\n", 0, match.start()) + 1
+        for match in code_trace.DEFINITION.finditer(text)
+        if match.group(2) == symbol
+    ]
+    if len(at) != 1:
+        if at:
+            log(f"Traced symbol {symbol!r} is not unique here; excerpting instead")
+        return _excerpt(text, terms)
+
+    score, excerpt = _quote_around(
+        text, at[0] + int(location.get("offset") or 0), terms
+    )
+    return (score, excerpt) if excerpt else _excerpt(text, terms)
 
 
 def _fetch(

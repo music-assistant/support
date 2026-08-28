@@ -380,7 +380,7 @@ def test_a_traced_location_falls_back_when_the_symbol_is_gone(monkeypatch):
     """A renamed or deleted function must not cost more than the anchor."""
     path = "music_assistant/controllers/player_queues/controller.py"
     gh = FakeGH(raw_files={path: _shifted_source(20)})
-    _traced(monkeypatch, path, line=33, symbol="renamed_since", offset=13)
+    _traced(monkeypatch, path, line=5, symbol="renamed_since", offset=0)
 
     evidence = code_context.build(
         gh,
@@ -391,7 +391,10 @@ def test_a_traced_location_falls_back_when_the_symbol_is_gone(monkeypatch):
         version="2.9.7",
     )
 
+    # The stale line points at filler, so quoting it would find nothing. Only
+    # ordinary excerpting can reach the line that matters.
     assert "shuffle_enabled" in evidence, "fell through to nothing at all"
+    assert "L5:" not in evidence, "quoted the stale line instead of excerpting"
 
 
 def test_a_traced_location_with_no_symbol_uses_the_line(monkeypatch):
@@ -411,3 +414,58 @@ def test_a_traced_location_with_no_symbol_uses_the_line(monkeypatch):
     )
 
     assert "L12:" in evidence
+
+
+def test_a_traced_symbol_that_is_not_unique_is_not_guessed_at():
+    """`stop`, `setup` and `__init__` recur several times in a real module;
+    picking the first is how the wrong function gets quoted as evidence."""
+    body = "\n".join(
+        [
+            "class First:",
+            "    def stop(self):",
+            "        self.playback_halted = True",
+            "",
+            "class Second:",
+            "    def stop(self):",
+            "        self.shuffle_enabled = False",
+        ]
+    )
+    # Recorded against the *second* `stop`, so resolving by first match would
+    # quote the wrong class under real-looking line numbers.
+    _, excerpt = code_context._traced_excerpt(
+        body, {"shuffle", "enabled"},
+        {"path": "player.py", "line": 7, "symbol": "stop", "offset": 1},
+    )
+
+    # Ordinary excerpting picks the line the vocabulary points at, rather than
+    # whichever `stop` happened to come first.
+    assert "shuffle_enabled" in excerpt
+    assert "playback_halted" not in excerpt
+
+
+def test_an_offset_past_the_end_of_the_file_does_not_quote_nothing():
+    """A function shorter in the reporter's version must not walk off it."""
+    body = "def handler():\n    queue.shuffle_enabled = True\n"
+    _, excerpt = code_context._traced_excerpt(
+        body, {"shuffle", "enabled"},
+        {"path": "x.py", "line": 90, "symbol": "handler", "offset": 400},
+    )
+
+    assert excerpt, "overshoot produced no evidence at all"
+    assert "shuffle_enabled" in excerpt
+
+
+def test_a_traced_window_is_scored_on_the_same_scale_as_any_other():
+    """`build` ranks every candidate together and keeps five, so a traced
+    snippet scored differently would be dropped before it is read."""
+    body = "\n".join(
+        ["def handler(queue):"]
+        + [f"    queue.shuffle_enabled = {n}" for n in range(20)]
+    )
+    terms = {"shuffle", "enabled", "queue", "handler"}
+    plain, _ = code_context._excerpt(body, terms)
+    traced, _ = code_context._traced_excerpt(
+        body, terms, {"path": "x.py", "line": 5, "symbol": "handler", "offset": 4}
+    )
+
+    assert traced > plain / 2, f"traced {traced} against untraced {plain}"
