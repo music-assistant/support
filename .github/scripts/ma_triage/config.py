@@ -309,12 +309,16 @@ CODE_TRACE_CHECKOUT = _env_str("TRIAGE_SERVER_CHECKOUT", "")
 # searches a tree under the direction of public issue text holds no token that
 # can write to the repository.
 CODE_TRACE_PATHS_FILE = _env_str("TRIAGE_TRACED_PATHS", "")
-# How long the model may search. What is left of the time a reporter waits once
-# the job around it and the assessment after it are paid for; how much a search
-# needs depends on the size of the tree TRIAGE_SERVER_REF names, so it is
-# tunable without a release. Raising it past six minutes has no effect: the job
-# is cancelled at seven, and a cancelled job uploads nothing at all.
-CODE_TRACE_TIMEOUT = _env_int("TRIAGE_CODE_TRACE_TIMEOUT", 360)
+# How long the model may search. A runner searches a great deal more slowly than
+# a laptop does — measured on seven runs against the same tree, a search that
+# takes 139s locally takes 250-280s here, and the ones that need longest are the
+# reports where a trace is worth most. Cutting them off returns nothing, while
+# letting them run costs only the reports that were slow anyway: most finish in
+# a few minutes and are unaffected by where this sits.
+#
+# Raising it past fourteen minutes has no effect: the job is cancelled at
+# fifteen, and a cancelled job uploads nothing at all.
+CODE_TRACE_TIMEOUT = _env_int("TRIAGE_CODE_TRACE_TIMEOUT", 840)
 # The reported problem, fetched to a file for the trace job. A manual dispatch
 # carries no issue payload, so the file is the only source of the issue text
 # there, and reading one keeps that job free of an API client and its token.
