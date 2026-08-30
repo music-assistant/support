@@ -551,6 +551,18 @@ DOCS_ANSWER_DISCLAIMER = (
     "perfectly match your setup, and a maintainer will still take a look. If it "
     "helped, a 👍 on this comment helps me learn; a 👎 tells me I got it wrong._"
 )
+# A description this long is one a maintainer reads through before knowing what
+# the report is about, so it gets a three-line gist. Measured over the issues
+# filed since the current form: 1200 characters is the top fifth of
+# descriptions, and the share above it doubled between June and August 2026 as
+# reports written with an assistant became common.
+GIST_MIN_CHARS = _env_int("TRIAGE_GIST_MIN_CHARS", 1200)
+GIST_HEADING = "**In short**"
+GIST_MISSING = "_the report doesn't say_"
+GIST_FOOTER = (
+    "<sub>Condensed from the report above by a bot, so it may be wrong — the "
+    "reporter's own words are below.</sub>"
+)
 RELATED_POSTS_HEADING = "### 🔁 Similar past reports"
 RELATED_POSTS_INTRO = (
     "These earlier issues or discussions look related and might already have an "

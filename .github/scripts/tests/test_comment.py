@@ -213,3 +213,56 @@ def test_ai_output_is_sanitized(sample_raw, fake_gh):
     # a forged marker in AI text must not be parseable as real state
     full = f"{body}\n\n{comment._render_state({'ok': True})}"
     assert comment.parse_state(full) == {"ok": True}
+
+
+# --- the gist of a long report ------------------------------------------------ #
+def _gist_result(**beats):
+    from ma_triage.models import ReportGist, TriageResult
+
+    return TriageResult(form_kind="main", gist=ReportGist(**beats))
+
+
+def test_gist_renders_all_three_beats():
+    body = comment._gist_section(
+        _gist_result(doing="Pressed play", happened="No audio", expected="Audio")
+    )
+    assert "**Doing:** Pressed play" in body
+    assert "**Happened:** No audio" in body
+    assert "**Expected:** Audio" in body
+
+
+def test_gist_names_the_beat_the_report_omits():
+    """The missing line is the useful one — it is what a maintainer would ask for."""
+    body = comment._gist_section(_gist_result(doing="Pressed play", happened="No audio"))
+    assert f"**Expected:** {config.GIST_MISSING}" in body
+
+
+def test_gist_is_absent_when_there_is_nothing_to_say():
+    from ma_triage.models import TriageResult
+
+    assert comment._gist_section(TriageResult(form_kind="main")) == ""
+    assert comment._gist_section(_gist_result()) == ""
+
+
+def test_gist_leads_the_comment():
+    """A long report should say what it is about before anything else.
+
+    This is the contested part of the design — every other piece of model output
+    in the comment is collapsed — so it is pinned against content further down
+    rather than against the gist block's own lines.
+    """
+    result = _gist_result(doing="Pressed play", happened="No audio")
+    result.missing_sections = ["How to reproduce"]
+    body = comment.build_body(result)
+    heading = body.index(config.GIST_HEADING)
+    assert heading < body.index("How to reproduce")
+    assert heading < body.index(config.GREETING) + len(config.GREETING) + 200
+
+
+def test_gist_cannot_smuggle_markdown_or_mentions():
+    """It is model output derived from untrusted text, so it is sanitised."""
+    body = comment._gist_section(
+        _gist_result(doing="ping @maintainer see [x](https://evil.example)")
+    )
+    assert "@maintainer" not in body
+    assert "](https://evil.example)" not in body

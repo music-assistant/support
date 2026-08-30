@@ -358,9 +358,51 @@ def build_discussion_body(rag: RagResult, *, title: str = "") -> str:
     return "\n".join(parts)
 
 
+def _gist_section(result: TriageResult) -> str:
+    """The three beats, for a report too long to skim.
+
+    A beat the report never states is rendered as missing rather than dropped:
+    that is the most useful line in the block, because it names exactly what a
+    maintainer would otherwise have to ask for.
+
+    Shown uncollapsed, unlike the assessment below it, and the distinction is
+    the point: the assessment is a hypothesis about a cause the report does not
+    contain, so it belongs behind a disclosure a maintainer opens deliberately.
+    This only restates what the reporter already wrote, and the text it restates
+    is directly underneath — wrong is falsifiable at a glance, which is what
+    earns it the space above the fold.
+    """
+    gist = result.gist
+    if gist is None or not gist.has_content:
+        return ""
+    def beat(value: str | None) -> str:
+        if not value:
+            return config.GIST_MISSING
+        return markdown_safe(value, max_len=config.MAX_STRING_ECHO)
+
+    return "\n".join(
+        [
+            config.GIST_HEADING,
+            "",
+            f"- **Doing:** {beat(gist.doing)}",
+            f"- **Happened:** {beat(gist.happened)}",
+            f"- **Expected:** {beat(gist.expected)}",
+            "",
+            config.GIST_FOOTER,
+        ]
+    )
+
+
 def build_body(result: TriageResult) -> str:
     """Render the full sticky-comment body for a triage pass."""
     parts = [config.STICKY_MARKER, "", config.GREETING, ""]
+
+    # Before everything else: a long report should say what it is about in three
+    # lines. Only the main form reaches this — `build_result` returns early for
+    # the frontend form, which has no long-report problem to solve.
+    gist = _gist_section(result)
+    if gist:
+        parts.extend([gist, ""])
 
     if result.form_kind == "frontend":
         parts.extend(_frontend_body(result))

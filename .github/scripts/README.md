@@ -83,6 +83,14 @@ users. Any retrieval/model failure degrades gracefully to the available
 evidence/deterministic result. Models calls use `GH_MODELS_TOKEN`; the assessment
 renders as a collapsed `<details>` block for maintainers.
 
+A report whose description reaches `TRIAGE_GIST_MIN_CHARS` also gets a three-line
+gist — what the reporter was doing, what happened, what they expected — at the
+top of the comment, from one extra model call. It is the one piece of model
+output shown uncollapsed, because it restates the report rather than
+hypothesising about it and the text it restates is immediately below. A beat the
+report never states is rendered as missing, which is how the most common gap in
+a bug report gets surfaced without a nudge.
+
 ### Docs-grounded answers & similar reports
 The live bot adds a **retrieval-augmented** layer on top of the analysis:
 

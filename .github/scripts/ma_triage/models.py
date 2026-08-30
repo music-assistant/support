@@ -122,6 +122,25 @@ class AIResult:
     maintainer_next_step: str = ""
 
 
+@dataclass
+class ReportGist:
+    """What the reporter was doing, what happened, and what they expected.
+
+    Each field is ``None`` when the report does not say. That is not a failure
+    to extract — it is the answer, and it is rendered, because a missing
+    expectation is the single most common gap in a bug report here.
+    """
+
+    doing: str | None = None
+    happened: str | None = None
+    expected: str | None = None
+
+    @property
+    def has_content(self) -> bool:
+        """True when at least one beat was actually found."""
+        return any((self.doing, self.happened, self.expected))
+
+
 # --------------------------------------------------------------------------- #
 # RAG layer (Phase 2)
 # --------------------------------------------------------------------------- #
@@ -266,6 +285,7 @@ class TriageResult:
     provider_docs: list[ProviderDoc] = field(default_factory=list)
     maintainers_to_ping: set[str] = field(default_factory=set)
     ai: AIResult | None = None
+    gist: "ReportGist | None" = None
     diagnostics: Diagnostics | None = None
     # RAG layer output (Phase 2). ``None`` whenever the RAG layer is disabled or
     # failed, which keeps the rendered comment byte-identical to Phase 1.
