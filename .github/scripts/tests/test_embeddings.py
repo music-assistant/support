@@ -388,3 +388,62 @@ def test_dim_matches_accepts_any_real_width_when_none_is_requested(monkeypatch):
     # 0 means no vectors were stored, so there is nothing to rank against.
     assert not embeddings.dim_matches({"dim": 0})
     assert not embeddings.dim_matches({})
+
+
+# --- append must not relabel a header it did not build ------------------------ #
+def _stale_index(**header):
+    base = {
+        "schema": embeddings._SCHEMA,
+        "model": config.EMBED_MODEL,
+        "dim": 512,
+        "posts": [{"kind": "issue", "number": 1, "title": "old", "excerpt": "e",
+                   "sha": "x", "embedding": "AA=="}],
+    }
+    base.update(header)
+    return base
+
+
+@pytest.mark.parametrize(
+    ("header", "why"),
+    [
+        ({"schema": embeddings._SCHEMA - 1}, "an older schema"),
+        ({"model": "some-other/embedder"}, "a different embedder"),
+        ({"dim": 1024}, "a different vector width"),
+    ],
+)
+def test_append_leaves_an_index_it_did_not_build_alone(
+    ai_on, monkeypatch, header, why
+):
+    """Appending rewrites the header, which would relabel every record under it.
+
+    `post_sha` covers the reporter's raw text, not the embedder that read it, so
+    once relabelled the nightly build accepts those records as current and never
+    rebuilds them. Until then the mismatch is self-healing — the readers reject
+    the file and the next build re-embeds it.
+    """
+    monkeypatch.setattr(config, "EMBED_DIM", 512)
+    monkeypatch.setattr(
+        embeddings, "embed_texts", lambda texts, *, token: [[0.1] for _ in texts]
+    )
+    gh = FakeGH(
+        index_files={config.POSTS_INDEX_PATH: json.dumps(_stale_index(**header))}
+    )
+    index, embedded = embeddings.append_post(
+        gh, {"kind": "issue", "number": 2, "title": "new", "body": "b",
+             "url": "u", "state": "open"}, token="t",
+    )
+    assert index is None and embedded is False, why
+
+
+def test_append_still_creates_the_first_index(ai_on, monkeypatch):
+    """No index yet is not the same state as an index that does not match."""
+    monkeypatch.setattr(config, "EMBED_DIM", 0)
+    monkeypatch.setattr(
+        embeddings, "embed_texts", lambda texts, *, token: [[0.1] for _ in texts]
+    )
+    index, embedded = embeddings.append_post(
+        FakeGH(), {"kind": "issue", "number": 2, "title": "new", "body": "b",
+                   "url": "u", "state": "open"}, token="t",
+    )
+    assert index is not None and embedded is True
+    assert [p["number"] for p in index["posts"]] == [2]
