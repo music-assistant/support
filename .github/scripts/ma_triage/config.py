@@ -390,15 +390,21 @@ DOCS_TOP_K = _env_int("TRIAGE_DOCS_TOP_K", 6)
 # the same page rank together, so without a cap the top-K is spent on one page.
 # The authoritative provider-doc promotion in rag.py deliberately overrides this.
 DOCS_MAX_PER_PAGE = _env_int("TRIAGE_DOCS_MAX_PER_PAGE", 1)
-RELATED_POSTS = _env_int("TRIAGE_RELATED_POSTS", 3)
+RELATED_POSTS = _env_int("TRIAGE_RELATED_POSTS", 5)
 # Two posts from the same project share a lot of vocabulary (players, providers,
 # playback, Home Assistant), so cosine between any two of them rarely drops below
-# ~0.35 — a floor set there filters nothing. Measured over live discussion
-# triage, the useful matches sit at ~0.65+ and the noise below ~0.55.
-RELATED_MIN_SCORE = _env_float("TRIAGE_RELATED_MIN_SCORE", 0.60)
+# ~0.35 — a floor set there filters nothing. Swept against the mined duplicate
+# pairs: raising it from 0.60 to 0.75 leaves recall unchanged at every k while
+# cutting the number of suggestions per issue, because confirmed duplicates
+# score 0.73 and above and the noise sits well below.
+RELATED_MIN_SCORE = _env_float("TRIAGE_RELATED_MIN_SCORE", 0.75)
 # Keep weak semantic matches available without presenting them as likely
-# duplicates. Only scores at/above this threshold render expanded.
-RELATED_EXPAND_SCORE = _env_float("TRIAGE_RELATED_EXPAND_SCORE", 0.70)
+# duplicates. Only scores at/above this threshold render expanded. It has to sit
+# above the floor or every match shown is also expanded and the weak tier is
+# unreachable. Measured over the mined pairs against 4000 random issue pairs:
+# confirmed duplicates run 0.63 to 0.86, random pairs peak around 0.64, and at
+# 0.80 a third of the confirmed pairs still clear it while no random pair does.
+RELATED_EXPAND_SCORE = _env_float("TRIAGE_RELATED_EXPAND_SCORE", 0.80)
 # Pinned Feature Polls mention providers but are not operational status notices.
 PINNED_EXCLUDE_CATEGORIES = tuple(
     c.strip().lower()
