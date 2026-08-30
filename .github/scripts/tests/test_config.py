@@ -50,7 +50,7 @@ def test_empty_env_vars_fall_back_to_defaults(monkeypatch):
     assert config.EMBED_BATCH == 64
     assert config.ANSWER_HI == 0.75
     assert config.ANSWER_LO == 0.45
-    assert config.RELATED_POSTS == 3
+    assert config.RELATED_POSTS == 5
     assert config.INDEX_MAX_ISSUES == 3500
     assert config.INDEX_MAX_DISCUSSIONS == 500
     # The fetch bound defaults to the sum of the two per-kind caps.
