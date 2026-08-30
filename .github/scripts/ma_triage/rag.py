@@ -20,7 +20,7 @@ from __future__ import annotations
 import hashlib
 from urllib.parse import urlparse
 
-from . import ai, config, embeddings, similar
+from . import ai, config, embeddings, similar, template
 from .gh import GitHubClient, log
 from .models import DocAnswer, DocChunk, DocHit, ProviderDoc, RagResult
 from .retrieval import cosine, retrieve_docs
@@ -134,6 +134,11 @@ def answer(
     try:
         query_text = f"{title}\n\n{body}".strip()
         query_vec = embeddings.embed_text(query_text, token=token)
+        # The lexical leg of `retrieve_docs` ranks tokens, and the consent block
+        # names the troubleshooting guide and the supported installations — the
+        # two pages it then pulls every query towards. The dense leg keeps the
+        # unstripped text, which is what its vectors were built from.
+        lexical_query = f"{title}\n\n{template.strip_boilerplate(body)}".strip()
 
         # A docs answer needs the query vector. Without one `retrieve_docs`
         # ranks on its BM25 leg alone, and the judge would then be paid to
@@ -144,7 +149,7 @@ def answer(
         doc_hits: list[DocHit] = []
         if query_vec is not None:
             chunks = embeddings.load_docs_chunks(gh)
-            doc_hits = retrieve_docs(query_vec, query_text, chunks)
+            doc_hits = retrieve_docs(query_vec, lexical_query, chunks)
             doc_hits = _promote_provider_docs(
                 query_vec,
                 chunks,

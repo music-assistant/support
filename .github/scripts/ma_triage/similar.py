@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 
-from . import config
+from . import config, embeddings, template
 from .gh import GitHubClient, log
 from .models import RelatedPost
 from .providers import detect_provider_labels_from_text
@@ -150,7 +150,10 @@ def related_from_lexical(
 
     titles = [tokenize(post.get("title")) for post in candidates]
     bodies = [tokenize(post.get("excerpt")) for post in candidates]
-    query = tokenize(f"{query_title}\n\n{query_body}")
+    # Stripped to match the excerpts being ranked. While both carried the form's
+    # consent block those terms cancelled out; against stripped excerpts they are
+    # terms almost no document has, and idf rewards whichever still holds them.
+    query = tokenize(f"{query_title}\n\n{template.strip_boilerplate(query_body)}")
     scores = bm25f_scores(
         query,
         {"title": titles, "body": bodies},
@@ -219,7 +222,7 @@ def related_from_search(
                 url=str(item.get("html_url", "")),
                 score=0.0,
                 state=item.get("state"),
-                excerpt=str(item.get("body", ""))[: config.RELATED_EXCERPT_CHARS],
+                excerpt=embeddings.post_excerpt(item.get("body")),
                 source="search",
             )
         )
@@ -320,9 +323,7 @@ def find_pinned(
                 score=1.0,
                 state="closed" if discussion.get("closed") else "open",
                 source="pinned",
-                excerpt=str(discussion.get("body", ""))[
-                    : config.RELATED_EXCERPT_CHARS
-                ],
+                excerpt=embeddings.post_excerpt(discussion.get("body")),
             )
         )
     return matches
