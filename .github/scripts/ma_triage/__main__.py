@@ -164,6 +164,13 @@ def build_result(
         findings.extend(v_findings)
         labels_to_add |= v_labels
 
+    # A report long enough that its first line is not the point gets condensed to
+    # three beats at the top of the comment. Independent of diagnostics: half of
+    # the long reports attach none, and those are the ones worth condensing.
+    description = template.section_value(body, template.SECTION_WHAT_HAPPENED) or ""
+    if config.AI_ENABLED and len(description) >= config.GIST_MIN_CHARS:
+        result.gist = ai.summarise_report(title, body, token=token)
+
     # Retrieve docs, pinned notices and provider-matched reports *before* Tier-1
     # so the root-cause assessment sees the same evidence rendered to the user.
     result.rag = rag.answer(

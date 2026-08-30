@@ -248,3 +248,39 @@ def test_chat_uses_http_when_no_cli_token_is_present(monkeypatch):
         lambda *a, **k: _Resp({"choices": [{"message": {"content": '{"ok": 1}'}}]}),
     )
     assert ai._chat(_payload(), token="t", what="X") == {"ok": 1}
+
+
+# --- report gist --------------------------------------------------------------- #
+def test_gist_line_treats_prose_non_answers_as_unanswered():
+    """The schema allows null, but models reach for prose instead."""
+    for value in ("Not stated", "n/a", "unknown", "The report does not say.", "", None):
+        assert ai._gist_line(value) is None
+    assert ai._gist_line("  Pressed   play  ") == "Pressed play"
+
+
+def test_summarise_report_is_skipped_when_ai_is_off(monkeypatch):
+    monkeypatch.setattr(config, "AI_ENABLED", False)
+    assert ai.summarise_report("t", "b" * 5000, token="x") is None
+
+
+def test_summarise_report_returns_none_when_no_beat_was_found(monkeypatch):
+    """All three null means the report said nothing useful, not a partial gist."""
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(
+        ai, "_chat",
+        lambda payload, *, token, what: {"doing": None, "happened": "n/a", "expected": None},
+    )
+    assert ai.summarise_report("t", "b" * 5000, token="x") is None
+
+
+def test_summarise_report_builds_the_gist(monkeypatch):
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(
+        ai, "_chat",
+        lambda payload, *, token, what: {
+            "doing": "Pressed play", "happened": "No audio", "expected": None,
+        },
+    )
+    gist = ai.summarise_report("t", "b" * 5000, token="x")
+    assert gist.doing == "Pressed play" and gist.happened == "No audio"
+    assert gist.expected is None and gist.has_content

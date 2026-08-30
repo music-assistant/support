@@ -307,3 +307,38 @@ def test_state_records_the_whole_decision(monkeypatch, fake_gh):
     assert captured["labels"] == ["bug", "sonos"]
     assert captured["pinged"] == ["@someone"]
     assert captured["findings"] == ["Outdated version"]
+
+
+# --- the gist fires only for reports long enough to need it -------------------- #
+def _body_with_description(chars):
+    return (
+        f"### What happened?\n\n{'x' * chars}\n\n"
+        "### How to reproduce\n\nDo the thing\n\n"
+        "### Music Assistant version\n\n2.10.0\n\n"
+        "### How do you run Music Assistant?\n\nHome Assistant add-on"
+    )
+
+
+def _gist_calls(monkeypatch, fake_gh, chars, *, ai_enabled=True):
+    """How many gist calls `build_result` makes for a description of `chars`."""
+    calls = []
+    monkeypatch.setattr(config, "AI_ENABLED", ai_enabled)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: calls.append(title) or None,
+    )
+    main.build_result(fake_gh, "t", _body_with_description(chars), token="x")
+    return len(calls)
+
+
+def test_gist_is_skipped_for_a_report_short_enough_to_read(monkeypatch, fake_gh):
+    assert _gist_calls(monkeypatch, fake_gh, config.GIST_MIN_CHARS - 1) == 0
+
+
+def test_gist_fires_once_the_description_is_long(monkeypatch, fake_gh):
+    assert _gist_calls(monkeypatch, fake_gh, config.GIST_MIN_CHARS) == 1
+
+
+def test_gist_costs_nothing_when_ai_is_off(monkeypatch, fake_gh):
+    assert _gist_calls(monkeypatch, fake_gh, 5000, ai_enabled=False) == 0

@@ -15,6 +15,7 @@ This tier is entirely optional and defensive:
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import requests
@@ -27,6 +28,7 @@ from .models import (
     DocHit,
     ProviderDoc,
     RagResult,
+    ReportGist,
 )
 from .sanitize import fenced, inline
 
@@ -284,6 +286,102 @@ def assess(
     except Exception as exc:  # noqa: BLE001 — never let AI break triage
         print(f"AI assessment skipped: {exc}")
         return None
+
+
+# --------------------------------------------------------------------------- #
+# Report gist — the three beats, for reports too long to skim
+# --------------------------------------------------------------------------- #
+_GIST_SCHEMA: dict[str, Any] = {
+    "name": "report_gist",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "doing": {"type": ["string", "null"]},
+            "happened": {"type": ["string", "null"]},
+            "expected": {"type": ["string", "null"]},
+        },
+        "required": ["doing", "happened", "expected"],
+    },
+}
+
+_GIST_SYSTEM_PROMPT = (
+    "You condense a Music Assistant bug report to three short lines so a "
+    "maintainer knows what it is about without reading all of it.\n\n"
+    "doing: what the reporter was doing when the problem appeared.\n"
+    "happened: what actually went wrong.\n"
+    "expected: what they say should have happened instead.\n\n"
+    "Use only what the report states. Do not diagnose, do not guess a cause, "
+    "and do not repair an incomplete report: if it never says what was "
+    "expected, return null for that field rather than inferring the obvious. "
+    "A null is useful information — it tells the maintainer what to ask for.\n\n"
+    "One sentence per field, at most 20 words, in the reporter's own terms."
+)
+
+
+def summarise_report(title: str, body: str, *, token: str) -> ReportGist | None:
+    """Condense a long report to three beats; ``None`` when unavailable.
+
+    A separate call rather than part of the assessment, because the assessment
+    needs parsed diagnostics and only half of the long reports attach any — and
+    a report with no diagnostics and 4000 words of prose is the case this exists
+    for.
+    """
+    if not config.AI_ENABLED:
+        return None
+    payload = {
+        "model": config.AI_MODEL,
+        "messages": [
+            {"role": "system", "content": _GIST_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": (
+                    f"ISSUE TITLE: {inline(title, max_len=300)}\n\n"
+                    f"ISSUE BODY (untrusted excerpt):\n"
+                    f"{fenced(body, max_len=config.MAX_AI_INPUT_CHARS)}"
+                ),
+            },
+        ],
+        "temperature": 0.0,
+        "response_format": {"type": "json_schema", "json_schema": _GIST_SCHEMA},
+    }
+    data = _chat(payload, token=token, what="report gist")
+    if data is None:
+        return None
+    try:
+        gist = ReportGist(
+            doing=_gist_line(data.get("doing")),
+            happened=_gist_line(data.get("happened")),
+            expected=_gist_line(data.get("expected")),
+        )
+        return gist if gist.has_content else None
+    except Exception as exc:  # noqa: BLE001 — never let AI break triage
+        print(f"Report gist skipped: {exc}")
+        return None
+
+
+def _gist_line(value: Any) -> str | None:
+    """A single beat, or ``None`` for anything the model left unanswered."""
+    if not isinstance(value, str):
+        return None
+    # Collapsing newlines here is load-bearing: the comment renders each beat as
+    # a single list item, and `markdown_safe` does not collapse them.
+    text = " ".join(value.split())
+    if not text or _RE_GIST_NON_ANSWER.fullmatch(text.rstrip(". ")):
+        return None
+    return text
+
+
+# Models reach for prose instead of the null the schema allows, and there are
+# more ways to write it than are worth enumerating — the first attempt at a list
+# missed the contraction used in our own copy.
+_RE_GIST_NON_ANSWER = re.compile(
+    r"(null|none|n/?a|unknown|unclear|unspecified)"
+    r"|(the (report|reporter) (does\s?n[o']t|did\s?n[o']t)\s+\w+.*)"
+    r"|(not\s+(stated|specified|mentioned|provided|described|applicable|given))",
+    re.IGNORECASE,
+)
 
 
 # --------------------------------------------------------------------------- #
