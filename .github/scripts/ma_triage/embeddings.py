@@ -30,7 +30,7 @@ from typing import Any
 
 import requests
 
-from . import config, docs
+from . import config, docs, template
 from .gh import GitHubClient, log
 from .models import DocChunk
 from .retrieval import decode_vec, encode_vec
@@ -122,6 +122,26 @@ def _chunk_embed_input(chunk: DocChunk) -> str:
 # --------------------------------------------------------------------------- #
 # Index (de)serialisation
 # --------------------------------------------------------------------------- #
+def post_excerpt(body: str | None) -> str:
+    """
+    The stored excerpt: BM25F's body field, and the assessment's evidence.
+
+    Stripped of the issue form's consent block, which is identical in nearly
+    every report and so tells a ranker nothing about which two reports match.
+    Every excerpt reaching a comment or the assessment is built here, whether it
+    came from the index, the search fallback or a pinned notice.
+    The embedded text is *not* stripped: the embedder pools the last token of a
+    capped input, so removing text from the top pulls new text past the cap and
+    changes the vector wholesale — measured as a recall loss on exactly the
+    long reports it applies to.
+
+    Both writers below must produce this identically, or an excerpt that differs
+    from the stored one reads as a metadata change and rewrites the index on
+    every run.
+    """
+    return template.strip_boilerplate(str(body or ""))[: config.RELATED_EXCERPT_CHARS]
+
+
 def _dumps(index: dict[str, Any]) -> str:
     return json.dumps(index, separators=(",", ":"), sort_keys=True)
 
@@ -392,7 +412,7 @@ def _post_record(
             },
             key=str.lower,
         ),
-        "excerpt": str(post.get("body", ""))[: config.RELATED_EXCERPT_CHARS],
+        "excerpt": post_excerpt(post.get("body")),
         "sha": post_sha(str(post.get("title", "")), str(post.get("body", ""))),
     }
     if embedding:
@@ -486,7 +506,7 @@ def build_posts_index(
                 },
                 key=str.lower,
             )
-            excerpt = str(post.get("body", ""))[: config.RELATED_EXCERPT_CHARS]
+            excerpt = post_excerpt(post.get("body"))
             if record.get("providers") != providers:
                 record["providers"] = providers
                 metadata_changed = True

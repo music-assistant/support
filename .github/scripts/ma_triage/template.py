@@ -56,7 +56,22 @@ PROVIDER_SCAN_SECTIONS = (
     SECTION_ANYTHING_ELSE,
 )
 
+# Consent sections, matched by lowercase heading *prefix* rather than in full.
+# Each has carried a markdown link whose URL changed at least once, and the
+# index reaches back to 2022, so four generations of the wording sit in it at
+# the same time. The prefix is the part that stayed put.
+CONSENT_SECTION_PREFIXES = (
+    "before you begin",
+    "carefully read the troubleshooting faq",
+    "mandatory: carefully read",
+    "as applicable: carefully read",
+    "have you tried everything",
+    "have you included all",
+    "have you reviewed the",
+)
+
 _RE_SECTION = re.compile(r"^###\s+(.*?)\s*$")
+_RE_CHECKBOX = re.compile(r"^\s*[-*]\s*\[[ xX]\].*$", re.MULTILINE)
 # A line that looks like a log line: has a level keyword or an ISO-ish timestamp.
 _RE_LOG_LINE = re.compile(
     r"(?:\b(?:CRITICAL|ERROR|WARNING|WARN|INFO|DEBUG)\b)"
@@ -98,6 +113,40 @@ def parse_sections(body: str | None) -> dict[str, str]:
     if current is not None:
         sections[current] = "\n".join(buffer).strip()
     return sections
+
+
+def _is_consent_heading(name: str | None) -> bool:
+    """True for a heading that introduces the form's consent block."""
+    return (name or "").strip().lower().startswith(CONSENT_SECTION_PREFIXES)
+
+
+def strip_boilerplate(body: str | None) -> str:
+    """
+    Return ``body`` without the parts every report repeats word for word.
+
+    The consent block and its checkboxes are identical across nearly every
+    issue, so ranking one report against another spends most of the body field
+    comparing the form to itself. Headings and fenced blocks are deliberately
+    kept: an error string is often the only thing that makes two reports the
+    same, and dropping either measurably costs recall.
+
+    For lexical ranking only. The embedded text is deliberately left alone —
+    see :func:`embeddings.build_posts_index`.
+    """
+    if not body:
+        return ""
+    kept: list[str] = []
+    dropping = False
+    for line in body.splitlines():
+        heading = _RE_SECTION.match(line)
+        if heading:
+            dropping = _is_consent_heading(heading.group(1))
+        if dropping:
+            continue
+        kept.append(line)
+    # Older forms also asked for confirmations inline, outside a consent block.
+    text = _RE_CHECKBOX.sub("", "\n".join(kept))
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 def _is_empty(content: str | None) -> bool:
