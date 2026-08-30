@@ -268,3 +268,42 @@ def test_apply_triage_keeps_state_when_unchanged(fake_gh):
     result = TriageResult(form_kind="main", missing_sections=["What happened?"])
     main.apply_triage(fake_gh, 43, issue, result)
     assert not any(c[0] == "remove_label" for c in fake_gh.calls)
+
+
+def test_state_records_the_whole_decision(monkeypatch, fake_gh):
+    """Every claim the bot makes has to leave a trace that can be graded.
+
+    GitHub records what an issue became; nothing records what the bot said about
+    it. A field missing here is a capability that cannot be measured against the
+    outcome afterwards.
+    """
+    from ma_triage.models import Finding, Severity, TriageResult
+
+    result = TriageResult(
+        form_kind="main",
+        has_diagnostics=True,
+        missing_sections=["How to reproduce"],
+        missing_attachment=True,
+        log_wall_detected=True,
+        reported_providers={"sonos"},
+        labels_to_add={"sonos", "bug"},
+        maintainers_to_ping={"@someone"},
+        findings=[Finding(severity=Severity.WARNING, title="Outdated version",
+                          detail="d")],
+    )
+    captured: dict = {}
+    monkeypatch.setattr(
+        main.comment, "upsert",
+        lambda gh, number, body, state: captured.update(state),
+    )
+    monkeypatch.setattr(main.comment, "build_body", lambda r: "body")
+    monkeypatch.setattr(main, "_resolve_labels", lambda gh, r: [])
+    main.apply_triage(fake_gh, 1, {"labels": []}, result)
+
+    assert captured["v"] == 2
+    assert captured["missing_sections"] == ["How to reproduce"]
+    assert captured["missing_attachment"] is True
+    assert captured["log_wall"] is True
+    assert captured["labels"] == ["bug", "sonos"]
+    assert captured["pinged"] == ["@someone"]
+    assert captured["findings"] == ["Outdated version"]
