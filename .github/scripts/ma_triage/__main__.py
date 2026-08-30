@@ -297,14 +297,28 @@ def apply_triage(
             gh.remove_label(number, stale)
 
     if result.should_comment or (result.rag is not None and result.rag.has_output):
+        # The whole decision, not the half of it the comment happens to show.
+        # Everything here already exists on `TriageResult` at this point; what
+        # is left out cannot be graded later, because GitHub records what the
+        # issue became but nothing records what the bot claimed about it.
+        #
+        # `v` says which keys are present, and nothing gates on it: v2 is v1 plus
+        # six fields, so a reader of either keeps working. Unlike `_SCHEMA` in
+        # `embeddings`, this is not a compatibility break and needs no migration.
         state = {
-            "v": 1,
+            "v": 2,
             "last_run": _now_iso(),
             "form": result.form_kind,
             "providers": sorted(result.reported_providers),
             "has_diagnostics": result.has_diagnostics,
             "invalid": result.diagnostics_invalid,
             "ai": result.ai is not None,
+            "missing_sections": list(result.missing_sections),
+            "missing_attachment": result.missing_attachment,
+            "log_wall": result.log_wall_detected,
+            "labels": sorted(result.labels_to_add),
+            "pinged": sorted(result.maintainers_to_ping),
+            "findings": [f.title for f in result.findings],
         }
         if result.diagnostics is not None:
             state["version"] = result.diagnostics.system.version
@@ -700,7 +714,9 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
         f" · related: {len(rag_result.related_posts)}"
     )
     state = {
-        "v": 1,
+        # Same generation as the issue sticky above: `v` describes the state
+        # format, and one number meaning two things by blob is worse than none.
+        "v": 2,
         "last_run": _now_iso(),
         "kind": "discussion",
         "rag": {
