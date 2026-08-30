@@ -390,6 +390,47 @@ def test_dim_matches_accepts_any_real_width_when_none_is_requested(monkeypatch):
     assert not embeddings.dim_matches({})
 
 
+# --- the excerpt is what BM25F ranks on --------------------------------------- #
+_CONSENT_BODY = (
+    "### Before you begin\n\n"
+    "- [x] I have read the [troubleshooting guide](https://www.music-assistant.io"
+    "/faq/troubleshooting/) and it did not solve my problem.\n\n"
+    "### What happened?\n\nAirPlay drops out mid-track"
+)
+
+
+def test_stored_excerpt_drops_the_consent_block(ai_on, monkeypatch):
+    monkeypatch.setattr(
+        embeddings, "embed_texts", lambda texts, *, token: [[0.1] for _ in texts]
+    )
+    post = {"kind": "issue", "number": 8, "title": "t", "body": _CONSENT_BODY,
+            "url": "u", "state": "open"}
+    index, _ = embeddings.build_posts_index(FakeGH(), [post], token="t")
+    excerpt = index["posts"][0]["excerpt"]
+    assert "troubleshooting guide" not in excerpt
+    assert "AirPlay drops out mid-track" in excerpt
+
+
+def test_embedded_text_is_left_unstripped(ai_on, monkeypatch):
+    """The embedder pools the last token of a capped input.
+
+    Stripping from the top pulls new text past the cap and changes the vector
+    wholesale, which measured as a recall loss on the long reports it applies
+    to. The excerpt is cleaned; what gets embedded is not.
+    """
+    seen: list[str] = []
+    monkeypatch.setattr(
+        embeddings, "embed_texts",
+        lambda texts, *, token: (seen.extend(texts), [[0.1] for _ in texts])[1],
+    )
+    embeddings.build_posts_index(
+        FakeGH(),
+        [{"kind": "issue", "number": 9, "title": "t", "body": _CONSENT_BODY,
+          "url": "u", "state": "open"}],
+        token="t",
+    )
+    assert "troubleshooting guide" in seen[0]
+
 # --- append must not relabel a header it did not build ------------------------ #
 def _stale_index(**header):
     base = {

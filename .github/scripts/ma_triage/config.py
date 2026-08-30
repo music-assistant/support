@@ -433,10 +433,17 @@ BM25_B = 0.75
 # issues duplicate detection depends on.
 #
 # The ceiling that matters is on-disk size rather than post count: the index is
-# committed to git and rewritten whole on every new post. At ~0.7 KB per
-# quantised vector (see `retrieval.encode_vec`) these caps cost ~2 MB; under the
-# previous JSON-float encoding the same would have been ~30 MB.
-INDEX_MAX_ISSUES = _env_int("TRIAGE_INDEX_MAX_ISSUES", 2500)
+# committed to git and rewritten whole on every new post. Measured on the live
+# file: 1.4 KB per quantised 1024-wide vector (see `retrieval.encode_vec`) plus
+# up to `RELATED_EXCERPT_CHARS` of text, so ~2.3 KB a post. Under the previous
+# JSON-float encoding the vector alone would have been ~10x that.
+#
+# The issue cap covers the repository's whole history with headroom, because a
+# duplicate can point at any earlier report and one that is not indexed can
+# never be found. Discussions stay capped by recency: they are mostly feature
+# requests, which score near zero against a bug report, so the older ones buy
+# far less than they cost.
+INDEX_MAX_ISSUES = _env_int("TRIAGE_INDEX_MAX_ISSUES", 3500)
 INDEX_MAX_DISCUSSIONS = _env_int("TRIAGE_INDEX_MAX_DISCUSSIONS", 500)
 # Bounds how much is *fetched* before trimming; the per-kind caps above decide
 # what is kept.
