@@ -97,3 +97,63 @@ def test_detect_log_wall_fenced():
 
 def test_no_log_wall_for_short_body():
     assert template.detect_log_wall("just a short description") is False
+
+
+# --- boilerplate stripping ---------------------------------------------------- #
+def test_strip_boilerplate_drops_the_consent_block():
+    body = (
+        "### Before you begin\n\n"
+        "- [x] I have searched the [open and closed issues](https://x).\n"
+        "- [X] I have read the [troubleshooting guide](https://y).\n\n"
+        "### What happened?\n\nAirPlay goes silent when the group is joined"
+    )
+    stripped = template.strip_boilerplate(body)
+    assert "Before you begin" not in stripped
+    assert "troubleshooting guide" not in stripped
+    assert "### What happened?" in stripped
+    assert "AirPlay goes silent when the group is joined" in stripped
+
+
+def test_strip_boilerplate_covers_every_form_generation():
+    """The index reaches back to 2022, so all four wordings are live at once."""
+    for heading in (
+        "Before you begin",
+        "Carefully read the Troubleshooting FAQ and confirm that",
+        "Mandatory: Carefully read the Troubleshooting FAQ and confirm that",
+        "As Applicable: Carefully read the Troubleshooting FAQ and confirm that",
+        "Have you tried everything in the Troubleshooting FAQ and reviewed the "
+        "Open and Closed Issues and Discussions to resolve this yourself?",
+        "Have you included ALL of the information specified in the "
+        "Troubleshooting FAQ or explained why you cannot",
+        "Have you reviewed the [Open](https://a) and [Closed](https://b) Issues "
+        "to resolve this yourself?",
+    ):
+        stripped = template.strip_boilerplate(
+            f"### {heading}\n\n- [x] Yes\n\n### The problem\n\nNo sound"
+        )
+        assert heading.split("[")[0].strip() not in stripped, heading
+        assert "No sound" in stripped
+
+
+def test_strip_boilerplate_keeps_logs_and_headings():
+    """Error text is what makes two reports the same; it has to survive."""
+    body = (
+        "### What happened?\n\nPlayback fails\n\n"
+        "```\n2026-08-14 ERROR [ffmpeg.1065] Invalid data found\n```\n\n"
+        "### Anything else?\n\nNothing"
+    )
+    stripped = template.strip_boilerplate(body)
+    assert "ERROR [ffmpeg.1065] Invalid data found" in stripped
+    assert "### What happened?" in stripped and "### Anything else?" in stripped
+
+
+def test_strip_boilerplate_removes_inline_checkboxes():
+    stripped = template.strip_boilerplate(
+        "### The problem\n\n- [ ] not yet done\nReal text here"
+    )
+    assert "not yet done" not in stripped and "Real text here" in stripped
+
+
+def test_strip_boilerplate_handles_empty_input():
+    assert template.strip_boilerplate(None) == ""
+    assert template.strip_boilerplate("") == ""
