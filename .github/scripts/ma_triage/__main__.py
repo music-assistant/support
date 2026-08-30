@@ -614,6 +614,19 @@ def cmd_index_append(gh: GitHubClient, token: str) -> int:
         "updated_at": issue.get("updated_at"),
     }
     index, embedded = embeddings.append_post(gh, post, token=token)
+    if index is None:
+        # The stored index was built by a different schema, model or width.
+        # Appending rewrites the header, which would relabel those records as
+        # current, so it is left for the scheduled build to rebuild instead.
+        # Quieter than the vectorless case below even though it writes nothing
+        # at all: `_collect_posts` re-reads from the API rather than the index,
+        # so the rebuild picks this post up regardless.
+        summary(
+            f"issue #{number}: the posts index is awaiting a rebuild, so it "
+            "was not appended to. This becomes visible to dense duplicate "
+            "detection after the next scheduled build."
+        )
+        return 0
     if not embedded:
         # Annotate but exit 0 on purpose: this runs inside per-issue triage, and
         # failing here would mark every incoming issue's workflow red for a
@@ -753,6 +766,15 @@ def cmd_discussion_append(gh: GitHubClient, token: str) -> int:
         "updated_at": _now_iso(),
     }
     index, embedded = embeddings.append_post(gh, post, token=token)
+    if index is None:
+        # See `cmd_index_append`: a header this configuration did not build is
+        # left for the scheduled rebuild rather than relabelled.
+        summary(
+            f"discussion #{number}: the posts index is awaiting a rebuild, so "
+            "it was not appended to. This becomes visible to dense duplicate "
+            "detection after the next scheduled build."
+        )
+        return 0
     if not embedded:
         # Annotate but exit 0 on purpose: this runs inside per-issue triage, and
         # failing here would mark every incoming issue's workflow red for a
