@@ -177,6 +177,21 @@ def dim_matches(index: dict[str, Any]) -> bool:
     return isinstance(stored, int) and stored > 0
 
 
+def index_is_current(index: dict[str, Any] | None) -> bool:
+    """Whether a stored index was built by the current schema, model and width.
+
+    The three are one compatibility key rather than three separate checks: every
+    reader accepts an index only when all of them agree, so anything that
+    rewrites the header has to answer the same question they ask.
+    """
+    return bool(
+        index
+        and index.get("schema") == _SCHEMA
+        and index.get("model") == config.EMBED_MODEL
+        and dim_matches(index)
+    )
+
+
 def load_docs_chunks(gh: GitHubClient) -> list[DocChunk]:
     """Load ``docs.json`` into :class:`DocChunk` objects (with embeddings)."""
     index = load_index(gh, config.DOCS_INDEX_PATH)
@@ -361,6 +376,12 @@ def reusable_vector(cached: dict[str, Any] | None, sha: str) -> bool:
     The sha check is what keeps a vector paired with the text it was computed
     from; an edited post fails it and must be re-embedded before its vector can
     be trusted again.
+
+    It covers the reporter's text only, not the schema, model or width that
+    turned it into a vector — those live in the header and are checked by
+    :func:`index_is_current`. A record carried into an index whose header says
+    something else therefore passes here forever, which is why `append_post`
+    refuses to rewrite a header it did not build.
     """
     return bool(cached and cached.get("sha") == sha and cached.get("embedding"))
 
@@ -535,11 +556,12 @@ def build_posts_index(
 
 def append_post(
     gh: GitHubClient, post: dict[str, Any], *, token: str
-) -> tuple[dict[str, Any], bool]:
+) -> tuple[dict[str, Any] | None, bool]:
     """Embed a single new post and upsert it into the posts index.
 
     Returns the index and whether the upserted record carries a vector, so the
     caller can report a provider outage without having to inspect the record.
+    ``None`` when the stored index predates the current schema — see below.
 
     Between nightly builds this is the only path that admits new posts, so it
     writes the record whether or not a vector could be obtained. Unlike the
@@ -547,8 +569,27 @@ def append_post(
     for unchanged text is kept rather than overwritten with a vectorless
     record — a post edited during a provider outage would otherwise lose a good
     vector it could not get back until the next successful build.
+
+    An index the current configuration did not build is left alone rather than
+    appended to. This path rewrites the whole header, so appending would stamp
+    the current schema, model and width onto records produced by a previous one
+    — and `post_sha` covers the reporter's raw text rather than the embedder
+    that read it, so the nightly build would then accept every relabelled record
+    as current and never rebuild it. Until the append, that mismatch is
+    self-healing: the readers reject the file outright and the next scheduled
+    build re-embeds it. A post waiting for that build loses a day of dense
+    visibility; relabelling costs the index its correctness for good.
     """
-    previous = load_index(gh, config.POSTS_INDEX_PATH) or _empty_posts_index()
+    previous = load_index(gh, config.POSTS_INDEX_PATH)
+    if previous is not None and not index_is_current(previous):
+        log(
+            f"Posts index was built by schema {previous.get('schema')} / "
+            f"{previous.get('model')} / dim {previous.get('dim')}, not "
+            f"{_SCHEMA} / {config.EMBED_MODEL} / dim {config.EMBED_DIM or 'any'}; "
+            "leaving it for the scheduled rebuild rather than appending to it."
+        )
+        return None, False
+    previous = previous or _empty_posts_index()
     vector = embed_text(
         f"{post.get('title', '')}\n\n{post.get('body', '')}", token=token
     )
