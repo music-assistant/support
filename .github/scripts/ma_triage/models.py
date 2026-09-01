@@ -134,11 +134,19 @@ class ReportGist:
     doing: str | None = None
     happened: str | None = None
     expected: str | None = None
+    # Recovered only when the form was replaced: what it would have asked for.
+    version: str | None = None
+    install_method: str | None = None
 
     @property
     def has_content(self) -> bool:
         """True when at least one beat was actually found."""
         return any((self.doing, self.happened, self.expected))
+
+    @property
+    def has_recovered_fields(self) -> bool:
+        """True when a form field was read back out of the reporter's prose."""
+        return any((self.version, self.install_method))
 
 
 # --------------------------------------------------------------------------- #

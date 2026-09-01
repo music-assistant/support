@@ -342,3 +342,57 @@ def test_gist_fires_once_the_description_is_long(monkeypatch, fake_gh):
 
 def test_gist_costs_nothing_when_ai_is_off(monkeypatch, fake_gh):
     assert _gist_calls(monkeypatch, fake_gh, 5000, ai_enabled=False) == 0
+
+
+# --- recovering the form's answers from a report that replaced it -------------- #
+_REPLACED = "# My bug\n\n## Environment\n\nMA 2.9.2, Docker\n\n## Detail\n\n" + "x" * 2000
+
+
+def test_gist_fires_for_a_replaced_form_with_no_description_section(monkeypatch, fake_gh):
+    """The gate keyed on a section these reports do not have, so they got none.
+
+    They are the longest, least skimmable reports in the tracker; keying on the
+    reporter's prose wherever they put it is the whole point.
+    """
+    calls = []
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: calls.append(title) or None,
+    )
+    main.build_result(fake_gh, "t", _REPLACED, token="x")
+    assert calls, "a replaced form should still be condensed"
+
+
+def test_recovered_fields_only_ever_fill_a_blank(monkeypatch, fake_gh):
+    """A form answer always beats a reading of one."""
+    from ma_triage.models import ReportGist
+
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: ReportGist(
+            doing="d", version="9.9.9", install_method="guessed"
+        ),
+    )
+    # A replaced form has nothing to beat it, so the reading is used.
+    res = main.build_result(fake_gh, "t", _REPLACED, token="x")
+    assert res.reported_version == "9.9.9"
+    assert res.install_method == "guessed"
+
+
+def test_recovery_is_not_applied_when_the_form_was_used(monkeypatch, fake_gh):
+    from ma_triage.models import ReportGist
+
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: ReportGist(doing="d", version="9.9.9"),
+    )
+    body = _body_with_description(config.GIST_MIN_CHARS)
+    res = main.build_result(fake_gh, "t", body, token="x")
+    assert res.form_replaced is False
+    assert res.reported_version == "2.10.0"

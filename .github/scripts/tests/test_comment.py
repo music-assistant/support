@@ -322,3 +322,32 @@ def test_replaced_form_note_holds_when_diagnostics_were_attached(sample_raw):
     assert config.FORM_REPLACED_NOTE in body
     assert "aren't answered anywhere" not in body
     assert "AI_POLICY" not in body
+
+
+def _replaced(**gist_kwargs):
+    from ma_triage.models import ReportGist, TriageResult
+
+    return TriageResult(
+        form_kind="main",
+        form_replaced=True,
+        missing_attachment=True,
+        missing_sections=list(template.REQUIRED_SECTIONS_MAIN),
+        gist=ReportGist(**gist_kwargs) if gist_kwargs else None,
+    )
+
+
+def test_recovered_fields_are_shown_for_correction():
+    body = comment.build_body(_replaced(doing="d", version="2.9.2", install_method="Docker"))
+    assert config.RECOVERED_FIELDS_NOTE in body
+    assert "**Version:** 2.9.2" in body and "**Install:** Docker" in body
+
+
+def test_recovering_the_answers_replaces_asking_for_them():
+    """Reading the answers out is a better outcome than requesting them again."""
+    body = comment.build_body(_replaced(doing="d", version="2.9.2"))
+    assert config.FORM_REPLACED_NOTE not in body
+
+
+def test_the_ask_remains_when_nothing_could_be_recovered():
+    assert config.FORM_REPLACED_NOTE in comment.build_body(_replaced(doing="d"))
+    assert config.FORM_REPLACED_NOTE in comment.build_body(_replaced())

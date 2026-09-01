@@ -112,6 +112,21 @@ def build_result(
 
     # --- main server bug form ------------------------------------------------
     result.install_method = template.extract_install_method(body)
+
+    # Condense a report that is too long to skim, and — when the form is gone —
+    # read back out of the prose what the form would have been asked for. The
+    # gate has to be the reporter's own words wherever they put them: keying on
+    # the "What happened?" section alone missed every replaced form, which is
+    # exactly the set that most needs both.
+    description = template.section_value(body, template.SECTION_WHAT_HAPPENED) or ""
+    if config.AI_ENABLED and (
+        len(description) >= config.GIST_MIN_CHARS or result.form_replaced
+    ):
+        result.gist = ai.summarise_report(title, body, token=token)
+    if result.gist is not None and result.form_replaced:
+        # Only ever fills a blank. A form answer always wins over a reading of it.
+        result.reported_version = result.reported_version or result.gist.version
+        result.install_method = result.install_method or result.gist.install_method
     _load_diagnostics_or_log(gh, body, result)
 
     findings = list(result.findings)
@@ -164,13 +179,6 @@ def build_result(
         v_findings, v_labels = analyze.version_findings(result.reported_version, gh)
         findings.extend(v_findings)
         labels_to_add |= v_labels
-
-    # A report long enough that its first line is not the point gets condensed to
-    # three beats at the top of the comment. Independent of diagnostics: half of
-    # the long reports attach none, and those are the ones worth condensing.
-    description = template.section_value(body, template.SECTION_WHAT_HAPPENED) or ""
-    if config.AI_ENABLED and len(description) >= config.GIST_MIN_CHARS:
-        result.gist = ai.summarise_report(title, body, token=token)
 
     # Retrieve docs, pinned notices and provider-matched reports *before* Tier-1
     # so the root-cause assessment sees the same evidence rendered to the user.
@@ -323,6 +331,7 @@ def apply_triage(
             "ai": result.ai is not None,
             "missing_sections": list(result.missing_sections),
             "form_replaced": result.form_replaced,
+            "recovered": bool(result.gist and result.gist.has_recovered_fields),
             "missing_attachment": result.missing_attachment,
             "log_wall": result.log_wall_detected,
             "labels": sorted(result.labels_to_add),

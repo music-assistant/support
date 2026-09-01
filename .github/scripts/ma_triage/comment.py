@@ -208,6 +208,10 @@ def _missing_sections_line(result: TriageResult) -> str:
     if result.form_kind != "main":
         return ""
     if result.form_replaced:
+        # Recovering the answers is the better outcome than asking for them, so
+        # the ask is reserved for the report nothing could be read out of.
+        if result.gist is not None and result.gist.has_recovered_fields:
+            return ""
         return config.FORM_REPLACED_NOTE
     if not result.missing_sections:
         return ""
@@ -402,6 +406,24 @@ def _gist_section(result: TriageResult) -> str:
     )
 
 
+def _recovered_fields_line(result: TriageResult) -> str:
+    """What the form would have told us, read back out of the reporter's prose.
+
+    Shown so the reporter can correct it: these values drive the version check
+    and the install-method advice, and a version taken from the wrong sentence
+    would produce confident, wrong guidance about upgrading.
+    """
+    gist = result.gist
+    if not result.form_replaced or gist is None or not gist.has_recovered_fields:
+        return ""
+    bits = []
+    if gist.version:
+        bits.append(f"**Version:** {inline(gist.version, max_len=40)}")
+    if gist.install_method:
+        bits.append(f"**Install:** {inline(gist.install_method, max_len=60)}")
+    return f"{config.RECOVERED_FIELDS_NOTE}\n\n" + " · ".join(bits)
+
+
 def build_body(result: TriageResult) -> str:
     """Render the full sticky-comment body for a triage pass."""
     parts = [config.STICKY_MARKER, "", config.GREETING, ""]
@@ -412,6 +434,9 @@ def build_body(result: TriageResult) -> str:
     gist = _gist_section(result)
     if gist:
         parts.extend([gist, ""])
+    recovered = _recovered_fields_line(result)
+    if recovered:
+        parts.extend([recovered, ""])
 
     if result.form_kind == "frontend":
         parts.extend(_frontend_body(result))
@@ -439,8 +464,12 @@ def build_body(result: TriageResult) -> str:
         )
     else:
         # Main form, no usable attachment.
-        if result.form_replaced:
+        if result.form_replaced and not (
+            result.gist is not None and result.gist.has_recovered_fields
+        ):
             parts.append(config.FORM_REPLACED_NOTE + "\n")
+        elif result.form_replaced:
+            pass  # the recovered-fields line above already covers it
         elif result.missing_sections:
             pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
             parts.append(

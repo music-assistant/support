@@ -568,6 +568,10 @@ FORM_REPLACED_MIN_CHARS = _env_int("TRIAGE_FORM_REPLACED_MIN_CHARS", 1500)
 # field is `required: true` in the form, so a body missing all of them did not
 # come through it, whoever wrote it. Kept to one ask: this fires on reports that
 # are already long, and answering a wall of text with one helps nobody.
+RECOVERED_FIELDS_NOTE = (
+    "The form's answers weren't where we look for them, so these are read back "
+    "out of your report — correct me if I've got them wrong."
+)
 FORM_REPLACED_NOTE = (
     "This looks like it was written out rather than filled in through the issue "
     "form, so the answers we triage on aren't where we look for them. Could you "
