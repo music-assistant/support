@@ -199,8 +199,17 @@ def _frontend_body(result: TriageResult) -> list[str]:
 
 
 def _missing_sections_line(result: TriageResult) -> str:
-    """A gentle request for empty required sections (main form)."""
-    if result.form_kind != "main" or not result.missing_sections:
+    """A gentle request for empty required sections (main form).
+
+    Yields to :data:`config.FORM_REPLACED_NOTE` when the form is gone entirely:
+    naming four sections to fill in reads as nonsense to someone whose report
+    has none of them.
+    """
+    if result.form_kind != "main":
+        return ""
+    if result.form_replaced:
+        return config.FORM_REPLACED_NOTE
+    if not result.missing_sections:
         return ""
     pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
     return (
@@ -430,7 +439,9 @@ def build_body(result: TriageResult) -> str:
         )
     else:
         # Main form, no usable attachment.
-        if result.missing_sections:
+        if result.form_replaced:
+            parts.append(config.FORM_REPLACED_NOTE + "\n")
+        elif result.missing_sections:
             pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
             parts.append(
                 f"To help us look into this, could you fill in the following "
@@ -440,8 +451,9 @@ def build_body(result: TriageResult) -> str:
             # Reporter pasted a screenshot/image instead of the actual file.
             parts.append(config.SCREENSHOT_ATTACHMENT_NOTE + " " + _DIAGNOSTICS_HOWTO)
         else:
+            # Both leads end as questions; they share the trailing question mark.
             lead = (
-                "It would also really help if you could attach"
+                "Could you also attach"
                 if result.missing_sections
                 else "Could you attach"
             )

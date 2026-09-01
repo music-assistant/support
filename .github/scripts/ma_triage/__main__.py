@@ -101,6 +101,7 @@ def build_result(
     result = TriageResult(form_kind=kind)
     result.missing_sections = template.missing_sections(body, kind)
     result.log_wall_detected = template.detect_log_wall(body)
+    result.form_replaced = template.form_replaced(body, kind)
     result.reported_version = template.extract_version(body)
     result.has_media_attachment = has_media_attachment(body)
 
@@ -321,6 +322,7 @@ def apply_triage(
             "invalid": result.diagnostics_invalid,
             "ai": result.ai is not None,
             "missing_sections": list(result.missing_sections),
+            "form_replaced": result.form_replaced,
             "missing_attachment": result.missing_attachment,
             "log_wall": result.log_wall_detected,
             "labels": sorted(result.labels_to_add),

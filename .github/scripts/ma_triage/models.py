@@ -273,6 +273,8 @@ class TriageResult:
     # screenshot of a log into the main form's diagnostics field).
     has_media_attachment: bool = False
     missing_sections: list[str] = field(default_factory=list)
+    # The form was not merely skipped in places — it is not there at all.
+    form_replaced: bool = False
     log_wall_detected: bool = False
 
     # Facts read straight from the form fields (available even without a file).

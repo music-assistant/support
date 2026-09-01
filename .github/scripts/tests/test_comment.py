@@ -1,4 +1,4 @@
-from ma_triage import comment, config
+from ma_triage import comment, config, template
 from ma_triage.analyze import analyze
 from ma_triage.diagnostics import parse_diagnostics
 from ma_triage.models import AIResult, TriageResult
@@ -266,3 +266,59 @@ def test_gist_cannot_smuggle_markdown_or_mentions():
     )
     assert "@maintainer" not in body
     assert "](https://evil.example)" not in body
+
+
+def test_replaced_form_gets_its_own_ask_not_a_list_of_sections():
+    """Naming four sections to fill in is nonsense when the form is gone."""
+    from ma_triage.models import TriageResult
+
+    result = TriageResult(
+        form_kind="main",
+        missing_sections=list(template.REQUIRED_SECTIONS_MAIN),
+        form_replaced=True,
+        missing_attachment=True,
+    )
+    body = comment.build_body(result)
+    assert config.FORM_REPLACED_NOTE.split("\n")[0] in body
+    assert "could you fill in the following section(s)" not in body
+    assert "What happened?**, **How to reproduce" not in body
+
+
+def test_a_merely_incomplete_form_still_lists_its_sections():
+    from ma_triage.models import TriageResult
+
+    result = TriageResult(
+        form_kind="main", missing_sections=["How to reproduce"], missing_attachment=True
+    )
+    body = comment.build_body(result)
+    assert "**How to reproduce**" in body
+    assert config.FORM_REPLACED_NOTE.split("\n")[0] not in body
+
+
+def test_the_diagnostics_ask_is_a_question_either_way():
+    from ma_triage.models import TriageResult
+
+    for missing in ([], ["How to reproduce"]):
+        body = comment.build_body(
+            TriageResult(form_kind="main", missing_sections=missing, missing_attachment=True)
+        )
+        assert "Could you" in body
+        assert "really help if you could attach a **diagnostics" not in body
+
+
+def test_replaced_form_note_holds_when_diagnostics_were_attached(sample_raw):
+    """The actionable branch prints the version, so the note must not deny it."""
+    from ma_triage.diagnostics import parse_diagnostics
+    from ma_triage.models import TriageResult
+
+    result = TriageResult(
+        form_kind="main",
+        has_diagnostics=True,
+        diagnostics=parse_diagnostics(sample_raw),
+        missing_sections=list(template.REQUIRED_SECTIONS_MAIN),
+        form_replaced=True,
+    )
+    body = comment.build_body(result)
+    assert config.FORM_REPLACED_NOTE in body
+    assert "aren't answered anywhere" not in body
+    assert "AI_POLICY" not in body
