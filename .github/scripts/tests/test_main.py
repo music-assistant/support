@@ -348,23 +348,6 @@ def test_gist_costs_nothing_when_ai_is_off(monkeypatch, fake_gh):
 _REPLACED = "# My bug\n\n## Environment\n\nMA 2.9.2, Docker\n\n## Detail\n\n" + "x" * 2000
 
 
-def test_gist_fires_for_a_replaced_form_with_no_description_section(monkeypatch, fake_gh):
-    """The gate keyed on a section these reports do not have, so they got none.
-
-    They are the longest, least skimmable reports in the tracker; keying on the
-    reporter's prose wherever they put it is the whole point.
-    """
-    calls = []
-    monkeypatch.setattr(config, "AI_ENABLED", True)
-    monkeypatch.setattr(config, "RAG_ENABLED", False)
-    monkeypatch.setattr(
-        main.ai, "summarise_report",
-        lambda title, body, *, token: calls.append(title) or None,
-    )
-    main.build_result(fake_gh, "t", _REPLACED, token="x")
-    assert calls, "a replaced form should still be condensed"
-
-
 def test_recovered_fields_only_ever_fill_a_blank(monkeypatch, fake_gh):
     """A form answer always beats a reading of one."""
     from ma_triage.models import ReportGist
@@ -449,3 +432,20 @@ def test_a_recovered_version_does_not_originate_a_label(monkeypatch, fake_gh):
     result = main.build_result(fake_gh, "t", "# Bug\n\n## Detail\n\n" + "x" * 2000, token="x")
     assert result.reported_version == "2.0.0"
     assert not any("outdated" in label for label in result.labels_to_add)
+
+def test_gist_reaches_a_report_that_replaced_the_form(monkeypatch, fake_gh):
+    """These have no "What happened?" section, so the old gate excluded them.
+
+    They are the longest reports in the tracker and the ones a maintainer most
+    needs condensed; keying on a section they do not have got that backwards.
+    """
+    calls = []
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: calls.append(title) or None,
+    )
+    own_headings = "# My bug\n\n## Environment\n\nMA 2.9.2, Docker\n\n## Detail\n\n" + "x" * 2000
+    main.build_result(fake_gh, "t", own_headings, token="x")
+    assert calls, "a report that replaced the form should still be condensed"

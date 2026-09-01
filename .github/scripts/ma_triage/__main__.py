@@ -114,12 +114,18 @@ def build_result(
     result.install_method = template.extract_install_method(body)
 
     # Condense a report too long to skim, and — when the form is gone — read the
-    # answers it would have asked for back out of the prose. The gate is the
-    # reporter's own words wherever they put them.
-    description = template.section_value(body, template.SECTION_WHAT_HAPPENED) or ""
-    if config.AI_ENABLED and (
-        len(description) >= config.GIST_MIN_CHARS or result.form_replaced
+    # answers it would have asked for back out of the prose.
+    #
+    # The gate is the reporter's own words wherever they put them. Both fallback
+    # conditions are needed: a report with no form headings at all, and one that
+    # replaced the form with headings of its own, which `parse_sections` happily
+    # returns while none of them are the form's.
+    description = template.section_value(body, template.SECTION_WHAT_HAPPENED)
+    if description is None and (
+        result.form_replaced or not template.parse_sections(body)
     ):
+        description = body or ""
+    if config.AI_ENABLED and len(description or "") >= config.GIST_MIN_CHARS:
         result.gist = ai.summarise_report(title, body, token=token)
     _load_diagnostics_or_log(gh, body, result)
     _apply_recovered_fields(result)
