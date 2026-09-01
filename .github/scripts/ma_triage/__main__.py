@@ -113,21 +113,16 @@ def build_result(
     # --- main server bug form ------------------------------------------------
     result.install_method = template.extract_install_method(body)
 
-    # Condense a report that is too long to skim, and — when the form is gone —
-    # read back out of the prose what the form would have been asked for. The
-    # gate has to be the reporter's own words wherever they put them: keying on
-    # the "What happened?" section alone missed every replaced form, which is
-    # exactly the set that most needs both.
+    # Condense a report too long to skim, and — when the form is gone — read the
+    # answers it would have asked for back out of the prose. The gate is the
+    # reporter's own words wherever they put them.
     description = template.section_value(body, template.SECTION_WHAT_HAPPENED) or ""
     if config.AI_ENABLED and (
         len(description) >= config.GIST_MIN_CHARS or result.form_replaced
     ):
         result.gist = ai.summarise_report(title, body, token=token)
-    if result.gist is not None and result.form_replaced:
-        # Only ever fills a blank. A form answer always wins over a reading of it.
-        result.reported_version = result.reported_version or result.gist.version
-        result.install_method = result.install_method or result.gist.install_method
     _load_diagnostics_or_log(gh, body, result)
+    _apply_recovered_fields(result)
 
     findings = list(result.findings)
     labels_to_add: set[str] = set(result.labels_to_add)
@@ -166,7 +161,8 @@ def build_result(
                 result.reported_version, gh
             )
             findings.extend(v_findings)
-            labels_to_add |= v_labels
+            if not result.has_recovered_fields:
+                labels_to_add |= v_labels
 
         # Ping conservatively: one clearly reported provider on an actionable
         # report. Never ping maintainers for incidental census/error providers.
@@ -178,7 +174,14 @@ def build_result(
         # No attachment we could parse — still nudge on an outdated version.
         v_findings, v_labels = analyze.version_findings(result.reported_version, gh)
         findings.extend(v_findings)
-        labels_to_add |= v_labels
+        # A version read out of prose may state the one a bug appeared in rather
+        # than the one being run. That is worth a sentence the reporter can
+        # correct, and not worth a label, which nothing reads the comment before
+        # trusting. Elsewhere the model may only narrow the deterministic label
+        # set (`ai.assess` filters against `candidate_labels`); it never adds to
+        # it, and this is not the place to make it the exception.
+        if not result.has_recovered_fields:
+            labels_to_add |= v_labels
 
     # Retrieve docs, pinned notices and provider-matched reports *before* Tier-1
     # so the root-cause assessment sees the same evidence rendered to the user.
@@ -228,6 +231,39 @@ def build_result(
     result.labels_to_add = labels_to_add
     result.maintainers_to_ping = maintainers
     return result
+
+
+def _apply_recovered_fields(result: TriageResult) -> None:
+    """Let a replaced form's prose stand in for the answers it never gave.
+
+    Runs after diagnostics so it can never contradict them: an attached report
+    states the version outright, and a reading of the prose must not argue with
+    it in the same comment.
+
+    A recovered answer also clears its question from ``missing_sections``. That
+    list is what decides whether the comment asks for anything *and* whether
+    ``waiting-for-user`` is applied, so leaving it whole would mean asking for
+    nothing and then closing the issue when nobody replied.
+    """
+    if not result.has_recovered_fields:
+        return
+    gist = result.gist
+    diagnosed = result.diagnostics.system.version if result.diagnostics else None
+    if diagnosed:
+        gist.version = None  # the file already answered it, and answers louder
+    else:
+        result.reported_version = result.reported_version or gist.version
+    result.install_method = result.install_method or gist.install_method
+
+    answered = {
+        template.SECTION_WHAT_HAPPENED: gist.happened,
+        template.SECTION_HOW_TO_REPRODUCE: gist.doing,
+        template.SECTION_VERSION: result.reported_version,
+        template.SECTION_INSTALL_METHOD: result.install_method,
+    }
+    result.missing_sections = [
+        name for name in result.missing_sections if not answered.get(name)
+    ]
 
 
 def _load_diagnostics_or_log(
@@ -331,7 +367,7 @@ def apply_triage(
             "ai": result.ai is not None,
             "missing_sections": list(result.missing_sections),
             "form_replaced": result.form_replaced,
-            "recovered": bool(result.gist and result.gist.has_recovered_fields),
+            "recovered": result.has_recovered_fields,
             "missing_attachment": result.missing_attachment,
             "log_wall": result.log_wall_detected,
             "labels": sorted(result.labels_to_add),

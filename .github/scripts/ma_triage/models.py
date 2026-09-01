@@ -307,6 +307,17 @@ class TriageResult:
         return self.has_diagnostics and not self.diagnostics_invalid
 
     @property
+    def has_recovered_fields(self) -> bool:
+        """True when the form was replaced and its answers were read from prose.
+
+        The renderer, the ask and the state record all have to agree on this, so
+        it is asked once here rather than reassembled at each of them.
+        """
+        return bool(
+            self.form_replaced and self.gist and self.gist.has_recovered_fields
+        )
+
+    @property
     def needs_user_action(self) -> bool:
         """True when the reporter still has to provide something."""
         if self.skip:

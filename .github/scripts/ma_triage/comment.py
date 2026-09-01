@@ -205,16 +205,12 @@ def _missing_sections_line(result: TriageResult) -> str:
     naming four sections to fill in reads as nonsense to someone whose report
     has none of them.
     """
-    if result.form_kind != "main":
+    if result.form_kind != "main" or not result.missing_sections:
         return ""
     if result.form_replaced:
-        # Recovering the answers is the better outcome than asking for them, so
-        # the ask is reserved for the report nothing could be read out of.
-        if result.gist is not None and result.gist.has_recovered_fields:
-            return ""
+        # Whatever was recovered is already gone from `missing_sections`, so
+        # reaching here means questions genuinely remain unanswered.
         return config.FORM_REPLACED_NOTE
-    if not result.missing_sections:
-        return ""
     pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
     return (
         f"One thing to help us dig in: the following required section(s) look "
@@ -413,14 +409,16 @@ def _recovered_fields_line(result: TriageResult) -> str:
     and the install-method advice, and a version taken from the wrong sentence
     would produce confident, wrong guidance about upgrading.
     """
-    gist = result.gist
-    if not result.form_replaced or gist is None or not gist.has_recovered_fields:
+    if not result.has_recovered_fields:
         return ""
+    gist = result.gist
     bits = []
+    # `markdown_safe`, not `inline`: only it escapes link syntax and breaks URL
+    # schemes, and this is model output derived from a stranger's prose.
     if gist.version:
-        bits.append(f"**Version:** {inline(gist.version, max_len=40)}")
+        bits.append(f"**Version:** {markdown_safe(gist.version, max_len=40)}")
     if gist.install_method:
-        bits.append(f"**Install:** {inline(gist.install_method, max_len=60)}")
+        bits.append(f"**Install:** {markdown_safe(gist.install_method, max_len=60)}")
     return f"{config.RECOVERED_FIELDS_NOTE}\n\n" + " · ".join(bits)
 
 
@@ -464,12 +462,9 @@ def build_body(result: TriageResult) -> str:
         )
     else:
         # Main form, no usable attachment.
-        if result.form_replaced and not (
-            result.gist is not None and result.gist.has_recovered_fields
-        ):
-            parts.append(config.FORM_REPLACED_NOTE + "\n")
-        elif result.form_replaced:
-            pass  # the recovered-fields line above already covers it
+        if result.form_replaced:
+            if result.missing_sections:
+                parts.append(config.FORM_REPLACED_NOTE + "\n")
         elif result.missing_sections:
             pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
             parts.append(

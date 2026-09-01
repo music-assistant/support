@@ -322,7 +322,9 @@ _GIST_SYSTEM_PROMPT = (
     "version: the Music Assistant version the reporter is RUNNING. Reports name "
     "other versions too — one a bug appeared in, one something worked in, one a "
     "fix landed in. Those are not it. Null unless the report says which they are "
-    "on, and never take a version from a changelog reference or a code path.\n"
+    "on, and never take a version from a changelog reference or a code path. If "
+    "the report gives more than one answer and does not say which is current, "
+    "return null rather than choosing.\n"
     "install_method: how they run it, in their words (Home Assistant add-on, "
     "Docker container, standalone). Null if not stated."
 )

@@ -324,14 +324,20 @@ def test_replaced_form_note_holds_when_diagnostics_were_attached(sample_raw):
     assert "AI_POLICY" not in body
 
 
-def _replaced(**gist_kwargs):
+def _replaced(*, still_missing=(), **gist_kwargs):
+    """A replaced form after `_apply_recovered_fields` has run.
+
+    `still_missing` is what recovery could not answer; the renderer reads only
+    that, so the two cannot drift apart the way they did when the ask and the
+    `waiting-for-user` label each decided for themselves.
+    """
     from ma_triage.models import ReportGist, TriageResult
 
     return TriageResult(
         form_kind="main",
         form_replaced=True,
         missing_attachment=True,
-        missing_sections=list(template.REQUIRED_SECTIONS_MAIN),
+        missing_sections=list(still_missing),
         gist=ReportGist(**gist_kwargs) if gist_kwargs else None,
     )
 
@@ -348,6 +354,30 @@ def test_recovering_the_answers_replaces_asking_for_them():
     assert config.FORM_REPLACED_NOTE not in body
 
 
+def test_the_ask_survives_a_partial_recovery():
+    """Recovering the install method must not silence the version question."""
+    body = comment.build_body(
+        _replaced(still_missing=[template.SECTION_VERSION],
+                  doing="d", install_method="Docker")
+    )
+    assert config.FORM_REPLACED_NOTE in body
+    assert "**Install:** Docker" in body
+
+
 def test_the_ask_remains_when_nothing_could_be_recovered():
-    assert config.FORM_REPLACED_NOTE in comment.build_body(_replaced(doing="d"))
-    assert config.FORM_REPLACED_NOTE in comment.build_body(_replaced())
+    missing = list(template.REQUIRED_SECTIONS_MAIN)
+    assert config.FORM_REPLACED_NOTE in comment.build_body(
+        _replaced(still_missing=missing, doing="d")
+    )
+    assert config.FORM_REPLACED_NOTE in comment.build_body(
+        _replaced(still_missing=missing)
+    )
+
+
+def test_recovered_fields_cannot_publish_a_link():
+    """Model output derived from a stranger's prose, rendered as markdown."""
+    body = comment.build_body(
+        _replaced(install_method="Docker, see [here](https://evil.example)")
+    )
+    assert "](https://evil.example)" not in body
+    assert "https://evil.example" not in body
