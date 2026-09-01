@@ -342,3 +342,21 @@ def test_gist_fires_once_the_description_is_long(monkeypatch, fake_gh):
 
 def test_gist_costs_nothing_when_ai_is_off(monkeypatch, fake_gh):
     assert _gist_calls(monkeypatch, fake_gh, 5000, ai_enabled=False) == 0
+
+
+def test_gist_reaches_a_report_that_replaced_the_form(monkeypatch, fake_gh):
+    """These have no "What happened?" section, so the old gate excluded them.
+
+    They are the longest reports in the tracker and the ones a maintainer most
+    needs condensed; keying on a section they do not have got that backwards.
+    """
+    calls = []
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: calls.append(title) or None,
+    )
+    own_headings = "# My bug\n\n## Environment\n\nMA 2.9.2, Docker\n\n## Detail\n\n" + "x" * 2000
+    main.build_result(fake_gh, "t", own_headings, token="x")
+    assert calls, "a report that replaced the form should still be condensed"

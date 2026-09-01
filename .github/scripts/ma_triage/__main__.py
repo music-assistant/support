@@ -167,8 +167,15 @@ def build_result(
     # A report long enough that its first line is not the point gets condensed to
     # three beats at the top of the comment. Independent of diagnostics: half of
     # the long reports attach none, and those are the ones worth condensing.
-    description = template.section_value(body, template.SECTION_WHAT_HAPPENED) or ""
-    if config.AI_ENABLED and len(description) >= config.GIST_MIN_CHARS:
+    #
+    # Measured against the reporter's prose wherever they put it. Keying on the
+    # "What happened?" section alone silently excluded every report that replaced
+    # the form with its own headings — 25 of the 384 filed since June, the
+    # longest and least skimmable of them, and the set that needs this most.
+    description = template.section_value(body, template.SECTION_WHAT_HAPPENED)
+    if description is None and not template.parse_sections(body):
+        description = body or ""
+    if config.AI_ENABLED and len(description or "") >= config.GIST_MIN_CHARS:
         result.gist = ai.summarise_report(title, body, token=token)
 
     # Retrieve docs, pinned notices and provider-matched reports *before* Tier-1
