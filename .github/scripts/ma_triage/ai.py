@@ -301,8 +301,10 @@ _GIST_SCHEMA: dict[str, Any] = {
             "doing": {"type": ["string", "null"]},
             "happened": {"type": ["string", "null"]},
             "expected": {"type": ["string", "null"]},
+            "version": {"type": ["string", "null"]},
+            "install_method": {"type": ["string", "null"]},
         },
-        "required": ["doing", "happened", "expected"],
+        "required": ["doing", "happened", "expected", "version", "install_method"],
     },
 }
 
@@ -316,7 +318,15 @@ _GIST_SYSTEM_PROMPT = (
     "and do not repair an incomplete report: if it never says what was "
     "expected, return null for that field rather than inferring the obvious. "
     "A null is useful information — it tells the maintainer what to ask for.\n\n"
-    "One sentence per field, at most 20 words, in the reporter's own terms."
+    "One sentence per field, at most 20 words, in the reporter's own terms.\n\n"
+    "version: the Music Assistant version the reporter is RUNNING. Reports name "
+    "other versions too — one a bug appeared in, one something worked in, one a "
+    "fix landed in. Those are not it. Null unless the report says which they are "
+    "on, and never take a version from a changelog reference or a code path. If "
+    "the report gives more than one answer and does not say which is current, "
+    "return null rather than choosing.\n"
+    "install_method: how they run it, in their words (Home Assistant add-on, "
+    "Docker container, standalone). Null if not stated."
 )
 
 
@@ -354,8 +364,10 @@ def summarise_report(title: str, body: str, *, token: str) -> ReportGist | None:
             doing=_gist_line(data.get("doing")),
             happened=_gist_line(data.get("happened")),
             expected=_gist_line(data.get("expected")),
+            version=_gist_line(data.get("version")),
+            install_method=_gist_line(data.get("install_method")),
         )
-        return gist if gist.has_content else None
+        return gist if (gist.has_content or gist.has_recovered_fields) else None
     except Exception as exc:  # noqa: BLE001 — never let AI break triage
         print(f"Report gist skipped: {exc}")
         return None

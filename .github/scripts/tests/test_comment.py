@@ -1,4 +1,4 @@
-from ma_triage import comment, config
+from ma_triage import comment, config, template
 from ma_triage.analyze import analyze
 from ma_triage.diagnostics import parse_diagnostics
 from ma_triage.models import AIResult, TriageResult
@@ -266,3 +266,118 @@ def test_gist_cannot_smuggle_markdown_or_mentions():
     )
     assert "@maintainer" not in body
     assert "](https://evil.example)" not in body
+
+
+def test_replaced_form_gets_its_own_ask_not_a_list_of_sections():
+    """Naming four sections to fill in is nonsense when the form is gone."""
+    from ma_triage.models import TriageResult
+
+    result = TriageResult(
+        form_kind="main",
+        missing_sections=list(template.REQUIRED_SECTIONS_MAIN),
+        form_replaced=True,
+        missing_attachment=True,
+    )
+    body = comment.build_body(result)
+    assert config.FORM_REPLACED_NOTE.split("\n")[0] in body
+    assert "could you fill in the following section(s)" not in body
+    assert "What happened?**, **How to reproduce" not in body
+
+
+def test_a_merely_incomplete_form_still_lists_its_sections():
+    from ma_triage.models import TriageResult
+
+    result = TriageResult(
+        form_kind="main", missing_sections=["How to reproduce"], missing_attachment=True
+    )
+    body = comment.build_body(result)
+    assert "**How to reproduce**" in body
+    assert config.FORM_REPLACED_NOTE.split("\n")[0] not in body
+
+
+def test_the_diagnostics_ask_is_a_question_either_way():
+    from ma_triage.models import TriageResult
+
+    for missing in ([], ["How to reproduce"]):
+        body = comment.build_body(
+            TriageResult(form_kind="main", missing_sections=missing, missing_attachment=True)
+        )
+        assert "Could you" in body
+        assert "really help if you could attach a **diagnostics" not in body
+
+
+def test_replaced_form_note_holds_when_diagnostics_were_attached(sample_raw):
+    """The actionable branch prints the version, so the note must not deny it."""
+    from ma_triage.diagnostics import parse_diagnostics
+    from ma_triage.models import TriageResult
+
+    result = TriageResult(
+        form_kind="main",
+        has_diagnostics=True,
+        diagnostics=parse_diagnostics(sample_raw),
+        missing_sections=list(template.REQUIRED_SECTIONS_MAIN),
+        form_replaced=True,
+    )
+    body = comment.build_body(result)
+    assert config.FORM_REPLACED_NOTE in body
+    assert "aren't answered anywhere" not in body
+    assert "AI_POLICY" not in body
+
+
+def _replaced(*, still_missing=(), **gist_kwargs):
+    """A replaced form after `_apply_recovered_fields` has run.
+
+    `still_missing` is what recovery could not answer; the renderer reads only
+    that, so the two cannot drift apart the way they did when the ask and the
+    `waiting-for-user` label each decided for themselves.
+    """
+    from ma_triage.models import ReportGist, TriageResult
+
+    return TriageResult(
+        form_kind="main",
+        form_replaced=True,
+        missing_attachment=True,
+        missing_sections=list(still_missing),
+        gist=ReportGist(**gist_kwargs) if gist_kwargs else None,
+    )
+
+
+def test_recovered_fields_are_shown_for_correction():
+    body = comment.build_body(_replaced(doing="d", version="2.9.2", install_method="Docker"))
+    assert config.RECOVERED_FIELDS_NOTE in body
+    assert "**Version:** 2.9.2" in body and "**Install:** Docker" in body
+
+
+def test_recovering_the_answers_replaces_asking_for_them():
+    """Reading the answers out is a better outcome than requesting them again."""
+    body = comment.build_body(_replaced(doing="d", version="2.9.2"))
+    assert config.FORM_REPLACED_NOTE not in body
+
+
+def test_the_ask_survives_a_partial_recovery():
+    """Recovering the install method must not silence the version question."""
+    body = comment.build_body(
+        _replaced(still_missing=[template.SECTION_VERSION],
+                  doing="d", install_method="Docker")
+    )
+    assert config.FORM_REPLACED_NOTE in body
+    assert "**Install:** Docker" in body
+
+
+def test_the_ask_remains_when_nothing_could_be_recovered():
+    missing = list(template.REQUIRED_SECTIONS_MAIN)
+    assert config.FORM_REPLACED_NOTE in comment.build_body(
+        _replaced(still_missing=missing, doing="d")
+    )
+    assert config.FORM_REPLACED_NOTE in comment.build_body(
+        _replaced(still_missing=missing)
+    )
+
+
+def test_recovered_fields_cannot_publish_a_link():
+    """Model output derived from a stranger's prose, rendered as markdown."""
+    body = comment.build_body(
+        _replaced(install_method="Docker, see [here](https://evil.example)")
+    )
+    assert "](https://evil.example)" not in body
+    assert "https://evil.example" not in body

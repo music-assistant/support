@@ -557,6 +557,27 @@ DOCS_ANSWER_DISCLAIMER = (
 # descriptions, and the share above it doubled between June and August 2026 as
 # reports written with an assistant became common.
 GIST_MIN_CHARS = _env_int("TRIAGE_GIST_MIN_CHARS", 1200)
+# A substantial report that answers none of the form's questions has replaced the
+# template rather than skipped a field. Measured over issues since 2026-06: this
+# fires on 7% of them and covers 10 of the 14 a maintainer pushed back on for
+# being pasted, generated text. The length floor keeps it off the one-line
+# reports that are merely terse.
+FORM_REPLACED_MIN_CHARS = _env_int("TRIAGE_FORM_REPLACED_MIN_CHARS", 1500)
+# Says only what the check established: the form was not used. It cannot tell a
+# generated report from a hand-written one and does not try — every required
+# field is `required: true` in the form, so a body missing all of them did not
+# come through it, whoever wrote it. Kept to one ask: this fires on reports that
+# are already long, and answering a wall of text with one helps nobody.
+RECOVERED_FIELDS_NOTE = (
+    "The form's answers weren't where we look for them, so these are read back "
+    "out of your report — correct me if I've got them wrong."
+)
+FORM_REPLACED_NOTE = (
+    "This looks like it was written out rather than filled in through the issue "
+    "form, so the answers we triage on aren't where we look for them. Could you "
+    "add them here, or re-file through "
+    "[the form](https://github.com/music-assistant/support/issues/new/choose)?"
+)
 GIST_HEADING = "**In short**"
 GIST_MISSING = "_the report doesn't say_"
 GIST_FOOTER = (

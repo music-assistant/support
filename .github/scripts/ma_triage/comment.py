@@ -199,9 +199,18 @@ def _frontend_body(result: TriageResult) -> list[str]:
 
 
 def _missing_sections_line(result: TriageResult) -> str:
-    """A gentle request for empty required sections (main form)."""
+    """A gentle request for empty required sections (main form).
+
+    Yields to :data:`config.FORM_REPLACED_NOTE` when the form is gone entirely:
+    naming four sections to fill in reads as nonsense to someone whose report
+    has none of them.
+    """
     if result.form_kind != "main" or not result.missing_sections:
         return ""
+    if result.form_replaced:
+        # Whatever was recovered is already gone from `missing_sections`, so
+        # reaching here means questions genuinely remain unanswered.
+        return config.FORM_REPLACED_NOTE
     pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
     return (
         f"One thing to help us dig in: the following required section(s) look "
@@ -393,6 +402,26 @@ def _gist_section(result: TriageResult) -> str:
     )
 
 
+def _recovered_fields_line(result: TriageResult) -> str:
+    """What the form would have told us, read back out of the reporter's prose.
+
+    Shown so the reporter can correct it: these values drive the version check
+    and the install-method advice, and a version taken from the wrong sentence
+    would produce confident, wrong guidance about upgrading.
+    """
+    if not result.has_recovered_fields:
+        return ""
+    gist = result.gist
+    bits = []
+    # `markdown_safe`, not `inline`: only it escapes link syntax and breaks URL
+    # schemes, and this is model output derived from a stranger's prose.
+    if gist.version:
+        bits.append(f"**Version:** {markdown_safe(gist.version, max_len=40)}")
+    if gist.install_method:
+        bits.append(f"**Install:** {markdown_safe(gist.install_method, max_len=60)}")
+    return f"{config.RECOVERED_FIELDS_NOTE}\n\n" + " · ".join(bits)
+
+
 def build_body(result: TriageResult) -> str:
     """Render the full sticky-comment body for a triage pass."""
     parts = [config.STICKY_MARKER, "", config.GREETING, ""]
@@ -403,6 +432,9 @@ def build_body(result: TriageResult) -> str:
     gist = _gist_section(result)
     if gist:
         parts.extend([gist, ""])
+    recovered = _recovered_fields_line(result)
+    if recovered:
+        parts.extend([recovered, ""])
 
     if result.form_kind == "frontend":
         parts.extend(_frontend_body(result))
@@ -430,7 +462,10 @@ def build_body(result: TriageResult) -> str:
         )
     else:
         # Main form, no usable attachment.
-        if result.missing_sections:
+        if result.form_replaced:
+            if result.missing_sections:
+                parts.append(config.FORM_REPLACED_NOTE + "\n")
+        elif result.missing_sections:
             pretty = ", ".join(f"**{s}**" for s in result.missing_sections)
             parts.append(
                 f"To help us look into this, could you fill in the following "
@@ -440,8 +475,9 @@ def build_body(result: TriageResult) -> str:
             # Reporter pasted a screenshot/image instead of the actual file.
             parts.append(config.SCREENSHOT_ATTACHMENT_NOTE + " " + _DIAGNOSTICS_HOWTO)
         else:
+            # Both leads end as questions; they share the trailing question mark.
             lead = (
-                "It would also really help if you could attach"
+                "Could you also attach"
                 if result.missing_sections
                 else "Could you attach"
             )

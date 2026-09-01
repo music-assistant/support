@@ -134,11 +134,19 @@ class ReportGist:
     doing: str | None = None
     happened: str | None = None
     expected: str | None = None
+    # Recovered only when the form was replaced: what it would have asked for.
+    version: str | None = None
+    install_method: str | None = None
 
     @property
     def has_content(self) -> bool:
         """True when at least one beat was actually found."""
         return any((self.doing, self.happened, self.expected))
+
+    @property
+    def has_recovered_fields(self) -> bool:
+        """True when a form field was read back out of the reporter's prose."""
+        return any((self.version, self.install_method))
 
 
 # --------------------------------------------------------------------------- #
@@ -273,6 +281,8 @@ class TriageResult:
     # screenshot of a log into the main form's diagnostics field).
     has_media_attachment: bool = False
     missing_sections: list[str] = field(default_factory=list)
+    # The form was not merely skipped in places — it is not there at all.
+    form_replaced: bool = False
     log_wall_detected: bool = False
 
     # Facts read straight from the form fields (available even without a file).
@@ -295,6 +305,17 @@ class TriageResult:
     def is_actionable(self) -> bool:
         """True when we have enough to diagnose (valid diagnostics present)."""
         return self.has_diagnostics and not self.diagnostics_invalid
+
+    @property
+    def has_recovered_fields(self) -> bool:
+        """True when the form was replaced and its answers were read from prose.
+
+        The renderer, the ask and the state record all have to agree on this, so
+        it is asked once here rather than reassembled at each of them.
+        """
+        return bool(
+            self.form_replaced and self.gist and self.gist.has_recovered_fields
+        )
 
     @property
     def needs_user_action(self) -> bool:

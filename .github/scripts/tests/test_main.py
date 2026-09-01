@@ -344,6 +344,95 @@ def test_gist_costs_nothing_when_ai_is_off(monkeypatch, fake_gh):
     assert _gist_calls(monkeypatch, fake_gh, 5000, ai_enabled=False) == 0
 
 
+# --- recovering the form's answers from a report that replaced it -------------- #
+_REPLACED = "# My bug\n\n## Environment\n\nMA 2.9.2, Docker\n\n## Detail\n\n" + "x" * 2000
+
+
+def test_recovered_fields_only_ever_fill_a_blank(monkeypatch, fake_gh):
+    """A form answer always beats a reading of one."""
+    from ma_triage.models import ReportGist
+
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: ReportGist(
+            doing="d", version="9.9.9", install_method="guessed"
+        ),
+    )
+    # A replaced form has nothing to beat it, so the reading is used.
+    res = main.build_result(fake_gh, "t", _REPLACED, token="x")
+    assert res.reported_version == "9.9.9"
+    assert res.install_method == "guessed"
+
+
+def test_recovery_is_not_applied_when_the_form_was_used(monkeypatch, fake_gh):
+    from ma_triage.models import ReportGist
+
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: ReportGist(doing="d", version="9.9.9"),
+    )
+    body = _body_with_description(config.GIST_MIN_CHARS)
+    res = main.build_result(fake_gh, "t", body, token="x")
+    assert res.form_replaced is False
+    assert res.reported_version == "2.10.0"
+
+
+def test_the_comment_asks_for_something_exactly_when_it_waits_for_the_user(
+    monkeypatch, fake_gh
+):
+    """The ask and the `waiting-for-user` label must not decide separately.
+
+    They did: recovery silenced the ask while `missing_sections` still held all
+    four, so the bot requested nothing and the sweep then closed the issue for
+    going unanswered.
+    """
+    from ma_triage import comment as comment_mod
+    from ma_triage.models import ReportGist
+
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: ReportGist(
+            doing="pressed play", happened="no sound",
+            version="2.9.2", install_method="Docker",
+        ),
+    )
+    replaced = "# Bug\n\n## Detail\n\n" + "x" * 2000
+    result = main.build_result(fake_gh, "t", replaced, token="x")
+
+    assert result.form_replaced and result.has_recovered_fields
+    assert result.missing_sections == [], "recovered answers must clear their questions"
+
+    body = comment_mod.build_body(result)
+    # Recovery answered the form, so that ask is gone; the diagnostics file was
+    # never in the report and is still wanted, so that one remains.
+    assert config.FORM_REPLACED_NOTE not in body
+    asks_for_something = "Could you attach" in body or config.FORM_REPLACED_NOTE in body
+    assert asks_for_something is result.needs_user_action, (
+        "the comment and the waiting-for-user label must agree: asking for "
+        "nothing while waiting is what let the sweep close unanswered issues"
+    )
+
+
+def test_a_recovered_version_does_not_originate_a_label(monkeypatch, fake_gh):
+    """The model may narrow the deterministic label set, never add to it."""
+    from ma_triage.models import ReportGist
+
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(config, "RAG_ENABLED", False)
+    monkeypatch.setattr(
+        main.ai, "summarise_report",
+        lambda title, body, *, token: ReportGist(doing="d", happened="h", version="2.0.0"),
+    )
+    result = main.build_result(fake_gh, "t", "# Bug\n\n## Detail\n\n" + "x" * 2000, token="x")
+    assert result.reported_version == "2.0.0"
+    assert not any("outdated" in label for label in result.labels_to_add)
+
 def test_gist_reaches_a_report_that_replaced_the_form(monkeypatch, fake_gh):
     """These have no "What happened?" section, so the old gate excluded them.
 

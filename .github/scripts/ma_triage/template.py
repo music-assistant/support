@@ -179,6 +179,23 @@ def missing_sections(body: str | None, kind: str = "main") -> list[str]:
     return missing
 
 
+def form_replaced(body: str | None, kind: str = "main") -> bool:
+    """True when a substantial report answers none of the form's questions.
+
+    Distinct from a missing field: there is no section to fill in, because the
+    template was replaced with the reporter's own prose. The advice differs too —
+    a field can be added, a replaced form has to be answered from scratch.
+
+    Deliberately says nothing about *why* the form is gone. It cannot separate a
+    generated report from a hand-written one, and does not need to: the ask is
+    the same for both.
+    """
+    if kind != "main" or len(body or "") < config.FORM_REPLACED_MIN_CHARS:
+        return False
+    required = required_sections_for(kind)
+    return len(missing_sections(body, kind)) == len(required)
+
+
 def extract_version(body: str | None) -> str | None:
     """Reporter-entered value of the "Music Assistant version" field."""
     return section_value(body, SECTION_VERSION)

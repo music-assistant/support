@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 from ma_triage import config, template
 
 
@@ -157,3 +160,50 @@ def test_strip_boilerplate_removes_inline_checkboxes():
 def test_strip_boilerplate_handles_empty_input():
     assert template.strip_boilerplate(None) == ""
     assert template.strip_boilerplate("") == ""
+
+
+# --- a replaced form is not a missing field ------------------------------------ #
+_NO_FORM = (
+    "# Sonos sync_group reports state 'idle'\n\n"
+    "## Environment\n\nMA 2.10.1, HA add-on\n\n"
+    "## Analysis\n\nThe provider returns the wrong state because "
+) + "x" * 1600
+
+
+def test_form_replaced_when_a_long_report_answers_none_of_the_form():
+    assert template.form_replaced(_NO_FORM, "main") is True
+
+
+def test_form_replaced_ignores_a_short_report_with_no_form():
+    """Terse is not the same problem, and the advice would be wrong."""
+    assert template.form_replaced("It broke. Please fix.", "main") is False
+
+
+def test_form_replaced_ignores_a_report_that_used_the_form():
+    body = _main_body()
+    assert template.form_replaced(body + "x" * 3000, "main") is False
+
+
+def test_form_replaced_only_applies_to_the_main_form():
+    assert template.form_replaced(_NO_FORM, "frontend") is False
+    assert template.form_replaced(_NO_FORM, "translation") is False
+
+
+def test_required_sections_match_the_form_that_ships():
+    """The constants claim to be kept in sync with the issue form by hand.
+
+    Nothing enforced that, and the risk changed with `form_replaced`: a stale
+    heading used to mean a redundant "please fill this in", and now means every
+    correctly-filed report is told it bypassed the form. A one-word label edit
+    should fail here rather than in production.
+    """
+    form = Path(__file__).resolve().parents[2] / "ISSUE_TEMPLATE" / "1_bug_report.yml"
+    labels = set(re.findall(r"^\s*label:\s*(.+?)\s*$", form.read_text(), re.M))
+    missing = [s for s in template.REQUIRED_SECTIONS_MAIN if s not in labels]
+    assert not missing, f"not in {form.name}: {missing}"
+
+
+def test_form_replaced_threshold_is_tunable(monkeypatch):
+    """The floor is the knob to reach for during rollout, so it has to work."""
+    monkeypatch.setattr(config, "FORM_REPLACED_MIN_CHARS", 10_000)
+    assert template.form_replaced(_NO_FORM, "main") is False
