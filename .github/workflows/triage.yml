@@ -140,9 +140,14 @@ jobs:
     # optimisation and deterministic triage must not depend on it, while a
     # cancelled run still stops.
     needs: [trace]
-    # Bounds the half of the wait this job owns. It measures well under two
-    # minutes; this is a backstop, not a target.
-    timeout-minutes: 3
+    # Bounds the half of the wait this job owns. The triage itself measures well
+    # under two minutes, but `start-embeddings` runs first and is not bounded by
+    # the work: it serves the model from the runner, so a warm weights cache
+    # costs ~40s and a cold one spends minutes downloading 600MB. At three
+    # minutes that difference decided the job — three of fifteen issue runs were
+    # cancelled mid-download, having applied no labels and left no comment.
+    # This is a backstop against a hung job, not a target.
+    timeout-minutes: 10
     if: >-
       ${{ !cancelled()
       && ((github.event_name == 'issues' && !github.event.issue.pull_request)
