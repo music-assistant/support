@@ -449,3 +449,55 @@ def test_gist_reaches_a_report_that_replaced_the_form(monkeypatch, fake_gh):
     own_headings = "# My bug\n\n## Environment\n\nMA 2.9.2, Docker\n\n## Detail\n\n" + "x" * 2000
     main.build_result(fake_gh, "t", own_headings, token="x")
     assert calls, "a report that replaced the form should still be condensed"
+
+
+def test_a_filled_ai_analysis_is_folded_on_the_issue(monkeypatch, fake_gh):
+    """The forms cannot collapse a field, so the disclosure is applied here."""
+    from ma_triage import template as tmpl
+
+    body = "### What happened?\n\nNo sound\n\n### AI analysis\n\nA cause."
+    edits = []
+    monkeypatch.setattr(type(fake_gh), "get_issue",
+                        lambda self, n: {"body": body}, raising=False)
+    monkeypatch.setattr(type(fake_gh), "set_issue_body",
+                        lambda self, n, b: edits.append(b), raising=False)
+    monkeypatch.setattr(main, "_resolve_labels", lambda gh, r: [])
+    main.apply_triage(fake_gh, 1, {"labels": [], "body": body},
+                      main.TriageResult(form_kind="main"))
+
+    assert len(edits) == 1
+    assert "<details>" in edits[0] and tmpl.AI_ANALYSIS_SUMMARY in edits[0]
+    assert "A cause." in edits[0]
+
+
+def test_the_fold_reads_the_body_back_before_rewriting_it(monkeypatch, fake_gh):
+    """Triage takes minutes; the copy it started with may already be stale.
+
+    Writing that one back would silently revert an edit the reporter made while
+    the run was in flight.
+    """
+    stale = "### What happened?\n\nTypo\n\n### AI analysis\n\nA cause."
+    fresh = "### What happened?\n\nFixed typo\n\n### AI analysis\n\nA cause."
+    edits = []
+    monkeypatch.setattr(type(fake_gh), "get_issue",
+                        lambda self, n: {"body": fresh}, raising=False)
+    monkeypatch.setattr(type(fake_gh), "set_issue_body",
+                        lambda self, n, b: edits.append(b), raising=False)
+    monkeypatch.setattr(main, "_resolve_labels", lambda gh, r: [])
+    main.apply_triage(fake_gh, 1, {"labels": [], "body": stale},
+                      main.TriageResult(form_kind="main"))
+
+    assert "Fixed typo" in edits[0] and "Typo\n" not in edits[0]
+
+
+def test_a_report_without_an_analysis_is_not_edited(monkeypatch, fake_gh):
+    body = "### What happened?\n\nNo sound"
+    edits = []
+    monkeypatch.setattr(type(fake_gh), "get_issue",
+                        lambda self, n: {"body": body}, raising=False)
+    monkeypatch.setattr(type(fake_gh), "set_issue_body",
+                        lambda self, n, b: edits.append(b), raising=False)
+    monkeypatch.setattr(main, "_resolve_labels", lambda gh, r: [])
+    main.apply_triage(fake_gh, 1, {"labels": [], "body": body},
+                      main.TriageResult(form_kind="main"))
+    assert edits == []

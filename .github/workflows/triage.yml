@@ -44,9 +44,15 @@ jobs:
     # Gated at the job, not only in the script: with tracing off there is no
     # consumer for a traced path, and an ungated job would still pay for two
     # checkouts and a CLI install on every issue while `analyze` waited on it.
+    # The bot folds the AI analysis section into a `<details>` after triage,
+    # which is an `edited` event. Re-running on our own formatting change would
+    # double the most expensive pipeline here for no new information.
     if: >-
       ${{ vars.TRIAGE_CODE_TRACE_ENABLED == 'true'
       && vars.TRIAGE_AI_ENABLED == 'true'
+      && !(github.event_name == 'issues'
+      && github.event.action == 'edited'
+      && github.event.sender.type == 'Bot')
       && ((github.event_name == 'issues' && !github.event.issue.pull_request)
       || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
@@ -148,8 +154,13 @@ jobs:
     # cancelled mid-download, having applied no labels and left no comment.
     # This is a backstop against a hung job, not a target.
     timeout-minutes: 10
+    # See `trace`: our own fold arrives as an `edited` event and carries no new
+    # information to triage.
     if: >-
       ${{ !cancelled()
+      && !(github.event_name == 'issues'
+      && github.event.action == 'edited'
+      && github.event.sender.type == 'Bot')
       && ((github.event_name == 'issues' && !github.event.issue.pull_request)
       || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest

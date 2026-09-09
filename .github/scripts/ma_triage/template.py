@@ -31,6 +31,8 @@ SECTION_ANYTHING_ELSE = "Anything else?"
 SECTION_BROWSER_OS = "Browser and operating system"
 SECTION_SCREENSHOT = "Screenshot or recording"
 SECTION_AI_ANALYSIS = "AI analysis"
+# Shown on the collapsed disclosure the bot folds that section into.
+AI_ANALYSIS_SUMMARY = "AI analysis (click to expand)"
 
 # Required *text* sections per form (the attachment fields are validated
 # separately via attachments.py, since their content is a URL/upload).
@@ -79,6 +81,23 @@ UNRANKED_SECTION_PREFIXES = (
     "have you reviewed the",
 )
 
+# Every heading the current forms emit. The AI analysis section ends at one of
+# these and not at any heading, because generated prose brings headings of its
+# own — "### Root cause" is the reporter's answer continuing, not a new field.
+FORM_SECTIONS = frozenset(
+    {
+        SECTION_WHAT_HAPPENED,
+        SECTION_HOW_TO_REPRODUCE,
+        SECTION_VERSION,
+        SECTION_INSTALL_METHOD,
+        SECTION_DIAGNOSTICS,
+        SECTION_ANYTHING_ELSE,
+        SECTION_BROWSER_OS,
+        SECTION_SCREENSHOT,
+        SECTION_AI_ANALYSIS,
+    }
+)
+
 _RE_SECTION = re.compile(r"^###\s+(.*?)\s*$")
 _RE_CHECKBOX = re.compile(r"^\s*[-*]\s*\[[ xX]\].*$", re.MULTILINE)
 # A line that looks like a log line: has a level keyword or an ISO-ish timestamp.
@@ -124,6 +143,32 @@ def parse_sections(body: str | None) -> dict[str, str]:
     return sections
 
 
+def _ai_analysis_span(lines: list[str]) -> tuple[int, int] | None:
+    """``(start, end)`` line range of the AI analysis section, heading included.
+
+    The end is the next heading that names a *form* section. Stopping at any
+    heading would cut the section short, because generated analyses carry their
+    own — "### Root cause" is the same answer continuing, not the next field.
+    Getting that wrong leaves half the analysis outside the fold and, worse,
+    inside the text a report is ranked on.
+
+    Shared by the fold and the strip so the two cannot disagree about where the
+    section ends.
+    """
+    start = None
+    for i, line in enumerate(lines):
+        heading = _RE_SECTION.match(line)
+        if heading is None:
+            continue
+        name = heading.group(1).strip()
+        if start is None:
+            if name == SECTION_AI_ANALYSIS:
+                start = i
+        elif name in FORM_SECTIONS:
+            return start, i
+    return (start, len(lines)) if start is not None else None
+
+
 def _is_unranked_heading(name: str | None) -> bool:
     """True for a section kept out of the text a report is ranked on."""
     return (name or "").strip().lower().startswith(UNRANKED_SECTION_PREFIXES)
@@ -146,9 +191,15 @@ def strip_boilerplate(body: str | None) -> str:
     """
     if not body:
         return ""
+    lines = body.splitlines()
+    # Removed first and whole: its own sub-headings would otherwise end the drop
+    # early and let the rest of the analysis through.
+    span = _ai_analysis_span(lines)
+    if span is not None:
+        lines = lines[: span[0]] + lines[span[1] :]
     kept: list[str] = []
     dropping = False
-    for line in body.splitlines():
+    for line in lines:
         heading = _RE_SECTION.match(line)
         if heading:
             dropping = _is_unranked_heading(heading.group(1))
@@ -205,6 +256,45 @@ def form_replaced(body: str | None, kind: str = "main") -> bool:
         return False
     required = required_sections_for(kind)
     return len(missing_sections(body, kind)) == len(required)
+
+
+def wrap_ai_analysis(body: str | None) -> str | None:
+    """Collapse the AI analysis section behind a disclosure, in place.
+
+    Returns the rewritten body, or ``None`` when there is nothing to do — no
+    such section, nothing in it, or it is wrapped already. That last case is
+    what keeps this from running twice: rewriting the body re-triggers triage,
+    and the second pass has to be a no-op rather than nesting another layer.
+
+    Only the markup around the section changes. The reporter's words are moved,
+    not edited.
+    """
+    if not body:
+        return None
+    lines = body.splitlines()
+    span = _ai_analysis_span(lines)
+    if span is None:
+        return None
+    start, end = span
+    inner = "\n".join(lines[start + 1 : end]).strip("\n")
+    # A body already folded, or hand-edited into broken markup the bot would
+    # otherwise keep trying to re-fold around.
+    if not inner or inner == config.NO_RESPONSE_SENTINEL:
+        return None
+    if "<details" in inner or "</details>" in inner:
+        return None
+    wrapped = [
+        lines[start],
+        "",
+        "<details>",
+        f"<summary>{AI_ANALYSIS_SUMMARY}</summary>",
+        "",
+        inner,
+        "",
+        "</details>",
+        "",
+    ]
+    return "\n".join(lines[:start] + wrapped + lines[end:])
 
 
 def extract_version(body: str | None) -> str | None:

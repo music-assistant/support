@@ -258,3 +258,87 @@ def test_a_log_quoted_in_the_ai_analysis_is_not_a_log_wall():
     )
     assert template.detect_log_wall(f"### AI analysis\n\n{log}") is False
     assert template.detect_log_wall(f"### What happened?\n\n{log}") is True
+
+
+# --- folding the AI analysis behind a disclosure ------------------------------- #
+_WITH_ANALYSIS = (
+    "### What happened?\n\nNo sound\n\n"
+    "### AI analysis\n\nRace in the bridge manager.\n\n"
+    "### Anything else?\n\nNightly"
+)
+
+
+def test_wrap_ai_analysis_folds_only_that_section():
+    out = template.wrap_ai_analysis(_WITH_ANALYSIS)
+    assert "<details>" in out and template.AI_ANALYSIS_SUMMARY in out
+    assert "Race in the bridge manager." in out
+    # Everything around it is left exactly as the reporter wrote it.
+    assert "### What happened?\n\nNo sound" in out
+    assert out.count("<details>") == 1
+
+
+def test_wrap_ai_analysis_is_idempotent():
+    """The rewrite re-triggers triage, so the next pass has to change nothing."""
+    once = template.wrap_ai_analysis(_WITH_ANALYSIS)
+    assert template.wrap_ai_analysis(once) is None
+
+
+def test_wrap_ai_analysis_leaves_a_report_without_one_alone():
+    assert template.wrap_ai_analysis("### What happened?\n\nNo sound") is None
+    assert template.wrap_ai_analysis("### AI analysis\n\n_No response_") is None
+    assert template.wrap_ai_analysis("") is None
+    assert template.wrap_ai_analysis(None) is None
+
+
+def test_wrap_ai_analysis_handles_a_trailing_section():
+    """The field is last on the form, so end-of-body is the common case."""
+    out = template.wrap_ai_analysis("### What happened?\n\nNo sound\n\n### AI analysis\n\nA cause.")
+    assert out.rstrip().endswith("</details>")
+    assert "A cause." in out
+
+
+def test_a_folded_analysis_still_leaves_the_ranked_text_alone():
+    """Folding must not smuggle the section back into what we rank on."""
+    out = template.wrap_ai_analysis(_WITH_ANALYSIS)
+    stripped = template.strip_boilerplate(out)
+    assert "Race in the bridge manager." not in stripped
+    assert "No sound" in stripped and "Nightly" in stripped
+
+
+# Realistic generated output: it brings headings of its own.
+_WITH_SUBHEADINGS = (
+    "### What happened?\n\nSound cuts out after 30 seconds\n\n"
+    "### AI analysis\n\n"
+    "## Summary\nThe Sonos provider fails to renew its subscription.\n\n"
+    "### Root cause\nA race in `_handle_player_update`.\n\n"
+    "### Anything else?\n\nNightly"
+)
+
+
+def test_the_fold_covers_an_analysis_with_its_own_headings():
+    """Stopping at any heading folded the first paragraph and promoted the rest."""
+    out = template.wrap_ai_analysis(_WITH_SUBHEADINGS)
+    assert "## Summary" in out and "### Root cause" in out
+    assert out.index("<details>") < out.index("### Root cause")
+    assert out.index("### Root cause") < out.index("</details>")
+    # The form's own next section stays outside the disclosure.
+    assert out.index("</details>") < out.index("### Anything else?")
+
+
+def test_sub_headed_analysis_stays_out_of_the_ranked_text():
+    """The leak this closes: the section's own headings ended the drop early."""
+    stripped = template.strip_boilerplate(_WITH_SUBHEADINGS)
+    assert "Root cause" not in stripped
+    assert "_handle_player_update" not in stripped
+    assert "Sound cuts out after 30 seconds" in stripped and "Nightly" in stripped
+
+
+def test_the_fold_is_idempotent_with_sub_headings():
+    once = template.wrap_ai_analysis(_WITH_SUBHEADINGS)
+    assert template.wrap_ai_analysis(once) is None
+
+
+def test_a_half_broken_disclosure_is_left_alone():
+    """A hand-edit that mangles the markup must not be re-folded around."""
+    body = "### AI analysis\n\n</details>\n\nleftover text"
+    assert template.wrap_ai_analysis(body) is None

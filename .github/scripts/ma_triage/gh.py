@@ -479,11 +479,12 @@ class GitHubClient:
             ),
         )
 
-    def update_issue(self, number: int, **fields: Any) -> Any:
+    def set_issue_body(self, number: int, body: str) -> Any:
+        """Replace an issue's body. The only field the bot ever rewrites."""
         return self._mutate(
-            f"update issue #{number} fields {list(fields)}",
+            f"rewrite the body of issue #{number}",
             lambda: self._rest(
-                "PATCH", f"/repos/{self.repo}/issues/{number}", json=fields
+                "PATCH", f"/repos/{self.repo}/issues/{number}", json={"body": body}
             ),
         )
 

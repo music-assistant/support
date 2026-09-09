@@ -8,8 +8,10 @@ _Settings → System → Diagnostics → Download diagnostics_ in Music Assistan
 falls back to scanning an attached **raw log file** (for older versions without
 the diagnostics feature), posts a single sticky summary comment, applies
 setup/provider labels, involves community provider maintainers, surfaces
-docs-grounded answers and similar past reports, and manages the issue's response
-state. New/edited Discussions receive the same docs-grounded help without
+docs-grounded answers and similar past reports, manages the issue's response
+state, and folds a filled-in **AI analysis** field behind a `<details>` on the
+report itself — the one case where the bot edits an issue body, and only ever
+the markup around that section. New/edited Discussions receive the same docs-grounded help without
 issue-specific diagnostics or label handling.
 
 > **Live configuration in this repository:** deterministic triage, AI assessment,
@@ -299,6 +301,11 @@ python -m ma_triage triage
 - Set `TRIAGE_DRY_RUN=true` for an immediate non-mutating kill switch. Set
   `TRIAGE_AI_ENABLED=false` to retain deterministic triage without Models.
 - `triage/hold` pauses automation on an issue; `triage/skip` excludes it.
+- The bot edits an issue body in exactly one case: folding a filled-in AI
+  analysis behind a `<details>`. Markup only, and the change is visible in the
+  issue's edit history. It re-reads the body first so a reporter's concurrent
+  edit is not overwritten, and `trace`/`analyze` skip the `edited` event a bot
+  raises so the fold does not re-run the pipeline.
 - The bot does **not** dispatch coding agents or create fix PRs automatically.
 
 > Note: the per-form required-section lists in `ma_triage/template.py` and the
