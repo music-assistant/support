@@ -207,3 +207,54 @@ def test_form_replaced_threshold_is_tunable(monkeypatch):
     """The floor is the knob to reach for during rollout, so it has to work."""
     monkeypatch.setattr(config, "FORM_REPLACED_MIN_CHARS", 10_000)
     assert template.form_replaced(_NO_FORM, "main") is False
+
+
+def test_ai_analysis_is_kept_out_of_the_ranked_text():
+    """Kept out of the lexical query and the stored excerpt.
+
+    It is unique per report but speculative about causes, so two unrelated
+    reports theorising about the same subsystem look alike to a retriever in a
+    way their actual symptoms do not. The embedded text is a separate decision,
+    documented on `embeddings.post_excerpt`, and is deliberately left whole.
+    """
+    body = (
+        "### What happened?\n\nAirPlay drops out mid-track\n\n"
+        "### AI analysis\n\nLikely a race condition in the provider's event "
+        "handling around _on_providers_updated and the bridge manager.\n\n"
+        "### Anything else?\n\nHappens nightly"
+    )
+    stripped = template.strip_boilerplate(body)
+    assert "AirPlay drops out mid-track" in stripped
+    assert "Happens nightly" in stripped
+    assert "race condition" not in stripped
+    assert "AI analysis" not in stripped
+
+
+def test_ai_analysis_is_not_scanned_for_providers():
+    """The deterministic provider scan reads only what the reporter answered.
+
+    A provider named in a generated analysis therefore carries no weight *here*.
+    The assessment model is still handed the raw body and may pick one up; this
+    covers the scan, not that path.
+    """
+    body = (
+        "### What happened?\n\nPlayback stops\n\n"
+        "### AI analysis\n\nThe Sonos provider is almost certainly at fault."
+    )
+    assert "Sonos" not in template.provider_scan_text(body)
+
+
+def test_optional_form_fields_do_not_enter_the_required_set():
+    """Adding an optional field must not make it something we demand."""
+    assert template.SECTION_AI_ANALYSIS not in template.REQUIRED_SECTIONS_MAIN
+    assert template.SECTION_AI_ANALYSIS not in template.REQUIRED_SECTIONS_FRONTEND
+
+
+def test_a_log_quoted_in_the_ai_analysis_is_not_a_log_wall():
+    """The field asks for log interpretation, so quoting a log there follows it."""
+    log = "\n".join(
+        f"2026-09-09 12:00:{i:02d} ERROR (MainThread) [ma] something failed"
+        for i in range(40)
+    )
+    assert template.detect_log_wall(f"### AI analysis\n\n{log}") is False
+    assert template.detect_log_wall(f"### What happened?\n\n{log}") is True

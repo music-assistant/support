@@ -20,7 +20,7 @@ from typing import Any
 
 import requests
 
-from . import config, copilot
+from . import config, copilot, template
 from .models import (
     AIResult,
     Diagnostics,
@@ -330,6 +330,18 @@ _GIST_SYSTEM_PROMPT = (
 )
 
 
+def _gist_input(body: str) -> str:
+    """The report as the summariser should read it.
+
+    Without the AI analysis section. The gist fires on long reports, which is
+    what that section makes them, and a confident "the root cause is a race in
+    the bridge manager" outranks "sound cuts out after 30 seconds" every time —
+    then goes out publicly as the three lines a maintainer reads first. It also
+    keeps a version named in a changelog reference out of the recovered fields.
+    """
+    return template.strip_boilerplate(body)
+
+
 def summarise_report(title: str, body: str, *, token: str) -> ReportGist | None:
     """Condense a long report to three beats; ``None`` when unavailable.
 
@@ -349,7 +361,7 @@ def summarise_report(title: str, body: str, *, token: str) -> ReportGist | None:
                 "content": (
                     f"ISSUE TITLE: {inline(title, max_len=300)}\n\n"
                     f"ISSUE BODY (untrusted excerpt):\n"
-                    f"{fenced(body, max_len=config.MAX_AI_INPUT_CHARS)}"
+                    f"{fenced(_gist_input(body), max_len=config.MAX_AI_INPUT_CHARS)}"
                 ),
             },
         ],

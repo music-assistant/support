@@ -95,3 +95,16 @@ body:
     attributes:
       label: Anything else?
       description: Screenshots, an unusual network setup, whether playback is triggered from the UI or a Home Assistant action, or anything else that might help.
+
+  - type: textarea
+    id: ai_analysis
+    validations:
+      required: false
+    attributes:
+      label: AI analysis
+      description: |
+        Used an AI assistant to investigate? Put its output **here**, not in the fields above — we do read it.
+
+        The questions above still need your own words, even briefly. A short human description of what you saw is what we triage on; a generated analysis in its place usually means we have to come back and ask what actually happened, which is slower for both of us. Our [AI policy](https://github.com/music-assistant/.github/blob/main/AI_POLICY.md) covers this, and applies to code contributions too.
+      placeholder: |
+        Paste any AI-generated analysis, log interpretation or suggested cause here.

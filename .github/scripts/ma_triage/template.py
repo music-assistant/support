@@ -30,6 +30,7 @@ SECTION_DIAGNOSTICS = "Diagnostics report or log file"
 SECTION_ANYTHING_ELSE = "Anything else?"
 SECTION_BROWSER_OS = "Browser and operating system"
 SECTION_SCREENSHOT = "Screenshot or recording"
+SECTION_AI_ANALYSIS = "AI analysis"
 
 # Required *text* sections per form (the attachment fields are validated
 # separately via attachments.py, since their content is a URL/upload).
@@ -56,11 +57,19 @@ PROVIDER_SCAN_SECTIONS = (
     SECTION_ANYTHING_ELSE,
 )
 
-# Consent sections, matched by lowercase heading *prefix* rather than in full.
-# Each has carried a markdown link whose URL changed at least once, and the
-# index reaches back to 2022, so four generations of the wording sit in it at
-# the same time. The prefix is the part that stayed put.
-CONSENT_SECTION_PREFIXES = (
+# Sections dropped before a report is ranked or embedded, matched by lowercase
+# heading *prefix* rather than in full: each consent heading has carried a
+# markdown link whose URL changed at least once, and the index reaches back to
+# 2022, so four generations of the wording sit in it at the same time. The
+# prefix is the part that stayed put.
+#
+# The AI analysis field is here for a different reason. It is the reporter's
+# own investigation and a maintainer should read it, but it is speculative
+# prose about causes, and two unrelated reports that both theorise about a race
+# in a provider's event handling look far more alike to a retriever than their
+# symptoms do. Ranking on it would undo what dropping the consent block bought.
+UNRANKED_SECTION_PREFIXES = (
+    SECTION_AI_ANALYSIS.lower(),
     "before you begin",
     "carefully read the troubleshooting faq",
     "mandatory: carefully read",
@@ -115,9 +124,9 @@ def parse_sections(body: str | None) -> dict[str, str]:
     return sections
 
 
-def _is_consent_heading(name: str | None) -> bool:
-    """True for a heading that introduces the form's consent block."""
-    return (name or "").strip().lower().startswith(CONSENT_SECTION_PREFIXES)
+def _is_unranked_heading(name: str | None) -> bool:
+    """True for a section kept out of the text a report is ranked on."""
+    return (name or "").strip().lower().startswith(UNRANKED_SECTION_PREFIXES)
 
 
 def strip_boilerplate(body: str | None) -> str:
@@ -126,9 +135,11 @@ def strip_boilerplate(body: str | None) -> str:
 
     The consent block and its checkboxes are identical across nearly every
     issue, so ranking one report against another spends most of the body field
-    comparing the form to itself. Headings and fenced blocks are deliberately
-    kept: an error string is often the only thing that makes two reports the
-    same, and dropping either measurably costs recall.
+    comparing the form to itself. The AI analysis field is dropped for the
+    opposite reason: it is unique to each report but speculative about causes,
+    which makes unrelated reports resemble each other. Headings and fenced
+    blocks are deliberately kept: an error string is often the only thing that
+    makes two reports the same, and dropping either measurably costs recall.
 
     For lexical ranking only. The embedded text is deliberately left alone —
     see :func:`embeddings.build_posts_index`.
@@ -140,7 +151,7 @@ def strip_boilerplate(body: str | None) -> str:
     for line in body.splitlines():
         heading = _RE_SECTION.match(line)
         if heading:
-            dropping = _is_consent_heading(heading.group(1))
+            dropping = _is_unranked_heading(heading.group(1))
         if dropping:
             continue
         kept.append(line)
@@ -224,9 +235,14 @@ def detect_log_wall(body: str | None) -> bool:
 
     Triggers on either a long fenced code block or many consecutive log-looking
     lines. Used to gently ask the reporter to attach the file instead.
+
+    Reads the body without its unranked sections: the AI analysis field asks for
+    log interpretation in as many words, so quoting log lines there is the form
+    being followed, not a wall to nudge about.
     """
     if not body:
         return False
+    body = strip_boilerplate(body)
 
     # Count log-looking lines overall.
     log_lines = sum(1 for line in body.splitlines() if _RE_LOG_LINE.search(line))
