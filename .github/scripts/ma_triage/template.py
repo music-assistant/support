@@ -81,23 +81,6 @@ UNRANKED_SECTION_PREFIXES = (
     "have you reviewed the",
 )
 
-# Every heading the current forms emit. The AI analysis section ends at one of
-# these and not at any heading, because generated prose brings headings of its
-# own — "### Root cause" is the reporter's answer continuing, not a new field.
-FORM_SECTIONS = frozenset(
-    {
-        SECTION_WHAT_HAPPENED,
-        SECTION_HOW_TO_REPRODUCE,
-        SECTION_VERSION,
-        SECTION_INSTALL_METHOD,
-        SECTION_DIAGNOSTICS,
-        SECTION_ANYTHING_ELSE,
-        SECTION_BROWSER_OS,
-        SECTION_SCREENSHOT,
-        SECTION_AI_ANALYSIS,
-    }
-)
-
 _RE_SECTION = re.compile(r"^###\s+(.*?)\s*$")
 _RE_CHECKBOX = re.compile(r"^\s*[-*]\s*\[[ xX]\].*$", re.MULTILINE)
 # A line that looks like a log line: has a level keyword or an ISO-ish timestamp.
@@ -146,27 +129,25 @@ def parse_sections(body: str | None) -> dict[str, str]:
 def _ai_analysis_span(lines: list[str]) -> tuple[int, int] | None:
     """``(start, end)`` line range of the AI analysis section, heading included.
 
-    The end is the next heading that names a *form* section. Stopping at any
-    heading would cut the section short, because generated analyses carry their
-    own — "### Root cause" is the same answer continuing, not the next field.
-    Getting that wrong leaves half the analysis outside the fold and, worse,
-    inside the text a report is ranked on.
+    It runs to the end of the body, because the field is last on both forms and
+    everything after its heading is therefore its content. No heading ends it.
 
-    Shared by the fold and the strip so the two cannot disagree about where the
-    section ends.
+    Any heading-based boundary can be fed a heading. Ending at the next *form*
+    section skipped a pasted "### Before you begin" — a real form heading, but
+    not one of the fields — and cut the section off at the "### What happened?"
+    below it, so half a reporter's pasted form was folded and the rest was
+    promoted back to top level. Reporters do paste whole filled-in forms into
+    this box; the boundary has to hold when they do.
+
+    `test_the_ai_analysis_field_is_last_on_every_form` enforces the assumption.
+
+    Shared by the fold and the strip so the two cannot disagree about it.
     """
-    start = None
     for i, line in enumerate(lines):
         heading = _RE_SECTION.match(line)
-        if heading is None:
-            continue
-        name = heading.group(1).strip()
-        if start is None:
-            if name == SECTION_AI_ANALYSIS:
-                start = i
-        elif name in FORM_SECTIONS:
-            return start, i
-    return (start, len(lines)) if start is not None else None
+        if heading is not None and heading.group(1).strip() == SECTION_AI_ANALYSIS:
+            return i, len(lines)
+    return None
 
 
 def _is_unranked_heading(name: str | None) -> bool:
