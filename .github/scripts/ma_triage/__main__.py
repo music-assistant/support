@@ -403,6 +403,34 @@ def apply_triage(
             "applied labels only."
         )
 
+    _fold_ai_analysis(gh, number)
+
+
+def _fold_ai_analysis(gh: GitHubClient, number: int) -> None:
+    """Collapse a filled-in AI analysis behind a disclosure on the issue itself.
+
+    The forms cannot do it: a pre-filled `<details>` is submitted even when the
+    field is left alone, so every report would carry an empty one.
+
+    Only the markup around the section moves — nothing is inserted, removed or
+    reworded, and the edit is visible in the issue's edit history. The body is
+    re-read first because triage takes minutes and the copy this run started
+    with may already be stale; writing that one back would silently revert an
+    edit the reporter made in the meantime.
+
+    Runs last on purpose. It is cosmetic, and a failed PATCH must not cost the
+    labels and the comment that are the bot's actual output.
+    """
+    fresh = gh.get_issue(number)
+    folded = template.wrap_ai_analysis(fresh.get("body"))
+    if folded is None:
+        return
+    gh.set_issue_body(number, folded)
+    summary(
+        f"#{number}: folded the AI analysis section behind a disclosure "
+        "(formatting only; the reporter's text is unchanged)."
+    )
+
 
 # --------------------------------------------------------------------------- #
 # Subcommands

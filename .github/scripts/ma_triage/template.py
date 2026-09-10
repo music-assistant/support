@@ -30,6 +30,9 @@ SECTION_DIAGNOSTICS = "Diagnostics report or log file"
 SECTION_ANYTHING_ELSE = "Anything else?"
 SECTION_BROWSER_OS = "Browser and operating system"
 SECTION_SCREENSHOT = "Screenshot or recording"
+SECTION_AI_ANALYSIS = "AI analysis"
+# Shown on the collapsed disclosure the bot folds that section into.
+AI_ANALYSIS_SUMMARY = "AI analysis (click to expand)"
 
 # Required *text* sections per form (the attachment fields are validated
 # separately via attachments.py, since their content is a URL/upload).
@@ -56,11 +59,19 @@ PROVIDER_SCAN_SECTIONS = (
     SECTION_ANYTHING_ELSE,
 )
 
-# Consent sections, matched by lowercase heading *prefix* rather than in full.
-# Each has carried a markdown link whose URL changed at least once, and the
-# index reaches back to 2022, so four generations of the wording sit in it at
-# the same time. The prefix is the part that stayed put.
-CONSENT_SECTION_PREFIXES = (
+# Sections dropped before a report is ranked or embedded, matched by lowercase
+# heading *prefix* rather than in full: each consent heading has carried a
+# markdown link whose URL changed at least once, and the index reaches back to
+# 2022, so four generations of the wording sit in it at the same time. The
+# prefix is the part that stayed put.
+#
+# The AI analysis field is here for a different reason. It is the reporter's
+# own investigation and a maintainer should read it, but it is speculative
+# prose about causes, and two unrelated reports that both theorise about a race
+# in a provider's event handling look far more alike to a retriever than their
+# symptoms do. Ranking on it would undo what dropping the consent block bought.
+UNRANKED_SECTION_PREFIXES = (
+    SECTION_AI_ANALYSIS.lower(),
     "before you begin",
     "carefully read the troubleshooting faq",
     "mandatory: carefully read",
@@ -68,6 +79,23 @@ CONSENT_SECTION_PREFIXES = (
     "have you tried everything",
     "have you included all",
     "have you reviewed the",
+)
+
+# Every heading the current forms emit. The AI analysis section ends at one of
+# these and not at any heading, because generated prose brings headings of its
+# own — "### Root cause" is the reporter's answer continuing, not a new field.
+FORM_SECTIONS = frozenset(
+    {
+        SECTION_WHAT_HAPPENED,
+        SECTION_HOW_TO_REPRODUCE,
+        SECTION_VERSION,
+        SECTION_INSTALL_METHOD,
+        SECTION_DIAGNOSTICS,
+        SECTION_ANYTHING_ELSE,
+        SECTION_BROWSER_OS,
+        SECTION_SCREENSHOT,
+        SECTION_AI_ANALYSIS,
+    }
 )
 
 _RE_SECTION = re.compile(r"^###\s+(.*?)\s*$")
@@ -115,9 +143,35 @@ def parse_sections(body: str | None) -> dict[str, str]:
     return sections
 
 
-def _is_consent_heading(name: str | None) -> bool:
-    """True for a heading that introduces the form's consent block."""
-    return (name or "").strip().lower().startswith(CONSENT_SECTION_PREFIXES)
+def _ai_analysis_span(lines: list[str]) -> tuple[int, int] | None:
+    """``(start, end)`` line range of the AI analysis section, heading included.
+
+    The end is the next heading that names a *form* section. Stopping at any
+    heading would cut the section short, because generated analyses carry their
+    own — "### Root cause" is the same answer continuing, not the next field.
+    Getting that wrong leaves half the analysis outside the fold and, worse,
+    inside the text a report is ranked on.
+
+    Shared by the fold and the strip so the two cannot disagree about where the
+    section ends.
+    """
+    start = None
+    for i, line in enumerate(lines):
+        heading = _RE_SECTION.match(line)
+        if heading is None:
+            continue
+        name = heading.group(1).strip()
+        if start is None:
+            if name == SECTION_AI_ANALYSIS:
+                start = i
+        elif name in FORM_SECTIONS:
+            return start, i
+    return (start, len(lines)) if start is not None else None
+
+
+def _is_unranked_heading(name: str | None) -> bool:
+    """True for a section kept out of the text a report is ranked on."""
+    return (name or "").strip().lower().startswith(UNRANKED_SECTION_PREFIXES)
 
 
 def strip_boilerplate(body: str | None) -> str:
@@ -126,21 +180,29 @@ def strip_boilerplate(body: str | None) -> str:
 
     The consent block and its checkboxes are identical across nearly every
     issue, so ranking one report against another spends most of the body field
-    comparing the form to itself. Headings and fenced blocks are deliberately
-    kept: an error string is often the only thing that makes two reports the
-    same, and dropping either measurably costs recall.
+    comparing the form to itself. The AI analysis field is dropped for the
+    opposite reason: it is unique to each report but speculative about causes,
+    which makes unrelated reports resemble each other. Headings and fenced
+    blocks are deliberately kept: an error string is often the only thing that
+    makes two reports the same, and dropping either measurably costs recall.
 
     For lexical ranking only. The embedded text is deliberately left alone —
     see :func:`embeddings.build_posts_index`.
     """
     if not body:
         return ""
+    lines = body.splitlines()
+    # Removed first and whole: its own sub-headings would otherwise end the drop
+    # early and let the rest of the analysis through.
+    span = _ai_analysis_span(lines)
+    if span is not None:
+        lines = lines[: span[0]] + lines[span[1] :]
     kept: list[str] = []
     dropping = False
-    for line in body.splitlines():
+    for line in lines:
         heading = _RE_SECTION.match(line)
         if heading:
-            dropping = _is_consent_heading(heading.group(1))
+            dropping = _is_unranked_heading(heading.group(1))
         if dropping:
             continue
         kept.append(line)
@@ -196,6 +258,45 @@ def form_replaced(body: str | None, kind: str = "main") -> bool:
     return len(missing_sections(body, kind)) == len(required)
 
 
+def wrap_ai_analysis(body: str | None) -> str | None:
+    """Collapse the AI analysis section behind a disclosure, in place.
+
+    Returns the rewritten body, or ``None`` when there is nothing to do — no
+    such section, nothing in it, or it is wrapped already. That last case is
+    what keeps this from running twice: rewriting the body re-triggers triage,
+    and the second pass has to be a no-op rather than nesting another layer.
+
+    Only the markup around the section changes. The reporter's words are moved,
+    not edited.
+    """
+    if not body:
+        return None
+    lines = body.splitlines()
+    span = _ai_analysis_span(lines)
+    if span is None:
+        return None
+    start, end = span
+    inner = "\n".join(lines[start + 1 : end]).strip("\n")
+    # A body already folded, or hand-edited into broken markup the bot would
+    # otherwise keep trying to re-fold around.
+    if not inner or inner == config.NO_RESPONSE_SENTINEL:
+        return None
+    if "<details" in inner or "</details>" in inner:
+        return None
+    wrapped = [
+        lines[start],
+        "",
+        "<details>",
+        f"<summary>{AI_ANALYSIS_SUMMARY}</summary>",
+        "",
+        inner,
+        "",
+        "</details>",
+        "",
+    ]
+    return "\n".join(lines[:start] + wrapped + lines[end:])
+
+
 def extract_version(body: str | None) -> str | None:
     """Reporter-entered value of the "Music Assistant version" field."""
     return section_value(body, SECTION_VERSION)
@@ -224,9 +325,14 @@ def detect_log_wall(body: str | None) -> bool:
 
     Triggers on either a long fenced code block or many consecutive log-looking
     lines. Used to gently ask the reporter to attach the file instead.
+
+    Reads the body without its unranked sections: the AI analysis field asks for
+    log interpretation in as many words, so quoting log lines there is the form
+    being followed, not a wall to nudge about.
     """
     if not body:
         return False
+    body = strip_boilerplate(body)
 
     # Count log-looking lines overall.
     log_lines = sum(1 for line in body.splitlines() if _RE_LOG_LINE.search(line))
