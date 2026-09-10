@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+import pytest
+
 from ma_triage import config, template
 
 
@@ -189,18 +191,26 @@ def test_form_replaced_only_applies_to_the_main_form():
     assert template.form_replaced(_NO_FORM, "translation") is False
 
 
-def test_required_sections_match_the_form_that_ships():
-    """The constants claim to be kept in sync with the issue form by hand.
+@pytest.mark.parametrize(
+    ("required", "form_name"),
+    [
+        (template.REQUIRED_SECTIONS_MAIN, "1_bug_report.yml"),
+        (template.REQUIRED_SECTIONS_FRONTEND, "2_frontend_bug_report.yml"),
+    ],
+)
+def test_required_sections_match_the_form_that_ships(required, form_name):
+    """The constants claim to be kept in sync with the issue forms by hand.
 
     Nothing enforced that, and the risk changed with `form_replaced`: a stale
     heading used to mean a redundant "please fill this in", and now means every
-    correctly-filed report is told it bypassed the form. A one-word label edit
-    should fail here rather than in production.
+    correctly-filed report is told it bypassed the form and is chased for
+    answers it already gave. A one-word label edit should fail here rather than
+    in production — on either form.
     """
-    form = Path(__file__).resolve().parents[2] / "ISSUE_TEMPLATE" / "1_bug_report.yml"
+    form = Path(__file__).resolve().parents[2] / "ISSUE_TEMPLATE" / form_name
     labels = set(re.findall(r"^\s*label:\s*(.+?)\s*$", form.read_text(), re.M))
-    missing = [s for s in template.REQUIRED_SECTIONS_MAIN if s not in labels]
-    assert not missing, f"not in {form.name}: {missing}"
+    missing = [s for s in required if s not in labels]
+    assert not missing, f"not in {form_name}: {missing}"
 
 
 def test_form_replaced_threshold_is_tunable(monkeypatch):
