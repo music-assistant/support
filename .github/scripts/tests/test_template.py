@@ -229,9 +229,9 @@ def test_ai_analysis_is_kept_out_of_the_ranked_text():
     """
     body = (
         "### What happened?\n\nAirPlay drops out mid-track\n\n"
+        "### Anything else?\n\nHappens nightly\n\n"
         "### AI analysis\n\nLikely a race condition in the provider's event "
-        "handling around _on_providers_updated and the bridge manager.\n\n"
-        "### Anything else?\n\nHappens nightly"
+        "handling around _on_providers_updated and the bridge manager."
     )
     stripped = template.strip_boilerplate(body)
     assert "AirPlay drops out mid-track" in stripped
@@ -273,8 +273,8 @@ def test_a_log_quoted_in_the_ai_analysis_is_not_a_log_wall():
 # --- folding the AI analysis behind a disclosure ------------------------------- #
 _WITH_ANALYSIS = (
     "### What happened?\n\nNo sound\n\n"
-    "### AI analysis\n\nRace in the bridge manager.\n\n"
-    "### Anything else?\n\nNightly"
+    "### Anything else?\n\nNightly\n\n"
+    "### AI analysis\n\nRace in the bridge manager."
 )
 
 
@@ -285,6 +285,7 @@ def test_wrap_ai_analysis_folds_only_that_section():
     # Everything around it is left exactly as the reporter wrote it.
     assert "### What happened?\n\nNo sound" in out
     assert out.count("<details>") == 1
+    assert out.index("### What happened?") < out.index("<details>")
 
 
 def test_wrap_ai_analysis_is_idempotent():
@@ -318,10 +319,10 @@ def test_a_folded_analysis_still_leaves_the_ranked_text_alone():
 # Realistic generated output: it brings headings of its own.
 _WITH_SUBHEADINGS = (
     "### What happened?\n\nSound cuts out after 30 seconds\n\n"
+    "### Anything else?\n\nNightly\n\n"
     "### AI analysis\n\n"
     "## Summary\nThe Sonos provider fails to renew its subscription.\n\n"
-    "### Root cause\nA race in `_handle_player_update`.\n\n"
-    "### Anything else?\n\nNightly"
+    "### Root cause\nA race in `_handle_player_update`."
 )
 
 
@@ -331,8 +332,8 @@ def test_the_fold_covers_an_analysis_with_its_own_headings():
     assert "## Summary" in out and "### Root cause" in out
     assert out.index("<details>") < out.index("### Root cause")
     assert out.index("### Root cause") < out.index("</details>")
-    # The form's own next section stays outside the disclosure.
-    assert out.index("</details>") < out.index("### Anything else?")
+    # The sections the reporter actually answered stay outside it.
+    assert out.index("### Anything else?") < out.index("<details>")
 
 
 def test_sub_headed_analysis_stays_out_of_the_ranked_text():
@@ -352,3 +353,50 @@ def test_a_half_broken_disclosure_is_left_alone():
     """A hand-edit that mangles the markup must not be re-folded around."""
     body = "### AI analysis\n\n</details>\n\nleftover text"
     assert template.wrap_ai_analysis(body) is None
+
+
+# Reporters do paste a whole filled-in form into the AI analysis box — asking an
+# assistant to fill the form, then pasting all of it into one field. #6392.
+_PASTED_WHOLE_FORM = (
+    "### Before you begin\n\n- [x] I have searched the issues.\n\n"
+    "### What happened?\n\nMilkdrop crashes\n\n"
+    "### How to reproduce\n\nOpen it\n\n"
+    "### Music Assistant version\n\n2.10.1\n\n"
+    "### AI analysis\n\n"
+    "### Before you begin\n\n- [x] I have searched the issues.\n\n"
+    "### What happened?\n\nMilkdrop crashes\n\n"
+    "### How to reproduce\n\nOpen it\n"
+)
+
+
+def test_a_pasted_form_inside_the_analysis_folds_whole():
+    """Ending the span at a heading let a pasted form escape the disclosure.
+
+    Half of it was folded and the rest promoted back to top level, so the report
+    read as though it contained the form twice.
+    """
+    out = template.wrap_ai_analysis(_PASTED_WHOLE_FORM)
+    assert out.count("<details>") == 1 and out.count("</details>") == 1
+    # Nothing from the pasted copy escapes the disclosure.
+    tail = out[out.index("</details>") :]
+    assert "### What happened?" not in tail
+    assert "### Before you begin" not in tail
+    # And nothing is lost.
+    assert out.count("Milkdrop crashes") == _PASTED_WHOLE_FORM.count("Milkdrop crashes")
+
+
+def test_a_pasted_form_inside_the_analysis_stays_unranked():
+    stripped = template.strip_boilerplate(_PASTED_WHOLE_FORM)
+    assert stripped.count("Milkdrop crashes") == 1, "only the real answer is ranked"
+
+
+def test_the_ai_analysis_field_is_last_on_every_form():
+    """The span runs to the end of the body, which only holds while it is last."""
+    forms = (Path(__file__).resolve().parents[2] / "ISSUE_TEMPLATE").glob("*_*.yml")
+    for form in forms:
+        labels = re.findall(r"^\s*label:\s*(.+?)\s*$", form.read_text(), re.M)
+        if template.SECTION_AI_ANALYSIS in labels:
+            assert labels[-1] == template.SECTION_AI_ANALYSIS, (
+                f"{form.name}: '{template.SECTION_AI_ANALYSIS}' must stay the last "
+                "field — `_ai_analysis_span` folds everything after it"
+            )
