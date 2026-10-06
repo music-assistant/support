@@ -15,6 +15,10 @@ def _chunk(cid, text):
     )
 
 
+# The nightly posts build reads the provider manifests before it indexes a post.
+SERVER_MANIFESTS = {"sonos": {"name": "SONOS", "codeowners": ["@music-assistant"]}}
+
+
 def _commit_count(gh, path):
     return sum(1 for c in gh.calls if c[0] == "commit_files" and path in c[2])
 
@@ -75,6 +79,7 @@ def test_cmd_index_posts_fails_but_still_commits_the_text(ai_on, monkeypatch):
     """
     _no_embeddings(monkeypatch)
     gh = FakeGH(
+        manifests=SERVER_MANIFESTS,
         issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
                  "state": "open", "updated_at": "2024-01-01"}],
     )
@@ -96,10 +101,12 @@ def test_cmd_index_posts_committed_text_is_invisible_to_dense_retrieval(
     """
     _no_embeddings(monkeypatch)
     gh = FakeGH(
+        manifests=SERVER_MANIFESTS,
         issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
                  "state": "open", "updated_at": "2024-01-01"}],
     )
     main.cmd_index(gh, "t", "posts")
+    assert config.POSTS_INDEX_PATH in gh._index_files
     assert embeddings.load_posts(gh) == []
 
 
@@ -116,11 +123,22 @@ def test_cmd_index_annotates_the_failure(ai_on, monkeypatch, capsys):
     assert "::error::" in capsys.readouterr().err
 
 
+def test_cmd_index_posts_is_not_built_without_the_provider_manifests(ai_on):
+    """Rewriting every post's providers from the hand-written aliases would shift
+    which posts triage matches; the previous index is kept instead."""
+    gh = FakeGH(
+        issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
+                 "state": "open", "updated_at": "2024-01-01"}],
+    )
+    assert main.cmd_index(gh, "t", "posts") == 1
+    assert config.POSTS_INDEX_PATH not in gh._index_files
+
+
 def test_cmd_index_append_annotates_but_does_not_fail_triage(ai_on, monkeypatch, capsys):
     """A provider outage must not mark every incoming issue's workflow red."""
     monkeypatch.setenv("ISSUE_NUMBER", "123")
     _no_embeddings(monkeypatch)
-    gh = FakeGH()
+    gh = FakeGH(manifests=SERVER_MANIFESTS)
     monkeypatch.setattr(
         gh, "get_issue",
         lambda n: {"number": n, "title": "t", "body": "b", "html_url": "u",
@@ -134,6 +152,23 @@ def test_cmd_index_append_annotates_but_does_not_fail_triage(ai_on, monkeypatch,
     written = json.loads(gh._index_files[config.POSTS_INDEX_PATH])
     assert [p["number"] for p in written["posts"]] == [123]
     assert written["vectors"] == 0
+
+
+def test_cmd_index_append_continues_without_the_provider_manifests(ai_on, monkeypatch, capsys):
+    """Triage is then on the same hand-written aliases, and skipping would
+    freeze the index until the nightly build, which also needs the manifests."""
+    monkeypatch.setenv("ISSUE_NUMBER", "123")
+    gh = FakeGH()
+    monkeypatch.setattr(
+        gh, "get_issue",
+        lambda n: {"number": n, "title": "t", "body": "b", "html_url": "u",
+                   "state": "open"},
+        raising=False,
+    )
+    assert main.cmd_index_append(gh, "t") == 0
+    assert "provider manifests" in capsys.readouterr().err
+    written = json.loads(gh._index_files[config.POSTS_INDEX_PATH])
+    assert [p["number"] for p in written["posts"]] == [123]
 
 
 def test_cmd_index_append(ai_on, monkeypatch):
@@ -196,6 +231,7 @@ def test_cmd_index_posts_does_not_recommit_an_unchanged_outage_index(
     """
     _no_embeddings(monkeypatch)
     gh = FakeGH(
+        manifests=SERVER_MANIFESTS,
         issues=[{"number": 1, "title": "bug", "body": "b", "html_url": "u1",
                  "state": "open", "updated_at": "2024-01-01"}],
     )

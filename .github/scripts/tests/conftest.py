@@ -84,6 +84,9 @@ class FakeGH:
     def get_tree(self, repo, ref="main", *, recursive=True):
         return list(self._tree)
 
+    def get_subdirectory_files(self, repo, directory, filename, ref="main"):
+        return {domain: json.dumps(content) for domain, content in self._manifests.items()} or None
+
     def get_ref_sha(self, branch, *, repo=None):
         return None
 
@@ -148,6 +151,16 @@ class FakeGH:
             return None
         self._index_files.update(files)
         return "deadbeef"
+
+
+@pytest.fixture(autouse=True)
+def _forget_provider_manifests():
+    """`providers.load_manifests` keeps what it read for the life of the process."""
+    yield
+    from ma_triage import providers
+
+    providers._MANIFESTS.clear()
+    providers._alias_patterns.cache_clear()
 
 
 @pytest.fixture

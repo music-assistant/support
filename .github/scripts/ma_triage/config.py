@@ -15,7 +15,8 @@ import os
 SUPPORT_REPO = "music-assistant/support"
 SERVER_REPO = "music-assistant/server"
 # Provider manifests live here in the server repo.
-MANIFEST_PATH = "music_assistant/providers/{domain}/manifest.json"
+PROVIDERS_DIR = "music_assistant/providers"
+MANIFEST_PATH = PROVIDERS_DIR + "/{domain}/manifest.json"
 
 # --------------------------------------------------------------------------- #
 # Sticky comment marker
@@ -145,7 +146,9 @@ CORE_TEAM_HANDLE = "music-assistant"
 # ("What happened?", "How to reproduce", the title, …). Maps a lower-cased alias
 # to the provider label. Matching is word-boundary based (see providers.py), and
 # only labels that already exist in the repo are ever applied. Keep aliases
-# specific to avoid false positives.
+# specific to avoid false positives. A provider with a community codeowner is
+# also known by its manifest name (see `providers.load_manifests`), so aliases
+# here are for the other ways reporters write it.
 PROVIDER_TEXT_ALIASES: dict[str, str] = {
     "spotify connect": "Spotify Connect",
     "spotify": "spotify",

@@ -9,6 +9,7 @@ Design goals:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -244,6 +245,52 @@ class GitHubClient:
                     log(f"Tree {repo}@{ref} was truncated by the API")
                 return tree
         return []
+
+    def get_subdirectory_files(
+        self, repo: str, directory: str, filename: str, ref: str = "main"
+    ) -> dict[str, str] | None:
+        """Return ``{subdirectory: text}`` for every ``directory/*/filename``.
+
+        Two GraphQL requests however many subdirectories there are. A
+        subdirectory without the file is left out; ``None`` on any error,
+        including one that left the answer partial.
+        """
+        owner, name = repo.split("/", 1)
+        try:
+            listing = self.graphql(
+                "query($o: String!, $n: String!, $e: String!) {"
+                " repository(owner: $o, name: $n) {"
+                " object(expression: $e) { ... on Tree { entries { name type } } } } }",
+                {"o": owner, "n": name, "e": f"{ref}:{directory}"},
+            )
+            if "errors" in listing:
+                return None
+            entries = listing["data"]["repository"]["object"]["entries"]
+            subdirectories = [entry["name"] for entry in entries if entry["type"] == "tree"]
+            if not subdirectories:
+                return {}
+            fields = " ".join(
+                f"f{i}: object(expression: {json.dumps(f'{ref}:{directory}/{sub}/{filename}')})"
+                " { ... on Blob { text } }"
+                for i, sub in enumerate(subdirectories)
+            )
+            response = self.graphql(
+                "query($o: String!, $n: String!) { repository(owner: $o, name: $n) { "
+                + fields
+                + " } }",
+                {"o": owner, "n": name},
+            )
+            if "errors" in response:
+                return None
+            blobs = response["data"]["repository"]
+        except (RuntimeError, ValueError, KeyError, TypeError) as exc:
+            log(f"Could not read {directory}/*/{filename} in {repo}@{ref}: {exc}")
+            return None
+        return {
+            sub: blob["text"]
+            for i, sub in enumerate(subdirectories)
+            if (blob := blobs.get(f"f{i}")) and isinstance(blob.get("text"), str)
+        }
 
     def get_ref_sha(self, branch: str, *, repo: str | None = None) -> str | None:
         """Return the commit SHA a branch points at, or ``None`` if it is absent."""
