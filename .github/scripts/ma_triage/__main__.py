@@ -150,6 +150,12 @@ def build_result(
         if provider_doc is not None:
             result.provider_docs.append(provider_doc)
 
+    # Ping conservatively: one clearly reported provider. Never ping maintainers
+    # for incidental census/error providers.
+    if len(reported_providers) == 1:
+        provider = next(iter(reported_providers))
+        maintainers.update(resolve_maintainers(gh, provider))
+
     install_finding = analyze.install_method_finding(result.install_method)
     if install_finding is not None:
         findings.append(install_finding)
@@ -169,12 +175,6 @@ def build_result(
             findings.extend(v_findings)
             if not result.has_recovered_fields:
                 labels_to_add |= v_labels
-
-        # Ping conservatively: one clearly reported provider on an actionable
-        # report. Never ping maintainers for incidental census/error providers.
-        if len(reported_providers) == 1:
-            provider = next(iter(reported_providers))
-            maintainers.update(resolve_maintainers(gh, provider))
 
     elif result.reported_version:
         # No attachment we could parse — still nudge on an outdated version.
