@@ -76,6 +76,20 @@ def test_subsonic_resolves_current_manifest_metadata(fake_gh):
     assert doc.url == "https://music-assistant.io/music-providers/subsonic/"
 
 
+def test_youtube_music_resolves_current_manifest_metadata(fake_gh):
+    fake_gh._manifests["ytmusic"] = {
+        "name": "YouTube Music",
+        "codeowners": ["@MarvinSchenkel"],
+        "documentation": "https://music-assistant.io/music-providers/youtube-music/",
+    }
+    assert provider_manifest_domain("youtube_music") == "ytmusic"
+    assert resolve_maintainers(fake_gh, "youtube_music") == ["MarvinSchenkel"]
+    doc = resolve_provider_doc(fake_gh, "youtube_music")
+    assert doc is not None
+    assert doc.label == "youtube_music"
+    assert doc.url == "https://music-assistant.io/music-providers/youtube-music/"
+
+
 def test_spotify_connect_resolves_plugin_documentation(fake_gh):
     doc = resolve_provider_doc(fake_gh, "Spotify Connect")
     assert doc is not None
