@@ -58,8 +58,8 @@ From the diagnostics file the bot derives, with no AI:
 - **provider/setup labels** — provider labels come only from the provider reported
   in the title/form text (never the full diagnostics census); title matches win
   over incidental comparisons in the body;
-- the reported provider's authoritative **documentation link** and, for one
-  actionable provider, its community **codeowner** (from the current server
+- the reported provider's authoritative **documentation link** and, for a
+  single reported provider, its community **codeowner** (from the current server
   manifest on `dev`, skipping the core `@music-assistant` team);
 - low-disk and other resource hints.
 

@@ -20,6 +20,12 @@ def test_build_result_actionable(sample_raw, fake_gh, monkeypatch):
     assert "SantiagoSotoC" in result.maintainers_to_ping
 
 
+def test_build_result_pings_without_an_attachment(fake_gh):
+    result = main.build_result(fake_gh, "snapcast timeout", MAIN_BODY_FULL, token="t")
+    assert not result.has_diagnostics
+    assert result.maintainers_to_ping == {"SantiagoSotoC"}
+
+
 def test_build_result_uses_reported_provider_not_diagnostics_census(
     sample_raw, fake_gh, monkeypatch
 ):
