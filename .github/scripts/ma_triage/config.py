@@ -95,7 +95,7 @@ PROVIDER_LABELS: dict[str, str] = {
     "spotify_connect": "Spotify Connect",
     "tidal": "tidal",
     "qobuz": "qobuz",
-    "youtube_music": "youtube_music",
+    "ytmusic": "youtube_music",
     "apple_music": "apple_music",
     "deezer": "deezer",
     "soundcloud": "soundcloud",
