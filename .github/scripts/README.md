@@ -311,4 +311,5 @@ python -m ma_triage triage
 > Note: the per-form required-section lists in `ma_triage/template.py` and the
 > provider→label maps in `ma_triage/config.py` (`PROVIDER_LABELS` and the free-
 > text `PROVIDER_TEXT_ALIASES`) should be kept in sync with the issue forms and
-> the repo's labels as they evolve.
+> the repo's labels as they evolve. A provider with a community codeowner is
+> also recognised by the name in its server manifest, so a new one needs no alias.

@@ -501,3 +501,22 @@ def test_a_report_without_an_analysis_is_not_edited(monkeypatch, fake_gh):
     main.apply_triage(fake_gh, 1, {"labels": [], "body": body},
                       main.TriageResult(form_kind="main"))
     assert edits == []
+
+
+def test_cmd_triage_pings_a_provider_known_only_by_its_manifest_name(
+    sample_raw, fake_gh, monkeypatch
+):
+    monkeypatch.setenv("ISSUE_NUMBER", "6642")
+    monkeypatch.setenv("ISSUE_TITLE", "Storytel/Mofibo audiobooks fail to stream")
+    monkeypatch.setenv(
+        "ISSUE_BODY",
+        MAIN_BODY_FULL.replace("Start the server", "Select a Google Cast player, press Play"),
+    )
+    monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
+    monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
+    fake_gh._manifests["storytel"] = {"name": "Storytel", "codeowners": ["@jonasbp2011"]}
+    assert main.cmd_triage(fake_gh, "t") == 0
+    labels = [label for call in fake_gh.calls if call[0] == "add_labels" for label in call[2]]
+    assert "Chromecast" not in labels
+    comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
+    assert "@jonasbp2011" in comment

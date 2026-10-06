@@ -50,6 +50,7 @@ from .models import TriageResult
 from .providers import (
     detect_reported_provider_labels,
     filter_existing_labels,
+    load_manifests,
     resolve_maintainers,
     resolve_provider_doc,
 )
@@ -449,6 +450,7 @@ def cmd_triage(gh: GitHubClient, token: str) -> int:
         return 0
 
     summary(f"## Triage of #{number}\n")
+    load_manifests(gh)
     result = build_result(gh, title, body, token=token, labels=labels, number=number)
     if result.skip:
         summary(f"#{number}: skipped ({result.form_kind} form — not triaged).")
@@ -635,7 +637,13 @@ def _build_posts_index(gh: GitHubClient, token: str) -> bool:
     the provider refused one, so a shortfall is the failure signal — but the
     records themselves are still worth writing, since everything that ranks on
     text rather than vectors keeps working from them.
+
+    Without the provider manifests nothing is built: each post stores the
+    providers it names, and rewriting every post from the hand-written aliases
+    alone would shift which posts triage matches until the next build.
     """
+    if not load_manifests(gh):
+        return False
     prev = embeddings.load_index(gh, config.POSTS_INDEX_PATH)
     posts = _collect_posts(gh)
     index, changed = embeddings.build_posts_index(
@@ -703,6 +711,7 @@ def cmd_index_append(gh: GitHubClient, token: str) -> int:
     if "pull_request" in issue:
         summary(f"#{number}: is a pull request; skipping append.")
         return 0
+    load_manifests(gh)
     title = issue.get("title") or _env("ISSUE_TITLE")
     body = issue.get("body") or _env("ISSUE_BODY")
     post = {
@@ -782,6 +791,7 @@ def cmd_discussion(gh: GitHubClient, token: str) -> int:
 
     title = _env("DISCUSSION_TITLE") or disc.get("title") or ""
     body = _env("DISCUSSION_BODY") or disc.get("body") or ""
+    load_manifests(gh)
     provider_labels = set(
         sorted(
             detect_reported_provider_labels(title, body),
@@ -857,6 +867,7 @@ def cmd_discussion_append(gh: GitHubClient, token: str) -> int:
     if category in config.DISCUSSION_EXCLUDE_CATEGORIES:
         summary(f"discussion #{number}: excluded category '{category}'; not indexed.")
         return 0
+    load_manifests(gh)
     title = disc.get("title") or _env("DISCUSSION_TITLE")
     body = disc.get("body") or _env("DISCUSSION_BODY")
     post = {

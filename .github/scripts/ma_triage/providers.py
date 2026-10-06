@@ -15,8 +15,12 @@ from functools import lru_cache
 from urllib.parse import urlparse
 
 from . import config, template
-from .gh import GitHubClient, log
+from .gh import GitHubClient, error, log
 from .models import ProviderDoc
+
+
+# Every provider manifest on the server by domain; commands that detect providers load it first.
+_MANIFESTS: dict[str, dict] = {}
 
 
 def domain_to_label(domain: str) -> str:
@@ -24,29 +28,84 @@ def domain_to_label(domain: str) -> str:
     return config.PROVIDER_LABELS.get(domain, domain)
 
 
+def load_manifests(gh: GitHubClient) -> bool:
+    """Read every provider manifest on the server once, for detection and lookups.
+
+    Returns False when none could be read: detection then knows only the aliases
+    in :data:`config.PROVIDER_TEXT_ALIASES`, so nothing that rewrites every stored
+    post's providers should run on it.
+    """
+    if _MANIFESTS:
+        return True
+    files = gh.get_subdirectory_files(
+        config.SERVER_REPO, config.PROVIDERS_DIR, "manifest.json", ref=config.SERVER_REF
+    )
+    for domain, raw in (files or {}).items():
+        # `_demo_*` are templates whose codeowner is a placeholder handle.
+        if domain.startswith("_"):
+            continue
+        try:
+            manifest = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            log(f"Manifest for {domain} is not valid JSON: {exc}")
+            continue
+        if isinstance(manifest, dict):
+            _MANIFESTS[domain] = manifest
+    if not _MANIFESTS:
+        error(
+            f"Could not read the provider manifests from {config.SERVER_REPO}@"
+            f"{config.SERVER_REF}; only providers with a hand-written alias are recognised."
+        )
+        return False
+    _alias_patterns.cache_clear()
+    return True
+
+
 @lru_cache(maxsize=1)
 def _alias_patterns() -> list[tuple[re.Pattern[str], str]]:
-    """Compile aliases longest-first so specific plugin names win."""
+    """Compile aliases longest-first so specific plugin names win.
+
+    Manifest names match only in their own casing, so the Audible provider is not
+    every report that calls a sound "audible".
+    """
     patterns: list[tuple[re.Pattern[str], str]] = []
-    aliases = sorted(
-        config.PROVIDER_TEXT_ALIASES.items(),
-        key=lambda item: len(item[0]),
-        reverse=True,
-    )
-    for alias, label in aliases:
+    aliases = [
+        (alias, label, re.IGNORECASE)
+        for alias, label in config.PROVIDER_TEXT_ALIASES.items()
+    ]
+    aliases += [(name, label, 0) for name, label in _manifest_aliases().items()]
+    aliases.sort(key=lambda item: len(item[0]), reverse=True)
+    for alias, label, flags in aliases:
         # Word boundaries around the alias; tolerate spaces/underscores between
         # words ("youtube music" also matches "youtube_music").
         escaped = re.escape(alias).replace(r"\ ", r"[\s_]+")
-        patterns.append((re.compile(rf"(?<![\w]){escaped}(?![\w])", re.IGNORECASE), label))
+        patterns.append((re.compile(rf"(?<![\w]){escaped}(?![\w])", flags), label))
     return patterns
+
+
+def _manifest_aliases() -> dict[str, str]:
+    """Map the manifest name of each provider with a community codeowner to its label."""
+    aliases: dict[str, str] = {}
+    for domain, manifest in _MANIFESTS.items():
+        name = manifest.get("name")
+        if not isinstance(name, str) or not _community_handles(manifest):
+            continue
+        # Reporters write "Emby", not "Emby Media Server Library".
+        name = re.sub(r"\s*\(.*?\)", "", name).strip()
+        for suffix in (" Media Server Library", " Provider", " Players"):
+            name = name.removesuffix(suffix)
+        if name and name.lower() not in config.PROVIDER_TEXT_ALIASES:
+            aliases[name] = domain_to_label(domain)
+    return aliases
 
 
 def detect_provider_labels_from_text(text: str | None) -> set[str]:
     """Suggest provider labels for provider names mentioned in free text.
 
-    Uses the alias map in :data:`config.PROVIDER_TEXT_ALIASES` with word-boundary
-    matching. Returned labels are still filtered against the repo's real labels by
-    the caller, so a false positive can only surface a label that already exists.
+    Uses the aliases in :data:`config.PROVIDER_TEXT_ALIASES` and the names read by
+    :func:`load_manifests`, with word-boundary matching. Labels are filtered against
+    the repo's real labels before they are applied, but a single detected provider
+    also decides which codeowner is pinged.
     """
     if not text:
         return set()
@@ -115,6 +174,9 @@ def _fetch_manifest(gh: GitHubClient, domain: str) -> str | None:
 
 
 def _load_manifest(gh: GitHubClient, provider: str) -> dict:
+    manifest = _MANIFESTS.get(provider_manifest_domain(provider))
+    if manifest is not None:
+        return manifest
     raw = _fetch_manifest(gh, provider)
     if not raw:
         return {}
@@ -128,7 +190,10 @@ def _load_manifest(gh: GitHubClient, provider: str) -> dict:
 
 def resolve_maintainers(gh: GitHubClient, domain: str) -> list[str]:
     """Return community maintainer handles (without ``@``) for a provider domain."""
-    manifest = _load_manifest(gh, domain)
+    return _community_handles(_load_manifest(gh, domain))
+
+
+def _community_handles(manifest: dict) -> list[str]:
     codeowners = manifest.get("codeowners")
     if not isinstance(codeowners, list):
         return []
