@@ -17,7 +17,13 @@ from typing import Any
 
 from . import config
 from .gh import GitHubClient, summary
-from .models import RagResult, RelatedPost, Severity, TriageResult
+from .models import (
+    CommunityProvider,
+    RagResult,
+    RelatedPost,
+    Severity,
+    TriageResult,
+)
 from .sanitize import inline, link_label, markdown_safe
 
 _SEVERITY_ICON = {
@@ -242,6 +248,47 @@ def _provider_docs_section(result: TriageResult) -> str:
     return "\n".join(parts)
 
 
+def _community_section(result: TriageResult) -> str:
+    """Send the reporter to a community provider's own maintainer."""
+    provider = result.community_referral
+    if provider is None:
+        return ""
+    text = config.COMMUNITY_REFERRAL.format(
+        name=_community_name(provider), url=provider.report_url
+    )
+    return "\n".join(
+        [config.COMMUNITY_REFERRAL_HEADING, _with_status(text, provider)]
+    )
+
+
+def _community_note(result: TriageResult) -> str:
+    """Name a community provider neutrally when a check points at the installation."""
+    provider = result.community_provider
+    if provider is None or result.community_referral is not None:
+        return ""
+    text = config.COMMUNITY_NOTE.format(name=_community_name(provider))
+    return _with_status(text, provider)
+
+
+def _community_name(provider: CommunityProvider) -> str:
+    return markdown_safe(provider.name, max_len=80)
+
+
+def _with_status(text: str, provider: CommunityProvider) -> str:
+    """Append the catalog status of a withdrawn or blocked provider, with its reason."""
+    if provider.status == "blocked":
+        status = config.COMMUNITY_BLOCKED
+    elif provider.status == "withdrawn":
+        status = config.COMMUNITY_WITHDRAWN
+    else:
+        return text
+    if provider.reason:
+        status += f" Reason: {markdown_safe(provider.reason, max_len=300)}"
+    if provider.reason_url:
+        status += f" ([details]({provider.reason_url}))"
+    return f"{text}\n\n{status}"
+
+
 def _render_duplicates(posts: list[RelatedPost]) -> list[str]:
     """Render the consolidation ask for a duplicates-only post.
 
@@ -435,6 +482,9 @@ def build_body(result: TriageResult) -> str:
     recovered = _recovered_fields_line(result)
     if recovered:
         parts.extend([recovered, ""])
+    community = _community_section(result)
+    if community:
+        parts.extend([community, ""])
 
     if result.form_kind == "frontend":
         parts.extend(_frontend_body(result))
@@ -495,6 +545,11 @@ def build_body(result: TriageResult) -> str:
             "A diagnostics report (or a log attached as a file) is much easier for "
             "us to work with than inline logs."
         )
+
+    community_note = _community_note(result)
+    if community_note:
+        parts.append("")
+        parts.append(community_note)
 
     provider_docs = _provider_docs_section(result)
     if provider_docs:

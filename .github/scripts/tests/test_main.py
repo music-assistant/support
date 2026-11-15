@@ -306,12 +306,13 @@ def test_state_records_the_whole_decision(monkeypatch, fake_gh):
     monkeypatch.setattr(main, "_resolve_labels", lambda gh, r: [])
     main.apply_triage(fake_gh, 1, {"labels": []}, result)
 
-    assert captured["v"] == 2
+    assert captured["v"] == 3
     assert captured["missing_sections"] == ["How to reproduce"]
     assert captured["missing_attachment"] is True
     assert captured["log_wall"] is True
     assert captured["labels"] == ["bug", "sonos"]
     assert captured["pinged"] == ["@someone"]
+    assert captured["referred"] is None
     assert captured["findings"] == ["Outdated version"]
 
 
@@ -526,3 +527,80 @@ def test_cmd_triage_pings_a_provider_known_only_by_its_manifest_name(
     assert "Chromecast" not in labels
     comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
     assert "@jonasbp2011" in comment
+
+
+# --- community catalog providers ---------------------------------------------- #
+def _with_test_tones(catalog, **changes):
+    from conftest import TEST_TONES
+    from ma_triage.providers import load_community_providers
+
+    catalog["test_tones"] = {**TEST_TONES, **changes}
+    assert load_community_providers()
+
+
+def test_a_community_provider_is_referred_not_pinged(fake_gh, catalog):
+    _with_test_tones(catalog)
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", MAIN_BODY_FULL, token="t")
+    assert result.reported_providers == {"test_tones"}
+    assert result.community_referral is not None
+    assert result.community_referral.domain == "test_tones"
+    assert result.maintainers_to_ping == set()
+    assert config.LABEL_COMMUNITY_PROVIDER in result.labels_to_add
+    assert "test_tones" not in result.labels_to_add
+    assert [doc.url for doc in result.provider_docs] == [
+        "https://github.com/marcelveldt/ma-test-tones#readme"
+    ]
+    # Nothing is looked up in the server repository for it.
+    assert not [path for path in fake_gh.raw_reads if "test_tones" in path]
+
+
+def test_two_providers_named_refers_nobody_and_pings_nobody(fake_gh, catalog):
+    _with_test_tones(catalog)
+    result = main.build_result(
+        fake_gh, "Test Tones crackle on snapcast", MAIN_BODY_FULL, token="t"
+    )
+    assert result.reported_providers == {"test_tones", "snapcast"}
+    assert result.community_provider is None
+    assert result.maintainers_to_ping == set()
+    assert {"snapcast", config.LABEL_COMMUNITY_PROVIDER} <= result.labels_to_add
+
+
+def test_a_generic_cause_keeps_the_triage_and_only_notes_the_provider(fake_gh, catalog):
+    _with_test_tones(catalog)
+    body = MAIN_BODY_FULL.replace("2.9.5", "2.8.0")
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", body, token="t")
+    assert [f.title for f in result.findings] == ["Outdated version"]
+    assert result.community_provider is not None
+    assert result.community_referral is None
+    assert config.LABEL_COMMUNITY_PROVIDER in result.labels_to_add
+
+
+def test_cmd_triage_without_the_catalog_behaves_as_before(fake_gh, monkeypatch):
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("ISSUE_TITLE", "Test Tones: sweep is silent")
+    monkeypatch.setenv("ISSUE_BODY", MAIN_BODY_FULL)
+    fake_gh._labels.add(config.LABEL_COMMUNITY_PROVIDER)
+    assert main.cmd_triage(fake_gh, "t") == 0
+    labels = [label for call in fake_gh.calls if call[0] == "add_labels" for label in call[2]]
+    assert config.LABEL_COMMUNITY_PROVIDER not in labels
+    comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
+    assert config.COMMUNITY_REFERRAL_HEADING not in comment
+
+
+def test_cmd_triage_refers_a_community_provider_report(fake_gh, catalog, monkeypatch):
+    from conftest import TEST_TONES
+
+    catalog["test_tones"] = TEST_TONES
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("ISSUE_TITLE", "Test Tones: sweep is silent")
+    monkeypatch.setenv("ISSUE_BODY", MAIN_BODY_FULL)
+    fake_gh._labels.add(config.LABEL_COMMUNITY_PROVIDER)
+    assert main.cmd_triage(fake_gh, "t") == 0
+    labels = [label for call in fake_gh.calls if call[0] == "add_labels" for label in call[2]]
+    assert config.LABEL_COMMUNITY_PROVIDER in labels
+    assert not [call for call in fake_gh.calls if call[0] == "close_issue"]
+    comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
+    assert config.COMMUNITY_REFERRAL_HEADING in comment
+    assert "(https://github.com/marcelveldt/ma-test-tones/issues)" in comment
+    assert "@marcelveldt" not in comment
+    assert '"referred":"test_tones"' in comment

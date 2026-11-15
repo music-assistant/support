@@ -56,6 +56,7 @@ def version_findings(
                 f"issues are fixed in newer releases — please update and check "
                 f"whether the problem persists.",
                 labels=[config.LABEL_OUTDATED],
+                generic=True,
             )
         )
         labels.add(config.LABEL_OUTDATED)
@@ -81,6 +82,7 @@ def install_method_finding(install_method: str | None) -> Finding | None:
             Severity.WARNING,
             "Unsupported install method",
             config.UNSUPPORTED_INSTALL_NOTE,
+            generic=True,
         )
     return None
 
@@ -95,6 +97,7 @@ def _check_safe_mode(diag: Diagnostics, findings: list[Finding]) -> None:
                 "players are disabled. Many features will not work until safe "
                 "mode is turned off. If you didn't enable it deliberately, the "
                 "server likely fell back to safe mode after a crash on startup.",
+                generic=True,
             )
         )
 
@@ -154,5 +157,6 @@ def _check_resources(diag: Diagnostics, findings: list[Finding]) -> None:
                 f"Only ~{free_mb} MB of free disk space is available on the data "
                 f"directory volume. Low disk space can cause database and "
                 f"caching errors.",
+                generic=True,
             )
         )

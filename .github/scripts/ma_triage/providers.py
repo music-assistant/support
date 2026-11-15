@@ -5,6 +5,10 @@ manifest uses a ``codeowners`` list of ``@handle`` entries (the older
 ``maintainers`` field is gone). Handles equal to the core team
 (``@music-assistant``) are skipped — we only want to involve *community*
 maintainers.
+
+Providers that live outside the server repository come from the community
+catalog index. They are recognised by name and domain like any other provider,
+but their maintainers are never pinged: the reporter is sent to their tracker.
 """
 
 from __future__ import annotations
@@ -14,13 +18,20 @@ import re
 from functools import lru_cache
 from urllib.parse import urlparse
 
+import requests
+
 from . import config, template
 from .gh import GitHubClient, error, log
-from .models import ProviderDoc
+from .models import CommunityProvider, ProviderDoc
 
 
 # Every provider manifest on the server by domain; commands that detect providers load it first.
 _MANIFESTS: dict[str, dict] = {}
+# Every community catalog provider by domain; only triage loads it.
+_COMMUNITY: dict[str, CommunityProvider] = {}
+
+_RE_DOMAIN = re.compile(r"[a-z][a-z0-9_]*")
+_RE_REPOSITORY = re.compile(r"[A-Za-z0-9-]+/[A-Za-z0-9._-]+")
 
 
 def domain_to_label(domain: str) -> str:
@@ -61,6 +72,43 @@ def load_manifests(gh: GitHubClient) -> bool:
     return True
 
 
+def load_community_providers() -> bool:
+    """
+    Read the community catalog index once, for detection and referrals.
+
+    Returns False when it could not be read: only providers in the server
+    repository are then recognised, exactly as without the catalog.
+    """
+    if _COMMUNITY:
+        return True
+    try:
+        resp = requests.get(
+            config.COMMUNITY_INDEX_URL,
+            timeout=config.COMMUNITY_INDEX_TIMEOUT,
+            headers={"User-Agent": "ma-triage-bot"},
+        )
+        resp.raise_for_status()
+        index = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        error(f"Could not read the community catalog index: {exc}")
+        return False
+    entries = index.get("providers") if isinstance(index, dict) else None
+    for domain, entry in (entries if isinstance(entries, dict) else {}).items():
+        provider = _parse_community_provider(domain, entry)
+        if provider is not None:
+            _COMMUNITY[domain] = provider
+    _alias_patterns.cache_clear()
+    return True
+
+
+def community_provider(label: str) -> CommunityProvider | None:
+    """Return the community catalog provider a detected label stands for, if any."""
+    provider = _COMMUNITY.get(label)
+    if provider is None or _shadowed_by_builtin(provider, _builtin_names()):
+        return None
+    return provider
+
+
 @lru_cache(maxsize=1)
 def _alias_patterns() -> list[tuple[re.Pattern[str], str]]:
     """Compile aliases longest-first so specific plugin names win.
@@ -74,6 +122,7 @@ def _alias_patterns() -> list[tuple[re.Pattern[str], str]]:
         for alias, label in config.PROVIDER_TEXT_ALIASES.items()
     ]
     aliases += [(name, label, 0) for name, label in _manifest_aliases().items()]
+    aliases += [(name, label, 0) for name, label in _community_aliases().items()]
     aliases.sort(key=lambda item: len(item[0]), reverse=True)
     for alias, label, flags in aliases:
         # Word boundaries around the alias; tolerate spaces/underscores between
@@ -90,13 +139,35 @@ def _manifest_aliases() -> dict[str, str]:
         name = manifest.get("name")
         if not isinstance(name, str) or not _community_handles(manifest):
             continue
-        # Reporters write "Emby", not "Emby Media Server Library".
-        name = re.sub(r"\s*\(.*?\)", "", name).strip()
-        for suffix in (" Media Server Library", " Provider", " Players"):
-            name = name.removesuffix(suffix)
+        name = _spoken_name(name)
         if name and name.lower() not in config.PROVIDER_TEXT_ALIASES:
             aliases[name] = domain_to_label(domain)
     return aliases
+
+
+def _community_aliases() -> dict[str, str]:
+    """Map the name and domain of each community catalog provider to its domain."""
+    aliases: dict[str, str] = {}
+    builtin = _builtin_names()
+    for domain, provider in _COMMUNITY.items():
+        if _shadowed_by_builtin(provider, builtin):
+            continue
+        name = _spoken_name(provider.name)
+        if name:
+            aliases[name] = domain
+        # A domain that is just the name in lower case would match the plain
+        # word, which the name's own-casing rule exists to avoid.
+        if domain != name.lower():
+            aliases[domain] = domain
+    return aliases
+
+
+def _spoken_name(name: str) -> str:
+    """What reporters call a provider: "Emby", not "Emby Media Server Library"."""
+    name = re.sub(r"\s*\(.*?\)", "", name).strip()
+    for suffix in (" Media Server Library", " Provider", " Players"):
+        name = name.removesuffix(suffix)
+    return name
 
 
 def detect_provider_labels_from_text(text: str | None) -> set[str]:
@@ -234,3 +305,60 @@ def resolve_provider_doc(gh: GitHubClient, provider: str) -> ProviderDoc | None:
         name=str(name).strip() if isinstance(name, str) and name.strip() else provider,
         url=raw_url,
     )
+
+
+def _builtin_names() -> set[str]:
+    """Every name, alias, domain and label of a server repository provider, lower case."""
+    names = {key.lower() for key in config.PROVIDER_TEXT_ALIASES}
+    names |= {label.lower() for label in config.PROVIDER_TEXT_ALIASES.values()}
+    names |= {key.lower() for key in config.PROVIDER_LABELS}
+    names |= {label.lower() for label in config.PROVIDER_LABELS.values()}
+    for domain, manifest in _MANIFESTS.items():
+        names.add(domain.lower())
+        name = manifest.get("name")
+        if isinstance(name, str):
+            names.add(_spoken_name(name).lower())
+    return names
+
+
+def _shadowed_by_builtin(provider: CommunityProvider, builtin: set[str]) -> bool:
+    """True when a server repository provider already answers to its name or domain."""
+    return (
+        provider.domain.lower() in builtin
+        or _spoken_name(provider.name).lower() in builtin
+    )
+
+
+def _parse_community_provider(domain: object, entry: object) -> CommunityProvider | None:
+    if not isinstance(domain, str) or not _RE_DOMAIN.fullmatch(domain):
+        return None
+    if not isinstance(entry, dict):
+        return None
+    repository = entry.get("repository")
+    if not isinstance(repository, str) or not _RE_REPOSITORY.fullmatch(repository):
+        return None
+    manifest = entry.get("manifest")
+    if not isinstance(manifest, dict):
+        manifest = {}
+    name = manifest.get("name")
+    reason = entry.get("reason")
+    return CommunityProvider(
+        domain=domain,
+        name=name.strip() if isinstance(name, str) and name.strip() else domain,
+        repository=repository,
+        status=str(entry.get("status") or "listed"),
+        reason=reason.strip() if isinstance(reason, str) and reason.strip() else None,
+        reason_url=_safe_url(entry.get("reason_url")),
+        support_url=_safe_url(manifest.get("support_url")),
+        documentation=_safe_url(manifest.get("documentation")),
+    )
+
+
+def _safe_url(value: object) -> str | None:
+    """Return the value when it is an https URL that is safe as a Markdown link target."""
+    if not isinstance(value, str) or any(char in value for char in "\r\n\t \\[]()<>"):
+        return None
+    parsed = urlparse(value)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return None
+    return value

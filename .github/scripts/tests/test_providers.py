@@ -210,3 +210,84 @@ def test_provider_doc_rejects_external_url(fake_gh):
         "documentation": "https://evil.example/steal",
     }
     assert resolve_provider_doc(fake_gh, "evil") is None
+
+
+# --- community catalog providers ---------------------------------------------- #
+def test_unreachable_catalog_leaves_detection_as_it_was(capsys):
+    from ma_triage.providers import load_community_providers
+
+    assert not load_community_providers()
+    assert "::error::" in capsys.readouterr().err
+    assert detect_provider_labels_from_text("Test Tones plays no sweep") == set()
+
+
+def test_community_provider_is_known_by_name_and_domain(catalog):
+    from conftest import TEST_TONES
+    from ma_triage.providers import community_provider, load_community_providers
+
+    catalog["test_tones"] = TEST_TONES
+    assert load_community_providers()
+    assert detect_reported_provider_labels("Test Tones plays no sweep", "") == {"test_tones"}
+    assert detect_provider_labels_from_text("Error in test_tones: boom") == {"test_tones"}
+    # Like a manifest name, the name matches only in its own casing.
+    assert detect_provider_labels_from_text("the test tones are quiet") == set()
+    provider = community_provider("test_tones")
+    assert provider is not None
+    assert provider.report_url == "https://github.com/marcelveldt/ma-test-tones/issues"
+    assert provider.documentation == "https://github.com/marcelveldt/ma-test-tones#readme"
+
+
+def test_community_domain_that_is_a_plain_word_does_not_match_lower_case(catalog):
+    from ma_triage.providers import load_community_providers
+
+    catalog["lyricsbox"] = {
+        "repository": "someone/ma-lyricsbox",
+        "status": "listed",
+        "manifest": {"name": "Lyricsbox"},
+    }
+    load_community_providers()
+    assert detect_provider_labels_from_text("Lyricsbox shows nothing") == {"lyricsbox"}
+    assert detect_provider_labels_from_text("my lyricsbox is empty") == set()
+
+
+def test_builtin_provider_wins_over_a_community_provider_of_the_same_name(fake_gh, catalog):
+    from ma_triage import providers
+    from ma_triage.providers import community_provider, load_community_providers
+
+    fake_gh._manifests["storytel"] = {"name": "Storytel", "codeowners": ["@jonasbp2011"]}
+    load_manifests(fake_gh)
+    catalog["storytel_plus"] = {
+        "repository": "someone/ma-storytel",
+        "status": "listed",
+        "manifest": {"name": "Storytel"},
+    }
+    catalog["spotify_connect_lite"] = {
+        "repository": "someone/ma-connect",
+        "status": "listed",
+        "manifest": {"name": "Spotify Connect"},
+    }
+    load_community_providers()
+    assert detect_provider_labels_from_text("Storytel books fail") == {"storytel"}
+    assert detect_provider_labels_from_text("Spotify Connect drops") == {"Spotify Connect"}
+    assert community_provider("storytel_plus") is None
+    assert "storytel_plus" not in {label for _, label in providers._alias_patterns()}
+
+
+def test_community_support_url_wins_and_unsafe_values_are_dropped(catalog):
+    from ma_triage.providers import community_provider, load_community_providers
+
+    catalog["good"] = {
+        "repository": "someone/ma-good",
+        "status": "listed",
+        "manifest": {
+            "name": "Good One",
+            "support_url": "https://forum.example/c/good-one",
+            "documentation": "javascript:alert(1)",
+        },
+    }
+    catalog["bad_repo"] = {"repository": "not a repo", "manifest": {"name": "Bad Repo"}}
+    load_community_providers()
+    provider = community_provider("good")
+    assert provider.report_url == "https://forum.example/c/good-one"
+    assert provider.documentation is None
+    assert community_provider("bad_repo") is None

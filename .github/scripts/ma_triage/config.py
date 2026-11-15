@@ -17,6 +17,12 @@ SERVER_REPO = "music-assistant/server"
 # Provider manifests live here in the server repo.
 PROVIDERS_DIR = "music_assistant/providers"
 MANIFEST_PATH = PROVIDERS_DIR + "/{domain}/manifest.json"
+# The community catalog: providers that live in their maintainers' own
+# repositories. Every server line's index lists every catalog provider.
+COMMUNITY_INDEX_URL = (
+    "https://music-assistant.github.io/community-catalog/v1/nightly.json"
+)
+COMMUNITY_INDEX_TIMEOUT = 10  # seconds
 
 # --------------------------------------------------------------------------- #
 # Sticky comment marker
@@ -46,6 +52,7 @@ LABEL_REMINDED_1 = "triage/reminded-1"  # 3-day reminder sent
 LABEL_REMINDED_2 = "triage/reminded-2"  # 7-day warning sent
 LABEL_NEEDS_DIAGNOSTICS = "triage/needs-diagnostics"  # info/diagnostics missing
 LABEL_OUTDATED = "triage/outdated-version"  # running an old version
+LABEL_COMMUNITY_PROVIDER = "community-provider"  # names a community catalog provider
 
 # Form-kind labels applied by the issue templates themselves. Used to branch
 # validation/parsing by form (see template.form_kind). The main bug form carries
@@ -635,3 +642,30 @@ PINNED_POSTS_INTRO = (
     "A pinned Music Assistant support post mentions the affected provider:"
 )
 PROVIDER_DOCS_HEADING = "### 📖 Provider documentation"
+
+# --------------------------------------------------------------------------- #
+# Community provider copy
+# --------------------------------------------------------------------------- #
+# A report about exactly one community catalog provider, with no cause in the
+# installation itself: the reporter is sent to the provider's own tracker.
+# `{name}` and `{url}` are filled in at render time.
+COMMUNITY_REFERRAL_HEADING = "### 🧩 Community provider"
+COMMUNITY_REFERRAL = (
+    "**{name}** is a community provider: its own maintainer looks after it, "
+    "outside the Music Assistant team. They know it best, so please "
+    "[report this to its maintainer]({url}). If it turns out to be Music "
+    "Assistant itself, we'll pick it up here."
+)
+# The same provider, when a check above already points at the installation.
+COMMUNITY_NOTE = (
+    "ℹ️ **{name}** is a community provider, maintained outside the Music "
+    "Assistant team."
+)
+COMMUNITY_BLOCKED = (
+    "It is **blocked** in the community catalog, so Music Assistant does not "
+    "load it."
+)
+COMMUNITY_WITHDRAWN = (
+    "It has been **withdrawn** from the community catalog: it is no longer "
+    "offered, while an installed copy keeps loading."
+)

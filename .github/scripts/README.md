@@ -61,6 +61,14 @@ From the diagnostics file the bot derives, with no AI:
 - the reported provider's authoritative **documentation link** and, for a
   single reported provider, its community **codeowner** (from the current server
   manifest on `dev`, skipping the core `@music-assistant` team);
+- **community catalog providers** (read once per run from the published catalog
+  index): a report about exactly one of them is sent to that provider's own
+  tracker (its manifest's `support_url`, else its repository's issues page), and
+  its maintainers are never pinged. When a check found a cause in the
+  installation itself (outdated version, safe mode, unsupported install method,
+  low disk space), the triage stands and the comment only notes that it is a
+  community provider. The `community-provider` label is applied once it exists.
+  If the index can't be read, triage runs exactly as without it;
 - low-disk and other resource hints.
 
 If only a **raw log file** is attached (older Music Assistant versions), the bot
