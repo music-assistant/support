@@ -23,6 +23,7 @@ COMMUNITY_INDEX_URL = (
     "https://music-assistant.github.io/community-catalog/v1/nightly.json"
 )
 COMMUNITY_INDEX_TIMEOUT = 10  # seconds
+COMMUNITY_INDEX_MAX_BYTES = 4 * 1024 * 1024  # the registry's own limit
 
 # --------------------------------------------------------------------------- #
 # Sticky comment marker
@@ -656,7 +657,8 @@ COMMUNITY_REFERRAL = (
     "[report this to its maintainer]({url}). If it turns out to be Music "
     "Assistant itself, we'll pick it up here."
 )
-# The same provider, when a check above already points at the installation.
+# The same provider when it is blocked, or when a check above already points at
+# the installation.
 COMMUNITY_NOTE = (
     "ℹ️ **{name}** is a community provider, maintained outside the Music "
     "Assistant team."

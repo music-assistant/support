@@ -14,6 +14,7 @@ but their maintainers are never pinged: the reporter is sent to their tracker.
 from __future__ import annotations
 
 import json
+import json
 import re
 from functools import lru_cache
 from urllib.parse import urlparse
@@ -82,13 +83,21 @@ def load_community_providers() -> bool:
     if _COMMUNITY:
         return True
     try:
-        resp = requests.get(
+        with requests.get(
             config.COMMUNITY_INDEX_URL,
+            stream=True,
             timeout=config.COMMUNITY_INDEX_TIMEOUT,
+            allow_redirects=False,
             headers={"User-Agent": "ma-triage-bot"},
-        )
-        resp.raise_for_status()
-        index = resp.json()
+        ) as resp:
+            if resp.status_code != 200:
+                raise requests.HTTPError(f"HTTP {resp.status_code}")
+            raw = bytearray()
+            for chunk in resp.iter_content(chunk_size=64 * 1024):
+                raw.extend(chunk)
+                if len(raw) > config.COMMUNITY_INDEX_MAX_BYTES:
+                    raise ValueError(f"over {config.COMMUNITY_INDEX_MAX_BYTES} bytes")
+        index = json.loads(raw)
     except (requests.RequestException, ValueError) as exc:
         error(f"Could not read the community catalog index: {exc}")
         return False
@@ -104,7 +113,7 @@ def load_community_providers() -> bool:
 def community_provider(label: str) -> CommunityProvider | None:
     """Return the community catalog provider a detected label stands for, if any."""
     provider = _COMMUNITY.get(label)
-    if provider is None or _shadowed_by_builtin(provider, _builtin_names()):
+    if provider is None or _shadowed_by_builtin(provider):
         return None
     return provider
 
@@ -146,18 +155,21 @@ def _manifest_aliases() -> dict[str, str]:
 
 
 def _community_aliases() -> dict[str, str]:
-    """Map the name and domain of each community catalog provider to its domain."""
+    """
+    Map the name and domain of each community catalog provider to its domain.
+
+    A wrong match sends a reporter with a core problem away, so plain words never
+    match: a name counts only when it has several words, a domain only when it
+    has an underscore or a digit.
+    """
     aliases: dict[str, str] = {}
-    builtin = _builtin_names()
     for domain, provider in _COMMUNITY.items():
-        if _shadowed_by_builtin(provider, builtin):
+        if _shadowed_by_builtin(provider):
             continue
         name = _spoken_name(provider.name)
-        if name:
+        if len(name.split()) > 1:
             aliases[name] = domain
-        # A domain that is just the name in lower case would match the plain
-        # word, which the name's own-casing rule exists to avoid.
-        if domain != name.lower():
+        if re.search(r"[_0-9]", domain):
             aliases[domain] = domain
     return aliases
 
@@ -308,24 +320,39 @@ def resolve_provider_doc(gh: GitHubClient, provider: str) -> ProviderDoc | None:
 
 
 def _builtin_names() -> set[str]:
-    """Every name, alias, domain and label of a server repository provider, lower case."""
-    names = {key.lower() for key in config.PROVIDER_TEXT_ALIASES}
-    names |= {label.lower() for label in config.PROVIDER_TEXT_ALIASES.values()}
-    names |= {key.lower() for key in config.PROVIDER_LABELS}
-    names |= {label.lower() for label in config.PROVIDER_LABELS.values()}
-    for domain, manifest in _MANIFESTS.items():
-        names.add(domain.lower())
+    """The names and aliases reporters use for server repository providers, lower case."""
+    names = {alias.lower() for alias in config.PROVIDER_TEXT_ALIASES}
+    for manifest in _MANIFESTS.values():
         name = manifest.get("name")
-        if isinstance(name, str):
+        if isinstance(name, str) and _spoken_name(name):
             names.add(_spoken_name(name).lower())
     return names
 
 
-def _shadowed_by_builtin(provider: CommunityProvider, builtin: set[str]) -> bool:
-    """True when a server repository provider already answers to its name or domain."""
-    return (
-        provider.domain.lower() in builtin
-        or _spoken_name(provider.name).lower() in builtin
+def _builtin_ids() -> set[str]:
+    """The domains and labels of server repository providers, lower case."""
+    ids = {domain.lower() for domain in config.PROVIDER_LABELS}
+    ids |= {label.lower() for label in config.PROVIDER_LABELS.values()}
+    ids |= {label.lower() for label in config.PROVIDER_TEXT_ALIASES.values()}
+    ids |= {domain.lower() for domain in _MANIFESTS}
+    return ids
+
+
+def _shadowed_by_builtin(provider: CommunityProvider) -> bool:
+    """
+    True when a server repository provider keeps what this one would answer to.
+
+    That is its domain, or a name that is a built-in domain or label, or that
+    holds a built-in provider's name or alias as a word.
+    """
+    names = _builtin_names()
+    ids = _builtin_ids() | names
+    name = _spoken_name(provider.name).lower()
+    if provider.domain.lower() in ids or name in ids:
+        return True
+    return any(
+        re.search(rf"(?<!\w){re.escape(builtin_name)}(?!\w)", name)
+        for builtin_name in names
     )
 
 

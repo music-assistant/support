@@ -262,7 +262,7 @@ def _community_section(result: TriageResult) -> str:
 
 
 def _community_note(result: TriageResult) -> str:
-    """Name a community provider neutrally when a check points at the installation."""
+    """Name a blocked community provider, or one behind a generic cause, neutrally."""
     provider = result.community_provider
     if provider is None or result.community_referral is not None:
         return ""
@@ -271,7 +271,13 @@ def _community_note(result: TriageResult) -> str:
 
 
 def _community_name(provider: CommunityProvider) -> str:
-    return markdown_safe(provider.name, max_len=80)
+    return _index_text(provider.name, max_len=80)
+
+
+def _index_text(value: str, *, max_len: int) -> str:
+    """One line of catalog index text, unable to add structure to the bot's comment."""
+    text = markdown_safe(" ".join(value.split()), max_len=max_len)
+    return text.replace("*", "\\*").replace("_", "\\_")
 
 
 def _with_status(text: str, provider: CommunityProvider) -> str:
@@ -283,7 +289,7 @@ def _with_status(text: str, provider: CommunityProvider) -> str:
     else:
         return text
     if provider.reason:
-        status += f" Reason: {markdown_safe(provider.reason, max_len=300)}"
+        status += f" Reason: {_index_text(provider.reason, max_len=300)}"
     if provider.reason_url:
         status += f" ([details]({provider.reason_url}))"
     return f"{text}\n\n{status}"

@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from conftest import FakeGH
 from ma_triage import config
@@ -237,17 +239,110 @@ def test_community_provider_is_known_by_name_and_domain(catalog):
     assert provider.documentation == "https://github.com/marcelveldt/ma-test-tones#readme"
 
 
-def test_community_domain_that_is_a_plain_word_does_not_match_lower_case(catalog):
+def test_community_plain_words_never_refer(catalog):
     from ma_triage.providers import load_community_providers
 
-    catalog["lyricsbox"] = {
-        "repository": "someone/ma-lyricsbox",
+    catalog["lyrics"] = {
+        "repository": "someone/ma-lyrics",
         "status": "listed",
-        "manifest": {"name": "Lyricsbox"},
+        "manifest": {"name": "Better Lyrics"},
+    }
+    catalog["notes"] = {
+        "repository": "someone/ma-notes",
+        "status": "listed",
+        "manifest": {"name": "Notes"},
     }
     load_community_providers()
-    assert detect_provider_labels_from_text("Lyricsbox shows nothing") == {"lyricsbox"}
-    assert detect_provider_labels_from_text("my lyricsbox is empty") == set()
+    # A domain without an underscore or a digit, or a one-word name, is a plain word.
+    assert detect_provider_labels_from_text("No lyrics shown for synced tracks") == set()
+    assert detect_provider_labels_from_text("Notes on the queue: it skips") == set()
+    assert detect_provider_labels_from_text("notes fails to load") == set()
+    assert detect_provider_labels_from_text("Better Lyrics shows nothing") == {"lyrics"}
+
+
+def test_community_domain_with_an_underscore_or_digit_matches(catalog):
+    from ma_triage.providers import load_community_providers
+
+    catalog["ma_notes"] = {"repository": "someone/ma-notes", "manifest": {"name": "Notes"}}
+    catalog["notes2"] = {"repository": "someone/notes2", "manifest": {"name": "Notes"}}
+    load_community_providers()
+    assert detect_provider_labels_from_text("Error in ma_notes: boom") == {"ma_notes"}
+    assert detect_provider_labels_from_text("notes2 crashed") == {"notes2"}
+
+
+def test_community_name_holding_a_builtin_name_never_takes_the_report(fake_gh, catalog):
+    from ma_triage.providers import community_provider, load_community_providers
+
+    fake_gh._manifests["party"] = {"name": "Party", "codeowners": ["@music-assistant"]}
+    load_manifests(fake_gh)
+    catalog["spotify_free"] = {
+        "repository": "someone/ma-spotify-free",
+        "manifest": {"name": "Spotify Free"},
+    }
+    catalog["party_lights"] = {
+        "repository": "someone/ma-party-lights",
+        "manifest": {"name": "Disco Party Lights"},
+    }
+    load_community_providers()
+    assert detect_provider_labels_from_text("Spotify Free accounts cannot play") == {"spotify"}
+    assert detect_provider_labels_from_text("spotify_free crashed") == set()
+    assert detect_provider_labels_from_text("Disco Party Lights stay dark") == set()
+    assert community_provider("spotify_free") is None
+    assert community_provider("party_lights") is None
+
+
+def test_community_name_containing_a_builtin_domain_still_counts(fake_gh, catalog):
+    from ma_triage.providers import community_provider, load_community_providers
+
+    # Domains are no names: the server's `test` provider leaves "Test Tones" alone.
+    fake_gh._manifests["test"] = {"name": "Test / demo provider", "codeowners": []}
+    load_manifests(fake_gh)
+    from conftest import TEST_TONES
+
+    catalog["test_tones"] = TEST_TONES
+    load_community_providers()
+    assert community_provider("test_tones") is not None
+
+
+def test_community_entries_with_an_invalid_domain_are_skipped(catalog):
+    from ma_triage.providers import community_provider, load_community_providers
+
+    catalog["Bad-Domain"] = {"repository": "someone/bad", "manifest": {"name": "Bad Domain"}}
+    load_community_providers()
+    assert community_provider("Bad-Domain") is None
+    assert detect_provider_labels_from_text("Bad Domain fails") == set()
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["http://forum.example/c/good-one", "https://forum.example/c/good)one"],
+)
+def test_community_unsafe_support_urls_are_dropped(catalog, url):
+    from ma_triage.providers import community_provider, load_community_providers
+
+    catalog["good_one"] = {
+        "repository": "someone/ma-good",
+        "manifest": {"name": "Good One", "support_url": url},
+    }
+    load_community_providers()
+    assert community_provider("good_one").support_url is None
+
+
+@pytest.mark.parametrize("response", ["oversized", "redirect"])
+def test_community_index_is_capped_and_never_redirected(monkeypatch, capsys, response):
+    from conftest import FakeResponse
+    from ma_triage import providers
+
+    # Both bodies are a valid index, so only the cap and the status refuse them.
+    def fake_get(url, **kwargs):
+        if response == "redirect":
+            return FakeResponse(b'{"providers": {}}', status=302)
+        padding = "x" * config.COMMUNITY_INDEX_MAX_BYTES
+        return FakeResponse(json.dumps({"providers": {}, "pad": padding}).encode())
+
+    monkeypatch.setattr(providers.requests, "get", fake_get)
+    assert not providers.load_community_providers()
+    assert "::error::" in capsys.readouterr().err
 
 
 def test_builtin_provider_wins_over_a_community_provider_of_the_same_name(fake_gh, catalog):
@@ -270,13 +365,21 @@ def test_builtin_provider_wins_over_a_community_provider_of_the_same_name(fake_g
     assert detect_provider_labels_from_text("Storytel books fail") == {"storytel"}
     assert detect_provider_labels_from_text("Spotify Connect drops") == {"Spotify Connect"}
     assert community_provider("storytel_plus") is None
+    catalog["storytel"] = {
+        "repository": "someone/ma-books",
+        "status": "listed",
+        "manifest": {"name": "Story Books Plus"},
+    }
+    providers._COMMUNITY.clear()
+    load_community_providers()
+    assert community_provider("storytel") is None
     assert "storytel_plus" not in {label for _, label in providers._alias_patterns()}
 
 
 def test_community_support_url_wins_and_unsafe_values_are_dropped(catalog):
     from ma_triage.providers import community_provider, load_community_providers
 
-    catalog["good"] = {
+    catalog["good_one"] = {
         "repository": "someone/ma-good",
         "status": "listed",
         "manifest": {
@@ -287,7 +390,7 @@ def test_community_support_url_wins_and_unsafe_values_are_dropped(catalog):
     }
     catalog["bad_repo"] = {"repository": "not a repo", "manifest": {"name": "Bad Repo"}}
     load_community_providers()
-    provider = community_provider("good")
+    provider = community_provider("good_one")
     assert provider.report_url == "https://forum.example/c/good-one"
     assert provider.documentation is None
     assert community_provider("bad_repo") is None

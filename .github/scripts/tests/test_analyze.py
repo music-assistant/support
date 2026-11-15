@@ -45,3 +45,28 @@ def test_no_findings_when_clean(fake_gh):
     findings, labels = analyze.analyze(diag, fake_gh)
     # current version, no providers, no exceptions → no findings
     assert findings == []
+
+
+def test_installation_wide_causes_are_generic(fake_gh):
+    from ma_triage.models import Diagnostics, ProviderEntry, SystemInfo
+
+    diag = Diagnostics(
+        schema_version=1,
+        generated_at=None,
+        system=SystemInfo(safe_mode=True, disk={"free_mb": 10}),
+    )
+    findings, _ = analyze.analyze(diag, fake_gh)
+    generic = {f.title: f.generic for f in findings}
+    assert generic["Safe mode is enabled"] is True
+    assert generic["Very low free disk space"] is True
+    assert analyze.install_method_finding("Other (unsupported)").generic is True
+    assert analyze.version_findings("2.0.0", fake_gh)[0][0].generic is True
+    # A provider in error can be the community provider itself.
+    diag.providers = [
+        ProviderEntry(
+            domain="test_tones", instance_id="x", type="music",
+            enabled=True, loaded=False, available=False,
+        )
+    ]
+    errored = [f for f in analyze.analyze(diag, fake_gh)[0] if "error state" in f.title]
+    assert errored and errored[0].generic is False

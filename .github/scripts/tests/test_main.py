@@ -604,3 +604,55 @@ def test_cmd_triage_refers_a_community_provider_report(fake_gh, catalog, monkeyp
     assert "(https://github.com/marcelveldt/ma-test-tones/issues)" in comment
     assert "@marcelveldt" not in comment
     assert '"referred":"test_tones"' in comment
+
+
+def test_the_catalog_never_reaches_retrieval_or_the_assessment(
+    sample_raw, fake_gh, catalog, monkeypatch
+):
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
+    monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
+    monkeypatch.setattr(main.ai, "summarise_report", lambda *a, **k: None)
+    seen: list = []
+
+    def record(kind, value):
+        # A snapshot of what the consumer was handed, at the time it was called.
+        seen.append((kind, repr(value)))
+
+    monkeypatch.setattr(main.rag, "answer", lambda gh, **kwargs: record("rag", kwargs))
+    monkeypatch.setattr(
+        main.code_context, "build", lambda gh, **kwargs: record("code", kwargs) or ""
+    )
+    monkeypatch.setattr(
+        main.ai, "_chat", lambda payload, **kwargs: record("prompt", payload["messages"])
+    )
+    title = "Test Tones: sweep is silent"
+
+    main.build_result(fake_gh, title, MAIN_BODY_FULL, token="t", labels=["triage"])
+    without = list(seen)
+    seen.clear()
+    _with_test_tones(catalog)
+    result = main.build_result(fake_gh, title, MAIN_BODY_FULL, token="t", labels=["triage"])
+
+    assert result.community_provider is not None
+    assert [kind for kind, _ in without] == ["rag", "code", "prompt"]
+    assert seen == without
+    assert "ma-test-tones" not in "".join(value for _, value in seen)
+
+
+def test_a_blocked_community_provider_is_not_referred(fake_gh, catalog):
+    _with_test_tones(catalog, status="blocked", reason="Sends the library elsewhere")
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", MAIN_BODY_FULL, token="t")
+    assert result.community_provider is not None
+    assert result.community_referral is None
+    assert result.provider_docs == []
+    assert config.LABEL_COMMUNITY_PROVIDER in result.labels_to_add
+
+
+def test_a_withdrawn_community_provider_is_still_referred(fake_gh, catalog):
+    _with_test_tones(catalog, status="withdrawn", reason="No longer maintained")
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", MAIN_BODY_FULL, token="t")
+    assert result.community_referral is not None
+    assert [doc.url for doc in result.provider_docs] == [
+        "https://github.com/marcelveldt/ma-test-tones#readme"
+    ]

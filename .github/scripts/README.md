@@ -62,12 +62,14 @@ From the diagnostics file the bot derives, with no AI:
   single reported provider, its community **codeowner** (from the current server
   manifest on `dev`, skipping the core `@music-assistant` team);
 - **community catalog providers** (read once per run from the published catalog
-  index): a report about exactly one of them is sent to that provider's own
-  tracker (its manifest's `support_url`, else its repository's issues page), and
-  its maintainers are never pinged. When a check found a cause in the
-  installation itself (outdated version, safe mode, unsupported install method,
-  low disk space), the triage stands and the comment only notes that it is a
-  community provider. The `community-provider` label is applied once it exists.
+  index): recognised by a name of several words or a domain with an underscore
+  or digit, never by a plain word, and never when the name holds a built-in
+  provider's name. A report about exactly one of them is sent to that
+  provider's own tracker (its manifest's `support_url`, else its repository's
+  issues page), and its maintainers are never pinged. A blocked provider, or a
+  report where a check found a cause in the installation itself (outdated
+  version, safe mode, unsupported install method, low disk space), only gets a
+  neutral note. Nothing from the index reaches retrieval or the AI assessment.
   If the index can't be read, triage runs exactly as without it;
 - low-disk and other resource hints.
 

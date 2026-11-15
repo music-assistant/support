@@ -412,16 +412,32 @@ def test_build_body_prefers_the_support_url():
     assert "/issues)" not in body
 
 
-def test_build_body_says_a_community_provider_is_blocked_and_why():
+def test_build_body_only_notes_a_blocked_community_provider_and_why():
     provider = _test_tones(
         status="blocked",
         reason="Sends the library elsewhere",
         reason_url="https://github.com/music-assistant/community-catalog/issues/12",
+        support_url="https://forum.example/c/test-tones",
+        documentation="https://github.com/marcelveldt/ma-test-tones#readme",
     )
     body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    assert config.COMMUNITY_NOTE.format(name="Test Tones") in body
     assert config.COMMUNITY_BLOCKED in body
     assert "Reason: Sends the library elsewhere" in body
     assert "([details](https://github.com/music-assistant/community-catalog/issues/12))" in body
+    assert config.COMMUNITY_REFERRAL_HEADING not in body
+    assert "report this to its maintainer" not in body
+    assert "forum.example" not in body
+    assert "ma-test-tones" not in body
+
+
+def test_build_body_refers_a_withdrawn_community_provider_and_says_so():
+    provider = _test_tones(status="withdrawn", reason="No longer maintained")
+    body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    assert config.COMMUNITY_REFERRAL_HEADING in body
+    assert "(https://github.com/marcelveldt/ma-test-tones/issues)" in body
+    assert config.COMMUNITY_WITHDRAWN in body
+    assert "Reason: No longer maintained" in body
 
 
 def test_build_body_only_notes_a_community_provider_behind_a_generic_cause():
@@ -442,3 +458,17 @@ def test_build_body_defuses_a_community_provider_name():
     body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
     assert "@someone" not in body
     assert "](https://evil.example)" not in body
+
+
+def test_build_body_keeps_community_index_text_on_one_line():
+    provider = _test_tones(
+        name="**Official**\n\n- Music Assistant",
+        status="blocked",
+        reason="Bad\n\n- step one\n# heading",
+    )
+    body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    note = next(line for line in body.splitlines() if "is a community provider" in line)
+    assert note.startswith("ℹ️ **\\*\\*Official\\*\\* - Music Assistant**")
+    reason = next(line for line in body.splitlines() if "Reason:" in line)
+    assert reason.endswith("Reason: Bad - step one #\u200b heading")
+    assert "\n- " not in body.split("Reason:")[0][-200:]

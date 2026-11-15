@@ -165,18 +165,21 @@ def _forget_provider_manifests():
 
 
 class FakeResponse:
-    def __init__(self, payload, status=200):
-        self._payload = payload
+    """A streamed `requests` response serving ``content`` in two chunks."""
+
+    def __init__(self, content: bytes, status=200):
+        self.content = content
         self.status_code = status
 
-    def raise_for_status(self):
-        import requests
+    def __enter__(self):
+        return self
 
-        if self.status_code >= 400:
-            raise requests.HTTPError(f"{self.status_code}")
+    def __exit__(self, *exc):
+        return False
 
-    def json(self):
-        return self._payload
+    def iter_content(self, chunk_size=1):
+        half = len(self.content) // 2
+        yield from (self.content[:half], self.content[half:])
 
 
 TEST_TONES = {
@@ -210,7 +213,8 @@ def catalog(monkeypatch):
     def fake_get(url, **kwargs):
         if not entries:
             raise requests.ConnectionError("offline")
-        return FakeResponse({"schema": 1, "providers": entries})
+        assert kwargs.get("allow_redirects") is False
+        return FakeResponse(json.dumps({"schema": 1, "providers": entries}).encode())
 
     monkeypatch.setattr(providers.requests, "get", fake_get)
     return entries

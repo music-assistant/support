@@ -335,11 +335,15 @@ class TriageResult:
         The community provider whose maintainer the reporter is sent to.
 
         None unless the report names exactly one provider and it is a community
-        one, and also when a check found a cause in the installation itself.
+        one; also None for a blocked provider, and when a check found a cause in
+        the installation itself.
         """
+        provider = self.community_provider
+        if provider is None or provider.status == "blocked":
+            return None
         if any(finding.generic for finding in self.findings):
             return None
-        return self.community_provider
+        return provider
 
     @property
     def has_recovered_fields(self) -> bool:

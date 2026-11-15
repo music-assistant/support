@@ -155,17 +155,10 @@ def build_result(
     # knows only the providers that live in the server repository.
     reported_providers = result.reported_providers - {p.domain for p in community}
     labels_to_add |= reported_providers
-    if community:
-        labels_to_add.add(config.LABEL_COMMUNITY_PROVIDER)
     for provider in sorted(reported_providers, key=str.lower):
         provider_doc = resolve_provider_doc(gh, provider)
         if provider_doc is not None:
             result.provider_docs.append(provider_doc)
-    result.provider_docs.extend(
-        ProviderDoc(label=p.domain, name=p.name, url=p.documentation)
-        for p in community
-        if p.documentation
-    )
 
     # Ping, or refer to a community provider's own tracker, conservatively: one
     # clearly reported provider. Never for incidental census/error providers.
@@ -250,6 +243,16 @@ def build_result(
         if ai_result is not None:
             result.ai = ai_result
             labels_to_add.update(ai_result.suggested_labels)
+
+    # Added only now: nothing from the catalog index may reach retrieval or the
+    # assessment, and a blocked provider's own links are not offered at all.
+    if community:
+        labels_to_add.add(config.LABEL_COMMUNITY_PROVIDER)
+    result.provider_docs.extend(
+        ProviderDoc(label=p.domain, name=p.name, url=p.documentation)
+        for p in community
+        if p.documentation and p.status != "blocked"
+    )
 
     findings.sort(key=lambda f: f.sort_key)
     result.findings = findings
