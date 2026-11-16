@@ -66,10 +66,13 @@ From the diagnostics file the bot derives, with no AI:
   or digit, never by a plain word, and never when the name holds a built-in
   provider's name. A report about exactly one of them is sent to that
   provider's own tracker (its manifest's `support_url`, else its repository's
-  issues page), and its maintainers are never pinged. A blocked provider, or a
-  report where a check found a cause in the installation itself (outdated
-  version, safe mode, unsupported install method, low disk space), only gets a
-  neutral note. Nothing from the index reaches retrieval or the AI assessment.
+  issues page), and its maintainers are never pinged. The reporter is asked to
+  close the issue once it is reported there and nothing else is requested; the
+  reminder sweep nudges them to close rather than for more information. The
+  catalog is skipped when the server's manifests can't be read. A blocked
+  provider, or a report where a check found a cause in the installation
+  itself (outdated version, safe mode, unsupported install method, low disk
+  space), only gets a neutral note. Nothing from the index reaches retrieval or the AI assessment.
   If the index can't be read, triage runs exactly as without it;
 - low-disk and other resource hints.
 

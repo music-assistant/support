@@ -491,6 +491,8 @@ def build_body(result: TriageResult) -> str:
     community = _community_section(result)
     if community:
         parts.extend([community, ""])
+    # A referred report belongs with the provider's maintainer: ask for nothing.
+    referred = bool(community)
 
     if result.form_kind == "frontend":
         parts.extend(_frontend_body(result))
@@ -508,8 +510,11 @@ def build_body(result: TriageResult) -> str:
             parts.append(ai)
         # Even with usable diagnostics, still ask for any empty required sections.
         missing = _missing_sections_line(result)
-        if missing:
+        if missing and not referred:
             parts.append("\n" + missing)
+    elif referred:
+        if result.findings:
+            parts.append(_findings_section(result))
     elif result.diagnostics_invalid:
         parts.append(
             "Thanks for attaching a file! Unfortunately I couldn't read it — it "

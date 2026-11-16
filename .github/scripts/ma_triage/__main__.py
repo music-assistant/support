@@ -342,6 +342,7 @@ def _resolve_labels(gh: GitHubClient, result: TriageResult) -> list[str]:
         if (
             result.form_kind == "main"
             and not result.has_diagnostics
+            and result.community_referral is None
             and config.LABEL_NEEDS_DIAGNOSTICS in existing
         ):
             keep.add(config.LABEL_NEEDS_DIAGNOSTICS)
@@ -474,8 +475,10 @@ def cmd_triage(gh: GitHubClient, token: str) -> int:
         return 0
 
     summary(f"## Triage of #{number}\n")
-    load_manifests(gh)
-    load_community_providers()
+    # Without the server's manifests nothing stops a catalog provider from
+    # claiming a built-in provider's name, so the catalog is left out too.
+    if load_manifests(gh):
+        load_community_providers()
     result = build_result(gh, title, body, token=token, labels=labels, number=number)
     if result.skip:
         summary(f"#{number}: skipped ({result.form_kind} form — not triaged).")

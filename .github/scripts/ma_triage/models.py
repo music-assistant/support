@@ -358,9 +358,15 @@ class TriageResult:
 
     @property
     def needs_user_action(self) -> bool:
-        """True when the reporter still has to provide something."""
+        """True when the reporter still has to provide something.
+
+        A referred report always waits on the reporter: to take it to the
+        provider's own tracker and close it here, or to say it is Music Assistant.
+        """
         if self.skip:
             return False
+        if self.community_referral is not None:
+            return True
         if self.form_kind == "frontend":
             return bool(self.missing_sections or self.missing_attachment)
         # main bug form

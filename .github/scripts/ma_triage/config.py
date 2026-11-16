@@ -498,6 +498,24 @@ REMINDER_2_MESSAGE = (
     "{days} days** of inactivity to keep the tracker tidy. You can always reply "
     "to reopen the conversation."
 )
+# A referred report waits on the reporter to take it to the provider's own
+# tracker, not on more information, so it is nudged to close instead.
+REFERRAL_REMINDER_1_MESSAGE = (
+    "👋 Just checking in: if this turned out to be a problem in the community "
+    "provider, could you close this issue once you've reported it to its "
+    "maintainer? If it's Music Assistant itself, let us know here."
+)
+REFERRAL_REMINDER_2_MESSAGE = (
+    "👋 Following up: if this is a problem in the community provider, please "
+    "close this issue and follow it up with its maintainer. Otherwise it will be "
+    "**automatically closed after {days} days** of inactivity; reply here if it "
+    "turns out to be Music Assistant itself."
+)
+REFERRAL_AUTO_CLOSE_MESSAGE = (
+    "Closing this, as it looks like a matter for the community provider's own "
+    "maintainer. If it turns out to be Music Assistant itself, just add a "
+    "comment and we'll reopen it. 🙏"
+)
 AUTO_CLOSE_MESSAGE = (
     "This issue is being **automatically closed** because we didn't hear back "
     "after a couple of reminders, so we can't investigate further right now. "
@@ -654,8 +672,9 @@ COMMUNITY_REFERRAL_HEADING = "### 🧩 Community provider"
 COMMUNITY_REFERRAL = (
     "**{name}** is a community provider: its own maintainer looks after it, "
     "outside the Music Assistant team. They know it best, so please "
-    "[report this to its maintainer]({url}). If it turns out to be Music "
-    "Assistant itself, we'll pick it up here."
+    "[report this to its maintainer]({url}). If the problem is in {name}, "
+    "please close this issue once you've reported it there; if it turns out to "
+    "be Music Assistant itself, let us know here."
 )
 # The same provider when it is blocked, or when a check above already points at
 # the installation.
