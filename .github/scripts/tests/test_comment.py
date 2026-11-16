@@ -381,3 +381,94 @@ def test_recovered_fields_cannot_publish_a_link():
     )
     assert "](https://evil.example)" not in body
     assert "https://evil.example" not in body
+
+
+# --- community catalog providers ---------------------------------------------- #
+def _test_tones(**changes):
+    from ma_triage.models import CommunityProvider
+
+    fields = {
+        "domain": "test_tones",
+        "name": "Test Tones",
+        "repository": "marcelveldt/ma-test-tones",
+        "status": "listed",
+    }
+    return CommunityProvider(**{**fields, **changes})
+
+
+def test_build_body_refers_a_community_provider_to_its_tracker():
+    result = TriageResult(form_kind="main", community_provider=_test_tones())
+    body = comment.build_body(result)
+    assert config.COMMUNITY_REFERRAL_HEADING in body
+    assert "**Test Tones** is a community provider" in body
+    assert "(https://github.com/marcelveldt/ma-test-tones/issues)" in body
+    assert config.COMMUNITY_NOTE.format(name="Test Tones") not in body
+
+
+def test_build_body_prefers_the_support_url():
+    provider = _test_tones(support_url="https://forum.example/c/test-tones")
+    body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    assert "(https://forum.example/c/test-tones)" in body
+    assert "/issues)" not in body
+
+
+def test_build_body_only_notes_a_blocked_community_provider_and_why():
+    provider = _test_tones(
+        status="blocked",
+        reason="Sends the library elsewhere",
+        reason_url="https://github.com/music-assistant/community-catalog/issues/12",
+        support_url="https://forum.example/c/test-tones",
+        documentation="https://github.com/marcelveldt/ma-test-tones#readme",
+    )
+    body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    assert config.COMMUNITY_NOTE.format(name="Test Tones") in body
+    assert config.COMMUNITY_BLOCKED in body
+    assert "Reason: Sends the library elsewhere" in body
+    assert "([details](https://github.com/music-assistant/community-catalog/issues/12))" in body
+    assert config.COMMUNITY_REFERRAL_HEADING not in body
+    assert "report this to its maintainer" not in body
+    assert "forum.example" not in body
+    assert "ma-test-tones" not in body
+
+
+def test_build_body_refers_a_withdrawn_community_provider_and_says_so():
+    provider = _test_tones(status="withdrawn", reason="No longer maintained")
+    body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    assert config.COMMUNITY_REFERRAL_HEADING in body
+    assert "(https://github.com/marcelveldt/ma-test-tones/issues)" in body
+    assert config.COMMUNITY_WITHDRAWN in body
+    assert "Reason: No longer maintained" in body
+
+
+def test_build_body_only_notes_a_community_provider_behind_a_generic_cause():
+    from ma_triage.models import Finding, Severity
+
+    finding = Finding(Severity.WARNING, "Outdated version", "update", generic=True)
+    result = TriageResult(
+        form_kind="main", community_provider=_test_tones(), findings=[finding]
+    )
+    body = comment.build_body(result)
+    assert config.COMMUNITY_REFERRAL_HEADING not in body
+    assert "/issues)" not in body
+    assert config.COMMUNITY_NOTE.format(name="Test Tones") in body
+
+
+def test_build_body_defuses_a_community_provider_name():
+    provider = _test_tones(name="@someone [click](https://evil.example)")
+    body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    assert "@someone" not in body
+    assert "](https://evil.example)" not in body
+
+
+def test_build_body_keeps_community_index_text_on_one_line():
+    provider = _test_tones(
+        name="**Official**\n\n- Music Assistant",
+        status="blocked",
+        reason="Bad\n\n- step one\n# heading",
+    )
+    body = comment.build_body(TriageResult(form_kind="main", community_provider=provider))
+    note = next(line for line in body.splitlines() if "is a community provider" in line)
+    assert note.startswith("ℹ️ **\\*\\*Official\\*\\* - Music Assistant**")
+    reason = next(line for line in body.splitlines() if "Reason:" in line)
+    assert reason.endswith("Reason: Bad - step one #\u200b heading")
+    assert "\n- " not in body.split("Reason:")[0][-200:]

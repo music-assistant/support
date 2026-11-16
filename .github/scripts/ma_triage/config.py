@@ -17,6 +17,13 @@ SERVER_REPO = "music-assistant/server"
 # Provider manifests live here in the server repo.
 PROVIDERS_DIR = "music_assistant/providers"
 MANIFEST_PATH = PROVIDERS_DIR + "/{domain}/manifest.json"
+# The community catalog: providers that live in their maintainers' own
+# repositories. Every server line's index lists every catalog provider.
+COMMUNITY_INDEX_URL = (
+    "https://music-assistant.github.io/community-catalog/v1/nightly.json"
+)
+COMMUNITY_INDEX_TIMEOUT = 10  # seconds
+COMMUNITY_INDEX_MAX_BYTES = 4 * 1024 * 1024  # the registry's own limit
 
 # --------------------------------------------------------------------------- #
 # Sticky comment marker
@@ -46,6 +53,7 @@ LABEL_REMINDED_1 = "triage/reminded-1"  # 3-day reminder sent
 LABEL_REMINDED_2 = "triage/reminded-2"  # 7-day warning sent
 LABEL_NEEDS_DIAGNOSTICS = "triage/needs-diagnostics"  # info/diagnostics missing
 LABEL_OUTDATED = "triage/outdated-version"  # running an old version
+LABEL_COMMUNITY_PROVIDER = "community-provider"  # names a community catalog provider
 
 # Form-kind labels applied by the issue templates themselves. Used to branch
 # validation/parsing by form (see template.form_kind). The main bug form carries
@@ -490,6 +498,24 @@ REMINDER_2_MESSAGE = (
     "{days} days** of inactivity to keep the tracker tidy. You can always reply "
     "to reopen the conversation."
 )
+# A referred report waits on the reporter to take it to the provider's own
+# tracker, not on more information, so it is nudged to close instead.
+REFERRAL_REMINDER_1_MESSAGE = (
+    "👋 Just checking in: if this turned out to be a problem in the community "
+    "provider, could you close this issue once you've reported it to its "
+    "maintainer? If it's Music Assistant itself, let us know here."
+)
+REFERRAL_REMINDER_2_MESSAGE = (
+    "👋 Following up: if this is a problem in the community provider, please "
+    "close this issue and follow it up with its maintainer. Otherwise it will be "
+    "**automatically closed after {days} days** of inactivity; reply here if it "
+    "turns out to be Music Assistant itself."
+)
+REFERRAL_AUTO_CLOSE_MESSAGE = (
+    "Closing this, as it looks like a matter for the community provider's own "
+    "maintainer. If it turns out to be Music Assistant itself, just add a "
+    "comment and we'll reopen it. 🙏"
+)
 AUTO_CLOSE_MESSAGE = (
     "This issue is being **automatically closed** because we didn't hear back "
     "after a couple of reminders, so we can't investigate further right now. "
@@ -635,3 +661,32 @@ PINNED_POSTS_INTRO = (
     "A pinned Music Assistant support post mentions the affected provider:"
 )
 PROVIDER_DOCS_HEADING = "### 📖 Provider documentation"
+
+# --------------------------------------------------------------------------- #
+# Community provider copy
+# --------------------------------------------------------------------------- #
+# A report about exactly one community catalog provider, with no cause in the
+# installation itself: the reporter is sent to the provider's own tracker.
+# `{name}` and `{url}` are filled in at render time.
+COMMUNITY_REFERRAL_HEADING = "### 🧩 Community provider"
+COMMUNITY_REFERRAL = (
+    "**{name}** is a community provider: its own maintainer looks after it, "
+    "outside the Music Assistant team. They know it best, so please "
+    "[report this to its maintainer]({url}). If the problem is in {name}, "
+    "please close this issue once you've reported it there; if it turns out to "
+    "be Music Assistant itself, let us know here."
+)
+# The same provider when it is blocked, or when a check above already points at
+# the installation.
+COMMUNITY_NOTE = (
+    "ℹ️ **{name}** is a community provider, maintained outside the Music "
+    "Assistant team."
+)
+COMMUNITY_BLOCKED = (
+    "It is **blocked** in the community catalog, so Music Assistant does not "
+    "load it."
+)
+COMMUNITY_WITHDRAWN = (
+    "It has been **withdrawn** from the community catalog: it is no longer "
+    "offered, while an installed copy keeps loading."
+)

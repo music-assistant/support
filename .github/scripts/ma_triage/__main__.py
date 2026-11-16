@@ -46,10 +46,12 @@ from .attachments import (
 )
 from .diagnostics import try_parse
 from .gh import GitHubClient, error, log, summary
-from .models import TriageResult
+from .models import ProviderDoc, TriageResult
 from .providers import (
+    community_provider,
     detect_reported_provider_labels,
     filter_existing_labels,
+    load_community_providers,
     load_manifests,
     resolve_maintainers,
     resolve_provider_doc,
@@ -138,24 +140,33 @@ def build_result(
     # A title-level provider mention wins over incidental comparisons in the
     # body. Diagnostics describe the whole installation and must never drive
     # issue labels.
-    reported_providers = set(
+    result.reported_providers = set(
         sorted(
             detect_reported_provider_labels(title, body),
             key=str.lower,
         )[: config.MAX_REPORTED_PROVIDERS]
     )
-    result.reported_providers = reported_providers
+    community = [
+        provider
+        for label in sorted(result.reported_providers, key=str.lower)
+        if (provider := community_provider(label)) is not None
+    ]
+    # Everything below that reads the server repository or the posts index
+    # knows only the providers that live in the server repository.
+    reported_providers = result.reported_providers - {p.domain for p in community}
     labels_to_add |= reported_providers
     for provider in sorted(reported_providers, key=str.lower):
         provider_doc = resolve_provider_doc(gh, provider)
         if provider_doc is not None:
             result.provider_docs.append(provider_doc)
 
-    # Ping conservatively: one clearly reported provider. Never ping maintainers
-    # for incidental census/error providers.
-    if len(reported_providers) == 1:
-        provider = next(iter(reported_providers))
-        maintainers.update(resolve_maintainers(gh, provider))
+    # Ping, or refer to a community provider's own tracker, conservatively: one
+    # clearly reported provider. Never for incidental census/error providers.
+    if len(result.reported_providers) == 1:
+        if community:
+            result.community_provider = community[0]
+        else:
+            maintainers.update(resolve_maintainers(gh, next(iter(reported_providers))))
 
     install_finding = analyze.install_method_finding(result.install_method)
     if install_finding is not None:
@@ -232,6 +243,16 @@ def build_result(
         if ai_result is not None:
             result.ai = ai_result
             labels_to_add.update(ai_result.suggested_labels)
+
+    # Added only now: nothing from the catalog index may reach retrieval or the
+    # assessment, and a blocked provider's own links are not offered at all.
+    if community:
+        labels_to_add.add(config.LABEL_COMMUNITY_PROVIDER)
+    result.provider_docs.extend(
+        ProviderDoc(label=p.domain, name=p.name, url=p.documentation)
+        for p in community
+        if p.documentation and p.status != "blocked"
+    )
 
     findings.sort(key=lambda f: f.sort_key)
     result.findings = findings
@@ -321,6 +342,7 @@ def _resolve_labels(gh: GitHubClient, result: TriageResult) -> list[str]:
         if (
             result.form_kind == "main"
             and not result.has_diagnostics
+            and result.community_referral is None
             and config.LABEL_NEEDS_DIAGNOSTICS in existing
         ):
             keep.add(config.LABEL_NEEDS_DIAGNOSTICS)
@@ -362,10 +384,12 @@ def apply_triage(
         # issue became but nothing records what the bot claimed about it.
         #
         # `v` says which keys are present, and nothing gates on it: v2 is v1 plus
-        # six fields, so a reader of either keeps working. Unlike `_SCHEMA` in
-        # `embeddings`, this is not a compatibility break and needs no migration.
+        # six fields and v3 is v2 plus `referred`, so a reader of any keeps
+        # working. Unlike `_SCHEMA` in `embeddings`, this is not a compatibility
+        # break and needs no migration.
+        referral = result.community_referral
         state = {
-            "v": 2,
+            "v": 3,
             "last_run": _now_iso(),
             "form": result.form_kind,
             "providers": sorted(result.reported_providers),
@@ -379,6 +403,7 @@ def apply_triage(
             "log_wall": result.log_wall_detected,
             "labels": sorted(result.labels_to_add),
             "pinged": sorted(result.maintainers_to_ping),
+            "referred": referral.domain if referral else None,
             "findings": [f.title for f in result.findings],
         }
         if result.diagnostics is not None:
@@ -450,7 +475,10 @@ def cmd_triage(gh: GitHubClient, token: str) -> int:
         return 0
 
     summary(f"## Triage of #{number}\n")
-    load_manifests(gh)
+    # Without the server's manifests nothing stops a catalog provider from
+    # claiming a built-in provider's name, so the catalog is left out too.
+    if load_manifests(gh):
+        load_community_providers()
     result = build_result(gh, title, body, token=token, labels=labels, number=number)
     if result.skip:
         summary(f"#{number}: skipped ({result.form_kind} form — not triaged).")

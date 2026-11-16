@@ -160,7 +160,64 @@ def _forget_provider_manifests():
     from ma_triage import providers
 
     providers._MANIFESTS.clear()
+    providers._COMMUNITY.clear()
     providers._alias_patterns.cache_clear()
+
+
+class FakeResponse:
+    """A streamed `requests` response serving ``content`` in two chunks."""
+
+    def __init__(self, content: bytes, status=200):
+        self.content = content
+        self.status_code = status
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def iter_content(self, chunk_size=1):
+        half = len(self.content) // 2
+        yield from (self.content[:half], self.content[half:])
+
+
+TEST_TONES = {
+    "repository": "marcelveldt/ma-test-tones",
+    "maintainers": ["marcelveldt"],
+    "status": "listed",
+    "reason": None,
+    "reason_url": None,
+    "manifest": {
+        "domain": "test_tones",
+        "name": "Test Tones",
+        "type": "music",
+        "codeowners": ["@marcelveldt"],
+        "documentation": "https://github.com/marcelveldt/ma-test-tones#readme",
+    },
+}
+
+
+@pytest.fixture(autouse=True)
+def catalog(monkeypatch):
+    """Serve the community catalog index from memory; unreachable until a test fills it.
+
+    Returns the ``providers`` mapping of the index for a test to fill.
+    """
+    import requests
+
+    from ma_triage import providers
+
+    entries: dict = {}
+
+    def fake_get(url, **kwargs):
+        if not entries:
+            raise requests.ConnectionError("offline")
+        assert kwargs.get("allow_redirects") is False
+        return FakeResponse(json.dumps({"schema": 1, "providers": entries}).encode())
+
+    monkeypatch.setattr(providers.requests, "get", fake_get)
+    return entries
 
 
 @pytest.fixture

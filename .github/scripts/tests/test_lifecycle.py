@@ -81,3 +81,39 @@ def test_sweep_nothing_due(fake_gh):
     issue = _issue(created_days_ago=1, labels=[config.LABEL_WAITING_FOR_USER])
     msg = lifecycle.sweep_issue(fake_gh, issue)
     assert "nothing due" in msg
+
+
+def _referred(fake_gh):
+    state = '{"v":3,"referred":"test_tones"}'
+    fake_gh._comments.append({
+        "id": 1,
+        "body": f"{config.STICKY_MARKER}\n{config.STATE_BEGIN}{state}{config.STATE_END}",
+        "user": {"login": "bot", "type": "Bot"},
+        "created_at": _iso(10),
+    })
+
+
+def test_sweep_asks_a_referred_reporter_to_close(fake_gh):
+    _referred(fake_gh)
+    lifecycle.sweep_issue(fake_gh, _issue(created_days_ago=4, labels=[config.LABEL_WAITING_FOR_USER]))
+    posted = [c[2] for c in fake_gh.calls if c[0] == "create_comment"]
+    assert config.REFERRAL_REMINDER_1_MESSAGE in posted[-1]
+
+
+def test_sweep_warns_a_referred_reporter_before_closing(fake_gh):
+    _referred(fake_gh)
+    issue = _issue(created_days_ago=8,
+                   labels=[config.LABEL_WAITING_FOR_USER, config.LABEL_REMINDED_1])
+    lifecycle.sweep_issue(fake_gh, issue)
+    posted = [c[2] for c in fake_gh.calls if c[0] == "create_comment"]
+    assert config.REFERRAL_REMINDER_2_MESSAGE.format(days=config.AUTO_CLOSE_DAYS) in posted[-1]
+
+
+def test_sweep_closes_a_referred_report_as_the_provider_s(fake_gh):
+    _referred(fake_gh)
+    issue = _issue(created_days_ago=20,
+                   labels=[config.LABEL_WAITING_FOR_USER, config.LABEL_REMINDED_2])
+    lifecycle.sweep_issue(fake_gh, issue)
+    posted = [c[2] for c in fake_gh.calls if c[0] == "create_comment"]
+    assert config.REFERRAL_AUTO_CLOSE_MESSAGE in posted[-1]
+    assert any(c[0] == "close_issue" for c in fake_gh.calls)

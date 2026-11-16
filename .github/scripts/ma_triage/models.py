@@ -99,6 +99,8 @@ class Finding:
     detail: str
     # Optional labels this finding suggests applying.
     labels: list[str] = field(default_factory=list)
+    # A cause in the installation itself rather than in one provider.
+    generic: bool = False
 
     _ORDER = {Severity.CRITICAL: 0, Severity.WARNING: 1, Severity.INFO: 2}
 
@@ -224,6 +226,25 @@ class ProviderDoc:
 
 
 @dataclass
+class CommunityProvider:
+    """A community catalog provider, maintained outside the Music Assistant team."""
+
+    domain: str
+    name: str
+    repository: str  # "owner/name" on GitHub
+    status: str  # "listed" | "withdrawn" | "blocked"
+    reason: str | None = None
+    reason_url: str | None = None
+    support_url: str | None = None
+    documentation: str | None = None
+
+    @property
+    def report_url(self) -> str:
+        """Where its maintainer takes reports: its support URL, else its issues page."""
+        return self.support_url or f"https://github.com/{self.repository}/issues"
+
+
+@dataclass
 class RagResult:
     """Everything the RAG layer decided for one post.
 
@@ -294,6 +315,8 @@ class TriageResult:
     reported_providers: set[str] = field(default_factory=set)
     provider_docs: list[ProviderDoc] = field(default_factory=list)
     maintainers_to_ping: set[str] = field(default_factory=set)
+    # Set when the report names exactly one provider and it is a community one.
+    community_provider: CommunityProvider | None = None
     ai: AIResult | None = None
     gist: "ReportGist | None" = None
     diagnostics: Diagnostics | None = None
@@ -305,6 +328,22 @@ class TriageResult:
     def is_actionable(self) -> bool:
         """True when we have enough to diagnose (valid diagnostics present)."""
         return self.has_diagnostics and not self.diagnostics_invalid
+
+    @property
+    def community_referral(self) -> CommunityProvider | None:
+        """
+        The community provider whose maintainer the reporter is sent to.
+
+        None unless the report names exactly one provider and it is a community
+        one; also None for a blocked provider, and when a check found a cause in
+        the installation itself.
+        """
+        provider = self.community_provider
+        if provider is None or provider.status == "blocked":
+            return None
+        if any(finding.generic for finding in self.findings):
+            return None
+        return provider
 
     @property
     def has_recovered_fields(self) -> bool:
@@ -319,9 +358,15 @@ class TriageResult:
 
     @property
     def needs_user_action(self) -> bool:
-        """True when the reporter still has to provide something."""
+        """True when the reporter still has to provide something.
+
+        A referred report always waits on the reporter: to take it to the
+        provider's own tracker and close it here, or to say it is Music Assistant.
+        """
         if self.skip:
             return False
+        if self.community_referral is not None:
+            return True
         if self.form_kind == "frontend":
             return bool(self.missing_sections or self.missing_attachment)
         # main bug form

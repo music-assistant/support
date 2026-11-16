@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from . import config
+from . import comment, config
 from .gh import GitHubClient, summary
 
 # Author associations that we treat as "a maintainer / team member replied".
@@ -135,24 +135,27 @@ def sweep_issue(gh: GitHubClient, issue: dict[str, Any]) -> str:
 
     comments = gh.list_comments(number)
     idle = days_since(last_user_activity(issue, comments))
+    sticky = comment.find_sticky(comments)
+    referred = bool(comment.parse_state((sticky or {}).get("body")).get("referred"))
 
     if idle >= config.AUTO_CLOSE_DAYS:
+        message = config.REFERRAL_AUTO_CLOSE_MESSAGE if referred else config.AUTO_CLOSE_MESSAGE
         gh.create_comment(
-            number, f"{config.REMINDER_MARKER}\n\n{config.AUTO_CLOSE_MESSAGE}{config.DISCLOSURE_FOOTER}"
+            number, f"{config.REMINDER_MARKER}\n\n{message}{config.DISCLOSURE_FOOTER}"
         )
         gh.add_labels(number, [config.LABEL_AUTO_CLOSED])
         gh.close_issue(number, reason="not_planned")
         return f"#{number}: auto-closed after {idle:.1f}d idle"
 
     if idle >= config.REMINDER_2_DAYS and config.LABEL_REMINDED_2 not in labels:
-        _post_reminder(
-            gh, number, config.REMINDER_2_MESSAGE.format(days=config.AUTO_CLOSE_DAYS)
-        )
+        message = config.REFERRAL_REMINDER_2_MESSAGE if referred else config.REMINDER_2_MESSAGE
+        _post_reminder(gh, number, message.format(days=config.AUTO_CLOSE_DAYS))
         gh.add_labels(number, [config.LABEL_REMINDED_2])
         return f"#{number}: sent close-warning ({idle:.1f}d idle)"
 
     if idle >= config.REMINDER_1_DAYS and config.LABEL_REMINDED_1 not in labels:
-        _post_reminder(gh, number, config.REMINDER_1_MESSAGE)
+        message = config.REFERRAL_REMINDER_1_MESSAGE if referred else config.REMINDER_1_MESSAGE
+        _post_reminder(gh, number, message)
         gh.add_labels(number, [config.LABEL_REMINDED_1])
         return f"#{number}: sent gentle reminder ({idle:.1f}d idle)"
 

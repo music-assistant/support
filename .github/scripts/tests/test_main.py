@@ -306,12 +306,13 @@ def test_state_records_the_whole_decision(monkeypatch, fake_gh):
     monkeypatch.setattr(main, "_resolve_labels", lambda gh, r: [])
     main.apply_triage(fake_gh, 1, {"labels": []}, result)
 
-    assert captured["v"] == 2
+    assert captured["v"] == 3
     assert captured["missing_sections"] == ["How to reproduce"]
     assert captured["missing_attachment"] is True
     assert captured["log_wall"] is True
     assert captured["labels"] == ["bug", "sonos"]
     assert captured["pinged"] == ["@someone"]
+    assert captured["referred"] is None
     assert captured["findings"] == ["Outdated version"]
 
 
@@ -526,3 +527,179 @@ def test_cmd_triage_pings_a_provider_known_only_by_its_manifest_name(
     assert "Chromecast" not in labels
     comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
     assert "@jonasbp2011" in comment
+
+
+# --- community catalog providers ---------------------------------------------- #
+def _with_test_tones(catalog, **changes):
+    from conftest import TEST_TONES
+    from ma_triage.providers import load_community_providers
+
+    catalog["test_tones"] = {**TEST_TONES, **changes}
+    assert load_community_providers()
+
+
+def test_a_community_provider_is_referred_not_pinged(fake_gh, catalog):
+    _with_test_tones(catalog)
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", MAIN_BODY_FULL, token="t")
+    assert result.reported_providers == {"test_tones"}
+    assert result.community_referral is not None
+    assert result.community_referral.domain == "test_tones"
+    assert result.maintainers_to_ping == set()
+    assert config.LABEL_COMMUNITY_PROVIDER in result.labels_to_add
+    assert "test_tones" not in result.labels_to_add
+    assert [doc.url for doc in result.provider_docs] == [
+        "https://github.com/marcelveldt/ma-test-tones#readme"
+    ]
+    # Nothing is looked up in the server repository for it.
+    assert not [path for path in fake_gh.raw_reads if "test_tones" in path]
+
+
+def test_two_providers_named_refers_nobody_and_pings_nobody(fake_gh, catalog):
+    _with_test_tones(catalog)
+    result = main.build_result(
+        fake_gh, "Test Tones crackle on snapcast", MAIN_BODY_FULL, token="t"
+    )
+    assert result.reported_providers == {"test_tones", "snapcast"}
+    assert result.community_provider is None
+    assert result.maintainers_to_ping == set()
+    assert {"snapcast", config.LABEL_COMMUNITY_PROVIDER} <= result.labels_to_add
+
+
+def test_a_generic_cause_keeps_the_triage_and_only_notes_the_provider(fake_gh, catalog):
+    _with_test_tones(catalog)
+    body = MAIN_BODY_FULL.replace("2.9.5", "2.8.0")
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", body, token="t")
+    assert [f.title for f in result.findings] == ["Outdated version"]
+    assert result.community_provider is not None
+    assert result.community_referral is None
+    assert config.LABEL_COMMUNITY_PROVIDER in result.labels_to_add
+
+
+def test_cmd_triage_without_the_catalog_behaves_as_before(fake_gh, monkeypatch):
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("ISSUE_TITLE", "Test Tones: sweep is silent")
+    monkeypatch.setenv("ISSUE_BODY", MAIN_BODY_FULL)
+    fake_gh._labels.add(config.LABEL_COMMUNITY_PROVIDER)
+    assert main.cmd_triage(fake_gh, "t") == 0
+    labels = [label for call in fake_gh.calls if call[0] == "add_labels" for label in call[2]]
+    assert config.LABEL_COMMUNITY_PROVIDER not in labels
+    comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
+    assert config.COMMUNITY_REFERRAL_HEADING not in comment
+
+
+def test_cmd_triage_refers_a_community_provider_report(fake_gh, catalog, monkeypatch):
+    from conftest import TEST_TONES
+
+    catalog["test_tones"] = TEST_TONES
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("ISSUE_TITLE", "Test Tones: sweep is silent")
+    monkeypatch.setenv("ISSUE_BODY", MAIN_BODY_FULL)
+    fake_gh._labels.add(config.LABEL_COMMUNITY_PROVIDER)
+    assert main.cmd_triage(fake_gh, "t") == 0
+    labels = [label for call in fake_gh.calls if call[0] == "add_labels" for label in call[2]]
+    assert config.LABEL_COMMUNITY_PROVIDER in labels
+    assert not [call for call in fake_gh.calls if call[0] == "close_issue"]
+    comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
+    assert config.COMMUNITY_REFERRAL_HEADING in comment
+    assert "(https://github.com/marcelveldt/ma-test-tones/issues)" in comment
+    assert "@marcelveldt" not in comment
+    assert '"referred":"test_tones"' in comment
+
+
+def test_the_catalog_never_reaches_retrieval_or_the_assessment(
+    sample_raw, fake_gh, catalog, monkeypatch
+):
+    monkeypatch.setattr(config, "AI_ENABLED", True)
+    monkeypatch.setattr(main, "find_diagnostics_url", lambda body: "http://x")
+    monkeypatch.setattr(main, "download_capped", lambda url: sample_raw)
+    monkeypatch.setattr(main.ai, "summarise_report", lambda *a, **k: None)
+    seen: list = []
+
+    def record(kind, value):
+        # A snapshot of what the consumer was handed, at the time it was called.
+        seen.append((kind, repr(value)))
+
+    monkeypatch.setattr(main.rag, "answer", lambda gh, **kwargs: record("rag", kwargs))
+    monkeypatch.setattr(
+        main.code_context, "build", lambda gh, **kwargs: record("code", kwargs) or ""
+    )
+    monkeypatch.setattr(
+        main.ai, "_chat", lambda payload, **kwargs: record("prompt", payload["messages"])
+    )
+    title = "Test Tones: sweep is silent"
+
+    main.build_result(fake_gh, title, MAIN_BODY_FULL, token="t", labels=["triage"])
+    without = list(seen)
+    seen.clear()
+    _with_test_tones(catalog)
+    result = main.build_result(fake_gh, title, MAIN_BODY_FULL, token="t", labels=["triage"])
+
+    assert result.community_provider is not None
+    assert [kind for kind, _ in without] == ["rag", "code", "prompt"]
+    assert seen == without
+    assert "ma-test-tones" not in "".join(value for _, value in seen)
+
+
+def test_a_blocked_community_provider_is_not_referred(fake_gh, catalog):
+    _with_test_tones(catalog, status="blocked", reason="Sends the library elsewhere")
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", MAIN_BODY_FULL, token="t")
+    assert result.community_provider is not None
+    assert result.community_referral is None
+    assert result.provider_docs == []
+    assert config.LABEL_COMMUNITY_PROVIDER in result.labels_to_add
+
+
+def test_a_withdrawn_community_provider_is_still_referred(fake_gh, catalog):
+    _with_test_tones(catalog, status="withdrawn", reason="No longer maintained")
+    result = main.build_result(fake_gh, "Test Tones: sweep is silent", MAIN_BODY_FULL, token="t")
+    assert result.community_referral is not None
+    assert [doc.url for doc in result.provider_docs] == [
+        "https://github.com/marcelveldt/ma-test-tones#readme"
+    ]
+
+
+def test_a_referral_asks_the_reporter_to_close_not_for_diagnostics(fake_gh, catalog, monkeypatch):
+    from conftest import TEST_TONES
+
+    catalog["test_tones"] = TEST_TONES
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("ISSUE_TITLE", "Test Tones: sweep is silent")
+    monkeypatch.setenv("ISSUE_BODY", MAIN_BODY_FULL.replace("It crashes on startup", ""))
+    fake_gh._labels.add(config.LABEL_COMMUNITY_PROVIDER)
+    assert main.cmd_triage(fake_gh, "t") == 0
+    labels = [label for call in fake_gh.calls if call[0] == "add_labels" for label in call[2]]
+    assert config.LABEL_WAITING_FOR_USER in labels
+    assert config.LABEL_NEEDS_DIAGNOSTICS not in labels
+    comment = next(call[2] for call in fake_gh.calls if call[0] == "create_comment")
+    assert "please close this issue" in comment
+    assert "diagnostics report or log file" not in comment
+    assert "look empty" not in comment and "could you fill in" not in comment
+
+
+def test_a_complete_referral_waits_on_the_reporter_not_the_maintainers(fake_gh):
+    from ma_triage.models import CommunityProvider
+
+    provider = CommunityProvider(
+        domain="test_tones", name="Test Tones", repository="marcelveldt/ma-test-tones",
+        status="listed",
+    )
+    result = main.TriageResult(form_kind="main", has_diagnostics=True,
+                               community_provider=provider)
+    assert result.is_actionable
+    assert result.needs_user_action
+    assert config.LABEL_WAITING_FOR_USER in main._resolve_labels(fake_gh, result)
+
+
+def test_cmd_triage_leaves_the_catalog_out_without_the_server_manifests(catalog, monkeypatch):
+    from conftest import FakeGH, TEST_TONES
+
+    catalog["test_tones"] = TEST_TONES
+    monkeypatch.setenv("ISSUE_NUMBER", "1")
+    monkeypatch.setenv("ISSUE_TITLE", "Test Tones: sweep is silent")
+    monkeypatch.setenv("ISSUE_BODY", MAIN_BODY_FULL)
+    gh = FakeGH(labels={config.LABEL_COMMUNITY_PROVIDER, "waiting-for-user"})
+    assert main.cmd_triage(gh, "t") == 0
+    labels = [label for call in gh.calls if call[0] == "add_labels" for label in call[2]]
+    assert config.LABEL_COMMUNITY_PROVIDER not in labels
+    comment = next(call[2] for call in gh.calls if call[0] == "create_comment")
+    assert config.COMMUNITY_REFERRAL_HEADING not in comment
