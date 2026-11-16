@@ -19,9 +19,7 @@ PROVIDERS_DIR = "music_assistant/providers"
 MANIFEST_PATH = PROVIDERS_DIR + "/{domain}/manifest.json"
 # The community catalog: providers that live in their maintainers' own
 # repositories. Every server line's index lists every catalog provider.
-COMMUNITY_INDEX_URL = (
-    "https://music-assistant.github.io/community-catalog/v1/nightly.json"
-)
+COMMUNITY_INDEX_URL = "https://catalog.music-assistant.io/v1/nightly.json"
 COMMUNITY_INDEX_TIMEOUT = 10  # seconds
 COMMUNITY_INDEX_MAX_BYTES = 4 * 1024 * 1024  # the registry's own limit
 
